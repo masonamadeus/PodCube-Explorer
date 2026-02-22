@@ -67,7 +67,9 @@ window.addEventListener('PodCube:Ready', async () => {
 
         PodCube.on('ended', (episode) => {
             if (episode && window.PodUser) {
+                if (!episode._excludeFromExport && !episode._internal){
                 PodUser.logListen(episode.id);
+                }
             }
         });
 
@@ -2617,20 +2619,24 @@ function playHistorySong() {
             // Mapping flattened properties to where the class expects them
             model: raw.model,
             origin: raw.origin || "PodCube HQ",
+            locale: raw.locale,   // ADDED THIS
+            region: raw.region,   // ADDED THIS
+            zone: raw.zone,       // ADDED THIS
+            planet: raw.planet,   // ADDED THIS
             date: raw.date,
             integrity: "100" // It's official, so it's pure
         }
     };
 
-    // 2. Create a valid instance using the class we exposed in Step 1
+    // Create a valid instance using the class we exposed in Step 1
     // This passes the "instanceof Episode" check in addToQueue()
     const validEpisode = new PodCube.Episode(normalizedData);
 
-    // 3. Re-attach special flags (The constructor doesn't copy custom flags automatically)
+    // Re-attach special flags (The constructor doesn't copy custom flags automatically)
     validEpisode._excludeFromExport = true;
     validEpisode._internal = true;
 
-    // 4. Play it
+    // Play it
     PodCube.play(validEpisode);
     logCommand('// Playing internal history song');
 }

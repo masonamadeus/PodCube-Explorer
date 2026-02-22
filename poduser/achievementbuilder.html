@@ -30,7 +30,7 @@ body {
 /* ── LAYOUT ───────────────────────────────────────── */
 .app {
     display: grid;
-    grid-template-columns: 1fr 450px;
+    grid-template-columns: minmax(380px, 1fr) 300px 450px;
     grid-template-rows: auto 1fr;
     height: 100vh;
     min-height: 0;
@@ -64,6 +64,15 @@ body {
     border-right: var(--border);
     min-height: 0;
     padding-bottom:50%;
+}
+
+.middle-pane {
+    display: flex;
+    flex-direction: column;
+    padding: 20px 16px;
+    background: #f6f8fb;
+    border-right: var(--border);
+    min-height: 0;
 }
 
 .right-pane {
@@ -187,23 +196,11 @@ body.drop-active::after {
 .reward-panel { display: none; }
 .reward-panel.active { display: block; }
 
-.asset-library {
-    display: none;
-    background: var(--primary-dim);
-    padding: 10px;
-    border: 1px solid var(--primary);
-    margin-bottom: 12px;
-}
-.asset-library.active {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
 .asset-btn {
     font-size: 9px;
     font-weight: bold;
-    padding: 6px 8px;
-    border: 1px solid var(--primary);
+    padding: 8px;
+    border: 1px solid var(--primary-dim);
     background: #fff;
     color: var(--primary-dark);
     cursor: pointer;
@@ -211,8 +208,9 @@ body.drop-active::after {
     white-space: normal;
     word-wrap: break-word;
     line-height: 1.3;
+    transition: all 0.1s;
 }
-.asset-btn:hover { background: var(--primary); color: #fff; }
+.asset-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary-dark); }
 
 /* ── CONDITION BUILDER ────────────────────────────── */
 .condition-list {
@@ -335,7 +333,7 @@ body.drop-active::after {
 .library-item-id { color: #888; font-family: monospace; font-size: 9px; }
 
 .btn-trash {
-    background: none; border: none; color: #ccc; cursor: pointer; font-size: 14px;
+    background: none; border: none; color: #ccc; cursor: pointer; font-size: 14px; padding: 4px;
 }
 .btn-trash:hover { color: var(--danger); }
 
@@ -463,6 +461,15 @@ body.drop-active::after {
     text-align: left;
 }
 
+/* ── RESPONSIVE ───────────────────────────────────── */
+@media (max-width: 1100px) {
+    .app { grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr 1fr; height: auto; }
+    .right-pane { grid-column: 1 / -1; height: 500px; }
+    .left-pane { padding-bottom: 24px; }
+}
+@media (max-width: 800px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: auto auto auto auto; }
+}
 </style>
 
 <script src="https://bodgelab.com/podcube.js" type="module"></script>
@@ -480,10 +487,14 @@ body.drop-active::after {
 
     <main class="left-pane">
         
-        <div class="section-head">Virtual Library</div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 class="section-head" style="margin:0; padding:0; border:none; letter-spacing: 0.05em;">Virtual Library</h2>
+            <button onclick="syncWithAchievementsJs()" class="btn ghost" style="padding: 3px 8px; font-size: 9px;" title="Discard local changes and load from achievements.js">↻ Sync JS</button>
+        </div>
+        <div style="border-top: 1px solid var(--primary-dim); margin: 10px 0;"></div>
+        
         <div style="background: var(--primary-dim); padding: 12px; border: 1px solid var(--primary); margin-bottom: 20px;">
-            <div id="virtual-library-list" style="display:flex; flex-direction:column; gap:6px; max-height: 180px; overflow-y: auto; margin-bottom: 12px;">
-                </div>
+            <div id="virtual-library-list" style="display:flex; flex-direction:column; gap:6px; max-height: 180px; overflow-y: auto; margin-bottom: 12px;"></div>
             <button class="btn wide ghost" style="border: 1px dashed var(--primary);" onclick="createNew()">+ Create New Achievement</button>
         </div>
 
@@ -495,7 +506,6 @@ body.drop-active::after {
                 <option value="completionist">Saga Completionist (Specific List)</option>
                 <option value="loyalty">Loyalty Program (5 Visits)</option>
             </select>
-            <button class="btn ghost" onclick="createNew()">Clear Form</button>
         </div>
 
         <div class="section-head">Core Properties</div>
@@ -537,15 +547,6 @@ body.drop-active::after {
             <button class="rtab"        data-rt="text"  onclick="setReward('text')">Text</button>
         </div>
 
-        <div id="asset-library" class="asset-library">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size: 9px; font-weight: bold; color: var(--primary); text-transform: uppercase;">PRIC Asset Library</span>
-                <button onclick="scanAssetsFolder()" class="btn ghost" style="padding: 2px 6px; font-size: 8px;">Scan Folder</button>
-            </div>
-            <div id="asset-btn-container" style="display:flex; flex-direction:column; gap:4px; margin-top: 6px; max-height: 120px; overflow-y: auto;"></div>
-            <input type="file" id="fallbackFolderInput" webkitdirectory directory multiple style="display:none;" onchange="handleFallbackFolder(event)">
-        </div>
-
         <div class="reward-panel" id="rp-audio">
             <div class="field"><label>Audio URL</label><input type="url" id="r-audio-url" placeholder="./poduser/assets/audio/file.mp3" oninput="generate()"></div>
             <div class="field"><label>Title</label><input type="text" id="r-audio-title" placeholder="Stove's Voicemail" oninput="generate()"></div>
@@ -581,19 +582,6 @@ body.drop-active::after {
 
         <div class="section-head">Conditions</div>
 
-        <p style="font-size:11px; color:var(--muted); margin-bottom:12px; line-height:1.6;">
-            <strong>Pro Tip:</strong> Click an episode in the search below to instantly copy its ID to the clipboard!
-        </p>
-
-        <div class="field"
-            style="background: var(--primary-dim); padding: 12px; margin-bottom: 15px; border: 1px dashed var(--primary);">
-            <label style="color: var(--primary-dark);">Search Transmissions (Live API)</label>
-            <input type="text" id="ep-search" placeholder="Search by title, location, or tag..." oninput="searchEpisodes()">
-            <div id="ep-search-results"
-                style="max-height: 150px; overflow-y: auto; margin-top: 8px; display: none; background: #fff; border: 1px solid var(--border);">
-            </div>
-        </div>
-
         <div class="condition-list" id="conditionList"></div>
 
         <button class="btn-add-cond" onclick="addCondition()">+ Add Condition</button>
@@ -617,6 +605,27 @@ body.drop-active::after {
         </div>
 
     </main>
+
+    <aside class="middle-pane">
+        
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 class="section-head" style="margin:0; padding:0; border:none; letter-spacing: 0.05em;">PRIC Asset Library</h2>
+            <button onclick="scanAssetsFolder()" class="btn ghost" style="padding: 3px 8px; font-size: 9px;">Scan Folder</button>
+        </div>
+        <div style="border-top: 1px solid var(--primary-dim); margin: 10px 0;"></div>
+        
+        <div id="asset-btn-container" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; min-height: 0; margin-bottom: 20px; padding-right: 4px;"></div>
+        <input type="file" id="fallbackFolderInput" webkitdirectory directory multiple style="display:none;" onchange="handleFallbackFolder(event)">
+
+        <h2 class="section-head" style="margin-top: 0; padding-bottom: 4px; border:none;">Transmission Search</h2>
+        <p style="font-size:10px; color:var(--muted); margin-bottom:8px; line-height:1.4;">Select a condition on the left, then click an episode to inject it.</p>
+        
+        <input type="text" id="ep-search" placeholder="Search API..." oninput="searchEpisodes()" style="width: 100%; padding: 8px 10px; border: 1px solid var(--primary-dim); font-size: 12px; outline: none; margin-bottom: 8px; font-family: inherit;">
+        <div id="ep-search-results" style="flex: 1; overflow-y: auto; background: #fff; border: 1px solid var(--border); min-height: 0;">
+            <div style="padding: 10px; font-size: 10px; color: #888; text-align: center; font-style: italic;">Enter a search term...</div>
+        </div>
+
+    </aside>
 
     <aside class="right-pane">
         
@@ -666,10 +675,10 @@ body.drop-active::after {
 // ─────────────────────────────────────────────────────────────────
 // GLOBAL TRACKING & ENHANCEMENTS
 // ─────────────────────────────────────────────────────────────────
-let _virtualLibrary = []; // State for the currently managed list of achievements
-let _editingId = null;    // Tracks the ID of the achievement currently in the form
+let _virtualLibrary = []; 
+let _editingId = null;    
+let _activeEpisodeTarget = null; // Tracks which episode field is waiting for injection
 
-// Wait for the main app to parse achievements.js and fire the ready event
 window.addEventListener('PodCube:Ready', async () => {
     try {
         await PodCube.init();
@@ -679,7 +688,7 @@ window.addEventListener('PodCube:Ready', async () => {
     }
 
     renderAssetLibrary();
-    initVirtualLibrary(); // Load from window.PodUser.achievements
+    initVirtualLibrary(); 
 });
 
 // Drag and Drop "Virtual Assets" workflow
@@ -700,7 +709,6 @@ document.addEventListener('drop', e => {
     if (e.dataTransfer.files.length) {
         let name = e.dataTransfer.files[0].name;
         
-        // Auto-detect folder based on active tab
         let subfolder = '';
         if (_rewardType === 'audio') subfolder = 'audio/';
         else if (_rewardType === 'image') subfolder = 'images/';
@@ -709,20 +717,17 @@ document.addEventListener('drop', e => {
         
         let finalPath = encodeURI('./poduser/assets/' + subfolder + name).replace(/'/g, '%27');
         
-        // Find the active URL input box
         let activeUrlInput = document.querySelector('.reward-panel.active input[type="url"]');
         if (_rewardType === 'game') activeUrlInput = document.getElementById('r-game-id');
 
         if (activeUrlInput) {
             if (_rewardType === 'game') {
-                // Strip extension for Game IDs
                 activeUrlInput.value = name.replace(/\.[^/.]+$/, "");
             } else {
                 activeUrlInput.value = finalPath;
             }
             activeUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
             
-            // Add to library automatically if not there
             if (!_assetList.includes(finalPath)) {
                 _assetList.push(finalPath);
                 localStorage.setItem('pc_builder_assets', JSON.stringify(_assetList));
@@ -742,7 +747,7 @@ let _assetList = JSON.parse(localStorage.getItem('pc_builder_assets')) || [
     './poduser/assets/images/Precious B.png',
     './poduser/assets/audio/secret_voicemail_01.mp3',
     './poduser/assets/video/prabo_congratulations.mp4'
-].map(p => encodeURI(p).replace(/'/g, '%27')); // Ensure base library is strictly encoded
+].map(p => encodeURI(p).replace(/'/g, '%27')); 
 
 function renderAssetLibrary() {
     const container = document.getElementById('asset-btn-container');
@@ -753,7 +758,6 @@ function renderAssetLibrary() {
         return;
     }
 
-    // Filter based on _rewardType
     let filteredList = _assetList;
     if (_rewardType === 'audio') {
         filteredList = _assetList.filter(p => p.toLowerCase().includes('/audio/'));
@@ -770,10 +774,16 @@ function renderAssetLibrary() {
         return;
     }
 
+    filteredList.sort((a, b) => {
+        const nameA = decodeURI(a).split('/').pop().toLowerCase();
+        const nameB = decodeURI(b).split('/').pop().toLowerCase();
+        return nameA.localeCompare(nameB);
+    });
+
     filteredList.forEach(path => {
         const btn = document.createElement('button');
         btn.className = 'asset-btn';
-        btn.textContent = decodeURI(path).split('/').pop(); // Display friendly name
+        btn.textContent = decodeURI(path).split('/').pop(); 
         btn.title = decodeURI(path);
         btn.onclick = () => {
             let activeUrlInput = document.querySelector('.reward-panel.active input[type="url"]');
@@ -788,6 +798,8 @@ function renderAssetLibrary() {
             } else if (activeUrlInput) {
                 activeUrlInput.value = path;
                 activeUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
+            } else {
+                alert("Please select an appropriate Reward type to use this asset.");
             }
         };
         container.appendChild(btn);
@@ -815,13 +827,11 @@ async function scanAssetsFolder() {
             await scanDir(dirHandle, '');
             
             if (files.length > 0) {
-                // Merge and deduplicate
                 _assetList = [...new Set([..._assetList, ...files])];
                 localStorage.setItem('pc_builder_assets', JSON.stringify(_assetList));
                 renderAssetLibrary();
             }
         } else {
-            // Fallback for Firefox/Safari without showDirectoryPicker
             document.getElementById('fallbackFolderInput').click();
         }
     } catch (e) {
@@ -838,7 +848,6 @@ function handleFallbackFolder(event) {
             let path = file.webkitRelativePath || file.name;
             let parts = path.split('/');
             
-            // Find the subfolder (audio, video, images, games)
             let knownFolders = ['audio', 'video', 'images', 'games'];
             let subFolderIndex = parts.findIndex(p => knownFolders.includes(p.toLowerCase()));
             
@@ -860,32 +869,86 @@ function handleFallbackFolder(event) {
     }
 }
 
+// ─────────────────────────────────────────────────────────────────
+// SMART EPISODE SEARCH INJECTOR
+// ─────────────────────────────────────────────────────────────────
+
 window.searchEpisodes = function() {
     const query = document.getElementById('ep-search').value.trim();
     const resultsContainer = document.getElementById('ep-search-results');
     
+    resultsContainer.style.display = 'block';
+
     if (!query) {
-        resultsContainer.style.display = 'none';
+        resultsContainer.innerHTML = '<div style="padding: 10px; font-size: 10px; color: #888; text-align: center; font-style: italic;">Enter a search term...</div>';
         return;
     }
 
-    const results = PodCube.search(query).slice(0, 10); 
+    const results = PodCube.search(query).slice(0, 50); 
     
     if (results.length === 0) {
-        resultsContainer.innerHTML = '<div style="padding: 8px; font-size: 10px; color: #888;">No results found.</div>';
+        resultsContainer.innerHTML = '<div style="padding: 10px; font-size: 10px; color: #888; text-align: center;">No results found.</div>';
     } else {
+        const actionText = _activeEpisodeTarget ? '↧ INJECT' : '⎘ COPY';
         resultsContainer.innerHTML = results.map(ep => `
-            <div style="padding: 6px 10px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 11px;"
-                 onclick="copyEpisodeId('${escapeForAttribute(ep.id)}', this)" title="Click to copy ID">
-                <div style="display:flex; justify-content:space-between;">
+            <div style="padding: 8px 10px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 11px; transition: background 0.1s;"
+                 onmouseover="this.style.background='var(--primary-dim)'"
+                 onmouseout="this.style.background='transparent'"
+                 onclick="handleEpisodeResultClick('${escapeForAttribute(ep.id)}', this)" title="${_activeEpisodeTarget ? 'Click to inject into condition' : 'Click to copy ID'}">
+                <div style="display:flex; justify-content:space-between; margin-bottom: 4px;">
                     <strong style="color: var(--primary);">${escapeHtml(ep.title)}</strong>
-                    <span class="copy-status" style="color: var(--primary-dark); font-weight: bold;">⎘ COPY</span>
+                    <span class="copy-status" style="color: var(--primary-dark); font-weight: bold; font-size: 9px;">${actionText}</span>
                 </div>
                 <span style="color: #666; font-family: monospace;">${escapeHtml(ep.id)}</span>
             </div>
         `).join('');
     }
-    resultsContainer.style.display = 'block';
+};
+
+window.handleEpisodeResultClick = function(id, el) {
+    if (_activeEpisodeTarget) {
+        const c = _conditions.find(c => c.id === _activeEpisodeTarget.condId);
+        if (c) {
+            let currentVal = c.params[_activeEpisodeTarget.key] || '';
+            let ids = currentVal.split('\n').map(s=>s.trim()).filter(Boolean);
+            
+            if (_activeEpisodeTarget.isList) {
+                if (!ids.includes(id)) ids.push(id);
+            } else {
+                ids = [id]; // replace
+            }
+            
+            const newVal = ids.join('\n');
+            c.params[_activeEpisodeTarget.key] = newVal;
+            
+            // Flash UI
+            const status = el.querySelector('.copy-status');
+            if (status) {
+                const originalText = status.textContent;
+                status.textContent = "INJECTED!";
+                status.style.color = "var(--orange)";
+                setTimeout(() => {
+                    if (status) {
+                        status.textContent = originalText;
+                        status.style.color = "var(--primary-dark)";
+                    }
+                }, 1000);
+            }
+            
+            generate();
+            renderConditionList();
+            
+            if (!_activeEpisodeTarget.isList) {
+                _activeEpisodeTarget = null;
+                renderConditionList();
+                searchEpisodes();
+            }
+            return;
+        }
+    }
+    
+    // Fallback: Copy to clipboard
+    window.copyEpisodeId(id, el);
 };
 
 window.copyEpisodeId = function(id, el) {
@@ -903,6 +966,17 @@ window.copyEpisodeId = function(id, el) {
     });
 };
 
+window.removeEpisodeFromPicker = function(condId, key, index) {
+    const c = _conditions.find(c => c.id === condId);
+    if (c) {
+        const ids = (c.params[key] || '').split('\n').map(s => s.trim()).filter(Boolean);
+        ids.splice(index, 1);
+        c.params[key] = ids.join('\n');
+        generate();
+        renderConditionList();
+    }
+};
+
 function escapeHtml(text) {
     if (typeof text !== 'string') return text;
     const div = document.createElement('div');
@@ -915,13 +989,11 @@ function escapeForAttribute(text) {
     return text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 
-// Safely resolves URL relative to the builder's path for the live preview
 function resolvePreviewUrl(url) {
     if (!url) return '';
     let resolved = url;
     if (resolved.startsWith('./poduser/')) resolved = resolved.replace('./poduser/', './');
     if (resolved.startsWith('poduser/')) resolved = resolved.replace('poduser/', './');
-    // Ensure the preview path is cleanly encoded (decode first to avoid %2520 double-encoding)
     try {
         resolved = encodeURI(decodeURI(resolved)).replace(/'/g, '%27');
     } catch (e) {}
@@ -933,19 +1005,63 @@ function resolvePreviewUrl(url) {
 // ─────────────────────────────────────────────────────────────────
 
 function initVirtualLibrary() {
-    if (!window.PodUser || !window.PodUser.achievements) return;
+    const saved = localStorage.getItem('pc_builder_vlib');
+    if (saved) {
+        try {
+            _virtualLibrary = JSON.parse(saved);
+            renderVirtualLibrary();
+            return;
+        } catch (e) {
+            console.error("Failed to parse local library state", e);
+        }
+    }
+    
+    syncWithAchievementsJs(true);
+}
 
-    // Convert live achievements into our state objects
+function syncWithAchievementsJs(force = false) {
+    if (!window.PodUser || !window.PodUser.achievements) return;
+    
+    if (!force && _virtualLibrary.length > 0) {
+        if (!confirm("Overwrite your current virtual library with the live achievements.js? Unsaved local changes will be lost.")) return;
+    }
+
     _virtualLibrary = window.PodUser.achievements.map(ach => {
         return {
             id: ach.id,
             title: ach.title,
-            obj: ach, // The decompiled source object
-            jsCode: stringifyAchievement(ach) // The exact code to be exported
+            obj: ach, 
+            jsCode: stringifyAchievement(ach) 
         };
     });
 
+    persistLibrary();
     renderVirtualLibrary();
+    
+    if (!force) {
+        const flash = document.getElementById('saveFlash');
+        if (flash) {
+            const orig = flash.textContent;
+            flash.textContent = "Synced!";
+            flash.classList.add('show');
+            setTimeout(() => { flash.classList.remove('show'); flash.textContent = orig; }, 1500);
+        }
+    }
+}
+
+function persistLibrary() {
+    const serialized = _virtualLibrary.map(item => {
+        return {
+            id: item.id,
+            title: item.title,
+            jsCode: item.jsCode,
+            obj: {
+                ...item.obj,
+                condition: item.obj.condition ? item.obj.condition.toString() : ''
+            }
+        };
+    });
+    localStorage.setItem('pc_builder_vlib', JSON.stringify(serialized));
 }
 
 function renderVirtualLibrary() {
@@ -973,19 +1089,14 @@ function renderVirtualLibrary() {
     });
 }
 
-// Reverses generated JS condition strings back into UI data blocks
 function reverseEngineerConditions(condFunc) {
     let str = condFunc ? condFunc.toString() : 'false';
-    // Remove the function signature
-    let body = str.replace(/^(?:\(?data\)?\s*=>|function\s*\([^\)]*\))\s*\{?/, '').replace(/\}?$/, '').trim();
+    
+    let body = str.replace(/^(?:\(?data\)?\s*=>|function\s*[^\(]*\([^\)]*\))\s*\{?/, '').replace(/\}?$/, '').trim();
     
     let logicMode = 'AND';
     let parsedConditions = [];
     
-    // Greedy match: captures everything up to the LAST semicolon on a const cN = ... line.
-    // Non-greedy (+?) would stop at the first inner semicolon inside multiline expressions
-    // like origin_count, breaking decompilation. We use a lookahead instead to match the
-    // semicolon that is immediately followed by whitespace + the next 'const' or end-of-vars.
     let varRegex = /const\s+c(\d+)\s*=\s*([\s\S]+?);\s*(?=const\s+c\d+\s*=|return\s)/g;
     let match;
     let varMap = {};
@@ -1000,28 +1111,25 @@ function reverseEngineerConditions(condFunc) {
     
     let returnStatement = "";
     if (hasVars) {
-        let returnRegex = /return\s+([^;]+)/;
+        let returnRegex = /return\s+([\s\S]+?)(?:;|$)/; 
         let returnMatch = returnRegex.exec(body.substring(lastIndex));
         if (returnMatch) {
             returnStatement = returnMatch[1].trim();
         }
         
-        // Determine Logic Mode
         if (returnStatement.match(/^c\d+(\s*&&\s*c\d+)*$/)) logicMode = 'AND';
         else if (returnStatement.match(/^c\d+(\s*\|\|\s*c\d+)*$/)) logicMode = 'OR';
         else logicMode = 'CUSTOM';
         
-        // Build parsed array
         Object.keys(varMap).forEach((key) => {
             parsedConditions.push(parseExpression(varMap[key]));
         });
         
     } else {
-        // Single expression
         if (body.startsWith('return ')) body = body.substring(7).replace(/;$/, '').trim();
-        if (body && body !== 'false') {
+        if (body && body !== 'false' && !body.includes('// TODO')) {
             parsedConditions.push(parseExpression(body));
-            logicMode = 'AND'; // Default
+            logicMode = 'AND'; 
         }
     }
     
@@ -1030,12 +1138,24 @@ function reverseEngineerConditions(condFunc) {
 
 // Maps JS strings back to COND_TYPES params
 function parseExpression(expr) {
+    expr = expr.trim();
     let m;
     if ((m = expr.match(/^data\.history\.length\s*>=\s*(\d+)$/))) {
         return { type: 'listen_count', params: { n: m[1] } };
     }
-    if ((m = expr.match(/^data\.history\.includes\('([^']+)'\)$/))) {
-        return { type: 'specific_episode', params: { id: m[1] } };
+    if ((m = expr.match(/^data\.history\.includes\(\s*'(.*)'\s*\)$/))) {
+        return { type: 'specific_episode', params: { id: m[1].replace(/\\'/g, "'") } };
+    }
+    if ((m = expr.match(/^\[(.*)\]\.every\(id\s*=>\s*data\.history\.includes\(id\)\)$/))) {
+        let ids = m[1].split(',').map(s => s.trim().replace(/^'|'$/g, '').replace(/\\'/g, "'")).join('\n');
+        return { type: 'episode_set_all', params: { ids } };
+    }
+    if ((m = expr.match(/^\[(.*)\]\.filter\(id\s*=>\s*data\.history\.includes\(id\)\)\.length\s*>=\s*(\d+)$/))) {
+        let ids = m[1].split(',').map(s => s.trim().replace(/^'|'$/g, '').replace(/\\'/g, "'")).join('\n');
+        return { type: 'episode_set_any', params: { n: m[2], ids } };
+    }
+    if ((m = expr.match(/ep\?\.origin\?\.includes\(\s*'(.*)'\s*\);\s*\}\)\.length\s*>=\s*(\d+)$/))) {
+        return { type: 'origin_count', params: { origin: m[1].replace(/\\'/g, "'"), n: m[2] } };
     }
     if ((m = expr.match(/^data\.punchcards\s*>=\s*(\d+)$/))) {
         return { type: 'punchcard_printed_count', params: { n: m[1] } };
@@ -1046,8 +1166,8 @@ function parseExpression(expr) {
     if ((m = expr.match(/^data\.visits\s*>=\s*(\d+)$/))) {
         return { type: 'visit_count', params: { n: m[1] } };
     }
-    if ((m = expr.match(/^\(data\.games\['([^']+)'\]\s*\|\|\s*0\)\s*>=\s*(\d+)$/))) {
-        return { type: 'game_score', params: { gameId: m[1], score: m[2] } };
+    if ((m = expr.match(/^\(data\.games\['(.*)'\]\s*\|\|\s*0\)\s*>=\s*(\d+)$/))) {
+        return { type: 'game_score', params: { gameId: m[1].replace(/\\'/g, "'"), score: m[2] } };
     }
     if ((m = expr.match(/^new Date\(\)\.getHours\(\)\s*===\s*(\d+)$/))) {
         return { type: 'time_of_day', params: { from: m[1], to: parseInt(m[1])+1 } };
@@ -1059,28 +1179,25 @@ function parseExpression(expr) {
         return { type: 'day_of_week', params: { day: m[1] } };
     }
     
-    // Multi-line and arrays fallback elegantly to custom
     return { type: 'custom', params: { expr: expr } };
 }
 
 function loadIntoForm(item) {
     const ach = item.obj;
-    _editingId = ach.id; // Lock editing to this ID
+    _editingId = ach.id; 
+    _activeEpisodeTarget = null;
     
-    // Clear existing form state without triggering new logic loops yet
     document.querySelectorAll('.left-pane input[type="text"], .left-pane input[type="url"], .left-pane textarea').forEach(el => el.value = '');
     document.getElementById('f-hidden').checked = false;
     _conditions = [];
     _nextCondId = 1;
 
-    // Populate Core Fields
     document.getElementById('f-id').value = ach.id;
     document.getElementById('f-title').value = ach.title || '';
     document.getElementById('f-desc').value = ach.desc || '';
     document.getElementById('f-icon').value = ach.icon || '';
     document.getElementById('f-hidden').checked = !!ach.hiddenGoal;
 
-    // Populate Reward
     if (ach.reward) {
         setReward(ach.reward.type);
         if (ach.reward.type === 'audio') {
@@ -1109,7 +1226,6 @@ function loadIntoForm(item) {
         setReward('none');
     }
 
-    // Decompile Conditions back into UI Blocks
     const parsed = reverseEngineerConditions(ach.condition);
     
     _conditions = parsed.conditions.map((c, i) => {
@@ -1125,18 +1241,39 @@ function loadIntoForm(item) {
 
     renderConditionList();
     generate();
-    renderVirtualLibrary(); // Update active selection
+    renderVirtualLibrary(); 
 }
 
-function saveToLibrary() {
-    generate(); // Ensure the textarea is fully updated
+function createNew() {
+    _editingId = null;
+    resetForm(); 
+    
+    addCondition('listen_count'); 
+    
+    const tempId = 'new_ach_' + Math.floor(Math.random() * 10000);
+    document.getElementById('f-id').value = tempId;
+    document.getElementById('f-title').value = 'New Achievement';
+    document.getElementById('f-icon').value = '🏆';
+    
+    saveToLibrary(true);
+    
+    setTimeout(() => {
+        const idInput = document.getElementById('f-id');
+        if(idInput) {
+            idInput.focus();
+            idInput.select();
+        }
+    }, 50);
+}
+
+function saveToLibrary(silent = false) {
+    generate(); 
     
     const id = document.getElementById('f-id').value.trim();
     const title = document.getElementById('f-title').value.trim();
     
     if (!id) return alert("Achievement ID is required.");
     
-    // Hard collision check before saving
     const isCollision = _virtualLibrary.some(v => v.id === id && v.id !== _editingId) || 
                         (window.PodUser && window.PodUser.achievements.some(a => a.id === id && a.id !== _editingId));
     
@@ -1146,36 +1283,35 @@ function saveToLibrary() {
     
     const jsCode = document.getElementById('codeOutput').value;
     
-    // Build a mock object to store so we can load it back into the form later
     const obj = {
         id, title,
         desc: document.getElementById('f-desc').value,
         icon: document.getElementById('f-icon').value,
         hiddenGoal: document.getElementById('f-hidden').checked,
-        // We use a fake function to store the generated code for decompiling later
-        condition: () => document.getElementById('f-combine').value,
         reward: getRewardObj()
     };
 
-    // Replace the condition string safely
     const mode = document.getElementById('f-logic').value;
     let customCombine = document.getElementById('f-combine')?.value?.trim();
     let finalExpr = customCombine;
     if (mode === 'AND') finalExpr = _conditions.map(c => `c${c.id}`).join(' && ');
     if (mode === 'OR') finalExpr = _conditions.map(c => `c${c.id}`).join(' || ');
     
-    if (_conditions.length > 1 || mode === 'CUSTOM') {
-         let vars = _conditions.map(c => `const c${c.id} = ${COND_TYPES[c.type].generate(c.params)};`).join('\n');
-         obj.condition = new Function('data', `${vars}\nreturn ${finalExpr};`);
-    } else if (_conditions.length === 1) {
-         obj.condition = new Function('data', `return ${COND_TYPES[_conditions[0].type].generate(_conditions[0].params)};`);
-    } else {
-        // No conditions defined — store a safe no-op so stringifyAchievement doesn't
-        // capture the DOM-referencing placeholder from line 1153
-        obj.condition = new Function('data', 'return false; // TODO: add at least one condition');
+    try {
+        if (_conditions.length > 1 || mode === 'CUSTOM') {
+             let vars = _conditions.map(c => `const c${c.id} = ${COND_TYPES[c.type].generate(c.params)};`).join('\n');
+             obj.condition = new Function('data', `${vars}\nreturn ${finalExpr};`);
+        } else if (_conditions.length === 1) {
+             obj.condition = new Function('data', `return ${COND_TYPES[_conditions[0].type].generate(_conditions[0].params)};`);
+        } else {
+            obj.condition = new Function('data', 'return false; // TODO: add at least one condition');
+        }
+    } catch (e) {
+        console.error("Syntax error in condition logic:", e);
+        alert("Could not save: There is a syntax error in your Custom Logic expression.");
+        return;
     }
 
-    // Find if we are updating an existing one, or creating new
     const existingIdx = _virtualLibrary.findIndex(v => v.id === (_editingId || id));
     
     if (existingIdx >= 0) {
@@ -1184,28 +1320,32 @@ function saveToLibrary() {
         _virtualLibrary.push({ id, title, obj, jsCode });
     }
     
-    _editingId = id; // Lock into edit mode for this item
+    persistLibrary(); 
+
+    _editingId = id; 
     renderVirtualLibrary();
     
-    const flash = document.getElementById('saveFlash');
-    flash.classList.add('show');
-    setTimeout(() => flash.classList.remove('show'), 1500);
+    if (!silent) {
+        const flash = document.getElementById('saveFlash');
+        flash.classList.add('show');
+        setTimeout(() => flash.classList.remove('show'), 1500);
+    }
 }
 
 function deleteFromLibrary(id, e) {
-    e.stopPropagation(); // Prevents loadIntoForm from firing
+    e.stopPropagation(); 
     if (confirm(`Remove achievement "${id}" from the virtual library?`)) {
         _virtualLibrary = _virtualLibrary.filter(v => v.id !== id);
-        if (_editingId === id) createNew(); // Reset form if we deleted what we were looking at
+        persistLibrary();
+        
+        if (_editingId === id) {
+            _editingId = null;
+            resetForm();
+        }
         renderVirtualLibrary();
     }
 }
 
-function createNew() {
-    _editingId = null; // Clear edit lock first
-    resetForm();
-    renderVirtualLibrary();
-}
 
 function exportFullLibrary() {
     if (_virtualLibrary.length === 0) return alert("Virtual Library is empty.");
@@ -1224,7 +1364,6 @@ function exportFullLibrary() {
     });
 }
 
-// Re-creates the achievements.js formatting perfectly
 function stringifyAchievement(ach) {
     let lines = ['    PodUser.registerAchievement({'];
     lines.push(`        id: ${jss(ach.id)},`);
@@ -1234,14 +1373,15 @@ function stringifyAchievement(ach) {
     if (ach.hiddenGoal) lines.push(`        hiddenGoal: true,`);
     
     let condStr = ach.condition.toString();
-    // Quick indent fix for function bodies
+    condStr = condStr.replace(/^function\s*(?:anonymous)?\s*\(data\)\s*\{/, '(data) => {');
+    condStr = condStr.replace(/^function\s*(?:anonymous)?\s*\(\)\s*\{/, '() => {');
+    
     condStr = condStr.split('\n').map((l, i) => i === 0 ? l : '        ' + l.trim()).join('\n');
     lines.push(`        condition: ${condStr},`);
     
     if (ach.reward) {
         let rLines = [`        reward: {`, `            type: ${jss(ach.reward.type)},`];
         
-        // Encode URL attributes to prevent string breakages and guarantee valid paths
         const safeUrl = (url) => jss(encodeURI(decodeURI(url || '')).replace(/'/g, '%27'));
 
         if (ach.reward.type === 'audio') {
@@ -1271,7 +1411,6 @@ function stringifyAchievement(ach) {
     return lines.join('\n');
 }
 
-// Reads the raw form values to build the temporary reward object for state
 function getRewardObj() {
     if (_rewardType === 'none') return null;
     let r = { type: _rewardType };
@@ -1298,7 +1437,7 @@ function getRewardObj() {
 // ─────────────────────────────────────────────────────────────────
 
 let _rewardType = 'none';
-let _conditions = [];   // Array of { id, type, params }
+let _conditions = [];   
 let _nextCondId = 1;
 
 // ─────────────────────────────────────────────────────────────────
@@ -1316,17 +1455,17 @@ const COND_TYPES = {
     },
     specific_episode: {
         label: 'Specific episode listened',
-        tip: 'Find an episode\'s ID via the search tool above and click to inject.',
+        tip: 'Enter an episode ID, or click "Target" below and use the search panel.',
         fields: [
-            { key: 'id', label: 'Episode ID', placeholder: 'podcube-episode-001', type: 'text' }
+            { key: 'id', label: 'Episode ID', type: 'text', isEpisodeId: true, single: true }
         ],
         generate: (p) => `data.history.includes(${jss(p.id || 'EPISODE-ID')})`
     },
     episode_set_all: {
         label: 'All of these episodes listened',
-        tip: 'Every episode in the list must be fully completed. One ID per line. Click search results to append.',
+        tip: 'Every episode in the list must be fully completed. One ID per line.',
         fields: [
-            { key: 'ids', label: 'Episode IDs (one per line)', placeholder: 'episode-id-01\nepisode-id-02', type: 'textarea' }
+            { key: 'ids', label: 'Episode IDs (one per line)', type: 'textarea', isEpisodeList: true, single: false }
         ],
         generate: (p) => {
             const ids = parseIdList(p.ids);
@@ -1336,10 +1475,10 @@ const COND_TYPES = {
     },
     episode_set_any: {
         label: 'At least N of these episodes',
-        tip: 'The user needs to complete at least N episodes from the list. One ID per line.',
+        tip: 'The user needs to complete at least N episodes from the list.',
         fields: [
             { key: 'n',   label: 'Minimum count', placeholder: '3', type: 'number' },
-            { key: 'ids', label: 'Episode IDs (one per line)', placeholder: 'episode-id-01\nepisode-id-02', type: 'textarea' }
+            { key: 'ids', label: 'Episode IDs (one per line)', type: 'textarea', isEpisodeList: true, single: false }
         ],
         generate: (p) => {
             const ids = parseIdList(p.ids);
@@ -1436,13 +1575,11 @@ function loadArchetype() {
     const val = document.getElementById('f-archetype').value;
     if(!val) return;
     
-    // Clear everything — including edit lock and reward state
     _editingId = null;
-    document.querySelectorAll('.left-pane input[type="text"], .left-pane input[type="url"], .left-pane textarea').forEach(el => el.value = '');
-    document.getElementById('f-hidden').checked = false;
-    _conditions = [];
-    _nextCondId = 1;
-    setReward('none');
+    resetForm();
+    
+    const tempId = 'archetype_' + Math.floor(Math.random() * 10000);
+    document.getElementById('f-id').value = tempId;
     
     if(val === 'lore') {
         document.getElementById('f-title').value = "Lore Hunter";
@@ -1470,10 +1607,11 @@ function loadArchetype() {
         updateParam(1, 'n', 5);
     }
     
-    document.getElementById('f-archetype').value = ""; // Reset dropdown
+    document.getElementById('f-archetype').value = ""; 
     document.getElementById('f-logic').value = 'AND';
     toggleLogicMode();
-    generate();
+    
+    saveToLibrary(true); 
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -1488,12 +1626,14 @@ function addCondition(type = 'listen_count') {
 }
 
 function removeCondition(id) {
+    if (_activeEpisodeTarget && _activeEpisodeTarget.condId === id) {
+        _activeEpisodeTarget = null;
+    }
+
     _conditions = _conditions.filter(c => c.id !== id);
     _nextCondId = 1;
     _conditions.forEach((c, i) => { c.id = i + 1; });
 
-    // If in CUSTOM mode, the user's expression now references stale variable names
-    // (e.g. c3 no longer exists). Reset it so they must re-enter it cleanly.
     if (document.getElementById('f-logic').value === 'CUSTOM') {
         document.getElementById('f-combine').value = '';
     }
@@ -1503,6 +1643,10 @@ function removeCondition(id) {
 }
 
 function changeCondType(id, newType) {
+    if (_activeEpisodeTarget && _activeEpisodeTarget.condId === id) {
+        _activeEpisodeTarget = null;
+    }
+
     const c = _conditions.find(c => c.id === id);
     if (c) { c.type = newType; c.params = {}; }
     renderConditionList();
@@ -1526,7 +1670,6 @@ function renderConditionList() {
         const row = document.createElement('div');
         row.className = 'cond-row';
 
-        // Header
         const header = document.createElement('div');
         header.className = 'cond-row-header';
 
@@ -1556,7 +1699,6 @@ function renderConditionList() {
         header.appendChild(rm);
         row.appendChild(header);
 
-        // Body: type-specific fields
         const body = document.createElement('div');
         body.className = 'cond-body';
 
@@ -1592,12 +1734,72 @@ function renderConditionList() {
             input.addEventListener('input', () => updateParam(cond.id, f.key, input.value));
             input.addEventListener('change', () => updateParam(cond.id, f.key, input.value));
             fieldDiv.appendChild(input);
+
+            // EPISODE PICKER UI DECORATION
+            if (f.isEpisodeId || f.isEpisodeList) {
+                const previewDiv = document.createElement('div');
+                previewDiv.style.marginTop = '6px';
+                previewDiv.style.display = 'flex';
+                previewDiv.style.flexDirection = 'column';
+                previewDiv.style.gap = '4px';
+
+                const syncPreview = () => {
+                    previewDiv.innerHTML = '';
+                    const ids = input.value.split('\n').map(s => s.trim()).filter(Boolean);
+                    if (ids.length === 0) {
+                        previewDiv.innerHTML = '<div style="color:#aaa; font-size:10px; font-style:italic;">No episodes identified.</div>';
+                    } else {
+                        ids.forEach(epId => {
+                            const ep = window.PodCube?.findEpisode?.(epId);
+                            const title = ep ? ep.title : 'Unknown Episode';
+                            const item = document.createElement('div');
+                            item.style.background = '#f0f8ff';
+                            item.style.border = '1px solid var(--primary-dim)';
+                            item.style.padding = '4px 8px';
+                            item.style.fontSize = '11px';
+                            item.style.borderRadius = '3px';
+                            item.innerHTML = `<strong style="color:var(--primary);">${escapeHtml(title)}</strong> <br><span style="color:#888; font-family:monospace; font-size:9px;">${escapeHtml(epId)}</span>`;
+                            previewDiv.appendChild(item);
+                        });
+                    }
+                };
+                
+                syncPreview();
+                input.addEventListener('input', syncPreview);
+
+                const targetBtn = document.createElement('button');
+                const isActive = _activeEpisodeTarget && _activeEpisodeTarget.condId === cond.id && _activeEpisodeTarget.key === f.key;
+                
+                targetBtn.className = 'btn ghost';
+                targetBtn.style.marginTop = '6px';
+                targetBtn.style.width = '100%';
+                targetBtn.style.fontSize = '10px';
+                targetBtn.style.padding = '6px';
+                targetBtn.style.borderColor = isActive ? 'var(--orange)' : 'var(--primary)';
+                targetBtn.style.color = isActive ? 'var(--orange)' : 'var(--primary)';
+                targetBtn.style.background = isActive ? '#fffaf0' : '#fff';
+                targetBtn.textContent = isActive ? '✅ Targeted (Click search results to inject)' : '🎯 Target for Search Injection';
+                
+                targetBtn.onclick = () => {
+                    if (isActive) {
+                        _activeEpisodeTarget = null;
+                    } else {
+                        _activeEpisodeTarget = { condId: cond.id, key: f.key, isList: f.isEpisodeList };
+                        document.getElementById('ep-search').focus();
+                    }
+                    renderConditionList(); 
+                    if (window.searchEpisodes) window.searchEpisodes();
+                };
+
+                fieldDiv.appendChild(previewDiv);
+                fieldDiv.appendChild(targetBtn);
+            }
+
             body.appendChild(fieldDiv);
         });
 
         row.appendChild(body);
 
-        // Tip
         if (def.tip) {
             const tip = document.createElement('div');
             tip.className = 'cond-row-tip';
@@ -1608,7 +1810,6 @@ function renderConditionList() {
         list.appendChild(row);
     });
 
-    // Logic Builder (Show/Hide Combine Box)
     const combineBox = document.getElementById('combineBox');
     combineBox.style.display = _conditions.length > 1 ? 'block' : 'none';
 }
@@ -1628,13 +1829,7 @@ function setReward(type) {
     document.querySelectorAll('.rtab').forEach(b => b.classList.toggle('active', b.dataset.rt === type));
     document.querySelectorAll('.reward-panel').forEach(p => p.classList.remove('active'));
     
-    const lib = document.getElementById('asset-library');
-    if (type === 'audio' || type === 'image' || type === 'video' || type === 'game') {
-        lib.classList.add('active');
-        renderAssetLibrary(); // re-render to apply new filters
-    } else {
-        lib.classList.remove('active');
-    }
+    renderAssetLibrary();
 
     if (type !== 'none') document.getElementById(`rp-${type}`)?.classList.add('active');
     generate();
@@ -1651,10 +1846,8 @@ function generate() {
     const icon   = v('f-icon');
     const hidden = document.getElementById('f-hidden').checked;
 
-    // --- VIRTUAL LIBRARY COLLISION CHECK ---
     const warningEl = document.getElementById('id-warning');
     if (id) {
-        // Find if this ID exists in the library, BUT it isn't the one we are actively editing
         const collision = _virtualLibrary.some(v => v.id === id && v.id !== _editingId) || 
                           (window.PodUser && window.PodUser.achievements.some(a => a.id === id && a.id !== _editingId));
         warningEl.style.display = collision ? 'block' : 'none';
@@ -1662,7 +1855,6 @@ function generate() {
         warningEl.style.display = 'none';
     }
 
-    // Build condition function
     let conditionStr;
 
     if (_conditions.length === 0 && document.getElementById('f-logic').value !== 'CUSTOM') {
@@ -1673,7 +1865,6 @@ function generate() {
         const expr = def.generate(cond.params);
         conditionStr = `(data) => ${expr},`;
     } else {
-        // Multi-condition Logic
         const mode = document.getElementById('f-logic').value;
         let combineExpr = "";
         
@@ -1696,15 +1887,12 @@ function generate() {
         if (varLines.length > 0) {
             conditionStr = `(data) => {\n${varLines.join('\n')}\n        return ${combineExpr};\n    },`;
         } else {
-            // Handle edge case where custom logic is used with no visual conditions
             conditionStr = `(data) => {\n        return ${combineExpr || 'false'};\n    },`;
         }
     }
 
-    // Build reward string
     const rewardStr = buildRewardCode();
 
-    // Assemble
     const lines = ['    PodUser.registerAchievement({'];
     lines.push(`        id: ${jss(id)},`);
     lines.push(`        title: ${jss(title)},`);
@@ -1717,7 +1905,6 @@ function generate() {
 
     document.getElementById('codeOutput').value = lines.join('\n');
 
-    // Update preview
     updatePreview(icon, title, desc, hidden);
 }
 
@@ -1741,7 +1928,6 @@ function buildRewardCode() {
                 .map(([k, id]) => { 
                     const val = v(id); 
                     if (!val) return null;
-                    // Properly encode URLs in the final JS code
                     if (k === 'url') return `                ${k}: ${jss(encodeURI(decodeURI(val)).replace(/'/g, '%27'))},`;
                     return `                ${k}: ${jss(val)},`; 
                 })
@@ -1779,15 +1965,12 @@ function updatePreview(icon, title, desc, hidden) {
     document.getElementById('prev-icon').textContent  = hidden ? '❓' : (icon || '🏆');
     document.getElementById('prev-title').textContent = title;
     
-    // Only mask the description if the dev checks the 'hiddenGoal' box
     document.getElementById('prev-desc').textContent  = hidden ? 'This record is classified.' : desc;
 
     const mediaContainer = document.getElementById('prev-media-container');
     mediaContainer.innerHTML = '';
     mediaContainer.style.display = 'none';
 
-    // We still show the reward preview in the builder so you can verify it, 
-    // even if it would be hidden from the user in the main app.
     if (_rewardType !== 'none') {
         mediaContainer.style.display = 'block';
         let mediaHtml = '';
@@ -1874,6 +2057,7 @@ function copyCode() {
 }
 
 function resetForm() {
+    _activeEpisodeTarget = null;
     document.querySelectorAll('.left-pane input[type="text"], .left-pane input[type="url"], .left-pane textarea').forEach(el => el.value = '');
     document.getElementById('f-hidden').checked = false;
     document.getElementById('f-combine').value = '';

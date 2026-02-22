@@ -113,18 +113,17 @@
     .ach-card.locked {
         opacity: 0.75;
         background: var(--primary-dim);
-        border: 1px dashed var(--primary);
     }
     
     .ach-card.locked .ach-icon {
-        filter: grayscale(100%) opacity(0.6);
+        color: transparent;
+        text-shadow: 0 0 #b0b8c8;
     }
 
     .ach-card-header {
         display: flex;
         align-items: flex-start;
         gap: 12px;
-        padding-right: 60px;
         flex: 1; 
     }
     .ach-icon {
@@ -153,6 +152,7 @@
         padding: 3px 7px;
         position: absolute; top: 10px; right: 10px;
         letter-spacing: 0.05em;
+        display: none;
     }
     .ach-status-badge.is-unlocked { background: var(--primary); color: #fff; }
     .ach-status-badge.is-locked   { background: var(--primary-dim); color: var(--primary); }
@@ -234,7 +234,8 @@
     }
     .ach-reward-lock-icon {
         font-size: 2em;
-        filter: grayscale(100%) opacity(0.35);
+        color: transparent;
+        text-shadow: 0 0 #b0b8c8;
         line-height: 1;
     }
     .ach-reward-lock-label {
@@ -243,14 +244,14 @@
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.12em;
-        color: #b0b8c8;
+        color: #9097a3ff;
     }
     .ach-reward-lock-sublabel {
         font-family: 'Fustat', sans-serif;
         font-size: 8px;
         text-transform: uppercase;
         letter-spacing: 0.07em;
-        color: #c8d0dc;
+        color: #969ba3ff;
         margin-top: -4px;
     }
 
@@ -322,6 +323,23 @@
         opacity: 0.7;
     }
     .ach-lightbox-close:hover { opacity: 1; }
+
+    /* ── NOTIFICATION LIST ────────────────────────────── */
+    .notifications-scroll {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-height: 340px;
+        overflow-y: auto;
+        padding-right: 4px;
+    }
+    .notification-card.read {
+        opacity: 0.5;
+        border-left-color: var(--primary-dim);
+        background: #fff;
+        cursor: default !important;
+    }
+    .notification-card.read:hover { opacity: 0.7; }
 
     /* ── MEMORY CARD (bottom) ─────────────────────── */
     .memory-card-section {
@@ -626,7 +644,7 @@ function _renderAchievements(userData) {
         // Icon rules: hidden-goal locked → ❓, unlocked → custom or 🏆, locked → 🔒 always
         const icon     = isHidden ? '❓' : (unlocked ? (ach.icon || '🏆') : '🔒');
         const title    = isHidden ? '???' : escapeHtml(ach.title);
-        const desc     = isHidden ? 'This record is classified.' : escapeHtml(ach.desc);
+        const desc     = isHidden ? 'This P.O.O.P. is encrypted.' : escapeHtml(ach.desc);
 
         const card = document.createElement('div');
         card.id = `ach-card-${ach.id}`; 
@@ -670,14 +688,16 @@ function _renderNotifications(userData) {
     }
 
     container.innerHTML = userData.notifications.map(n => {
-        // All live notifications are unread by definition — they are deleted on dismiss.
+        const isRead     = !!n.read;
         const hasPayload = !!n.payload;
-        
+        // Read notifications with no payload are history — no click action needed
+        const clickable  = !isRead || hasPayload;
+
         return `
-        <div class="notification-card unread"
-             onclick="handleNotificationClick('${n.id}')" style="cursor:pointer;" title="${hasPayload ? 'View Record' : 'Click to dismiss'}">
+        <div class="notification-card ${isRead ? 'read' : 'unread'}"
+             ${clickable ? `onclick="handleNotificationClick('${n.id}')" style="cursor:pointer;" title="${hasPayload ? 'View Record' : 'Click to dismiss'}"` : ''}>
             <div style="font-size:10px; color:#888; font-family:'Fustat'; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:4px;">
-                ${new Date(n.timestamp).toLocaleString()}
+                ${new Date(n.timestamp).toLocaleString()}${isRead ? ' · READ' : ''}
             </div>
             <strong style="display:block; margin-bottom:4px; font-family:'Libertinus Math'; font-size:16px;">
                 ${escapeHtml(n.title)}
@@ -704,18 +724,18 @@ function _buildLockedRewardPlaceholder(ach) {
     const icon = ach.hiddenGoal ? '🔒' : rewardTypeHint;
 
     return `
-        <div class="ach-reward-section-label">${ach.reward ? 'Classified Reward' : 'Classified'}</div>
+        <div class="ach-reward-section-label">Encrypted Perk</div>
         <div class="ach-reward-locked-wrapper">
             <div class="ach-reward-lock-icon">${icon}</div>
             <div class="ach-reward-lock-label">Unlock to Reveal</div>
-            <div class="ach-reward-lock-sublabel">Content Classified</div>
+            <div class="ach-reward-lock-sublabel">Content Encrypted</div>
         </div>
     `;
 }
 
 function _buildRewardHtml(ach) {
     if (!ach.reward) return '';
-    const sectionLabel = `<div class="ach-reward-section-label">Unlocked Reward</div>`;
+    const sectionLabel = `<div class="ach-reward-section-label">Unlocked Perk</div>`;
     
     // Wraps the media block and sets up Lightbox clicks if enabled
     const mkWrapper = (content, isClickable = false, onclick = '', extraStyles = '') => `
@@ -732,7 +752,7 @@ function _buildRewardHtml(ach) {
                     <img src="${escapeForAttribute(ach.reward.url)}" 
                          alt="Unlocked: ${escapeForAttribute(ach.title)}"
                          style="width: 100%; height: 100%; object-fit: cover;">
-                    <div class="ach-hover-overlay"><span style="font-size: 24px;">🔍</span></div>
+                    <div class="ach-hover-overlay"><span style="font-size: 24px; color:transparent; text-shadow: 0 0 var(--primary);">🔍</span></div>
                 `, true, `openAchLightbox('image', '${escapeForAttribute(ach.reward.url)}', '${escapeForAttribute(ach.reward.caption || '')}')`)}
                 ${ach.reward.caption ? `<p class="ach-reward-caption">${escapeHtml(ach.reward.caption)}</p>` : ''}
             `;
@@ -755,8 +775,8 @@ function _buildRewardHtml(ach) {
                         onclick="PodUser.playRewardAudio('${escapeForAttribute(ach.id)}')">
                     <span class="hero-btn-icon" style="font-size: 1.2em;">▶</span>
                     <span class="hero-btn-text">
-                        <strong style="font-size: 12px; font-family: 'Libertinus Math';">Play Transmission</strong>
-                        <span style="font-size: 9px; color: #666; text-transform: uppercase; font-family: 'Fustat';">${escapeHtml(ach.reward.meta?.title || 'Classified')}</span>
+                        <strong style="font-size: 12px; font-family: 'Libertinus Math';">${escapeHtml(ach.reward.meta?.title || 'Encrypted')}</strong>
+                        <span style="font-size: 9px; color: #666; text-transform: uppercase; font-family: 'Fustat';">Supplementary Audio File</span>
                     </span>
                 </button>
                 `, false, '', 'background: repeating-linear-gradient(45deg, var(--primary-dim), var(--primary-dim) 10px, #fff 10px, #fff 20px);')}
@@ -801,37 +821,32 @@ window.handleNotificationClick = function(id) {
     const n = PodUser.data.notifications.find(x => x.id === id);
     if (!n) return;
 
-    // Extract the payload into a local variable BEFORE we delete the notification!
+    // Read notifications with no payload have no action — guard is in the renderer
+    // but belt-and-suspenders here too
+    if (n.read && !n.payload) return;
+
     const payload = n.payload;
 
-    // 1. Mark as read immediately (which now deletes it from the database)
+    // Mark as read (persists to DB, stays visible as history)
     PodUser.markNotificationRead(id);
 
-    // 2. Execute Navigation Payload
+    // Execute Navigation Payload
     if (payload && payload.type === 'achievement') {
-        // Switch to the profile tab (using the existing engine function)
         if (typeof switchTab !== 'undefined') switchTab('profile', true);
         
-        // Force the filter to 'All' so the achievement is definitely visible
-        _achFilter = 'all'; 
-        
-        // Flush UI changes immediately
+        _achFilter = 'all';
         renderUserUI(PodUser.data);
 
-        // Allow 100ms for DOM render before scrolling to the card
         setTimeout(() => {
             const card = document.getElementById(`ach-card-${payload.id}`);
             if (card) {
-                // Scroll it into the center of the window
                 card.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 
-                // Add a cool highlight animation
                 card.style.transition = 'box-shadow 0.4s ease, transform 0.4s ease';
                 card.style.boxShadow = '0 0 20px rgba(23, 104, 218, 0.8)';
                 card.style.transform = 'scale(1.03)';
                 card.style.zIndex = '10';
                 
-                // Remove highlight after a couple of seconds
                 setTimeout(() => {
                     card.style.boxShadow = 'none';
                     card.style.transform = 'none';
@@ -840,7 +855,7 @@ window.handleNotificationClick = function(id) {
             }
         }, 100);
     } else {
-        // If it's a standard notification, just re-render the UI to make it disappear
+        // Standard notification — mark read and re-render in place
         renderUserUI(PodUser.data);
     }
 };

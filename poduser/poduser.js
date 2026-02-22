@@ -190,8 +190,8 @@ class PodUserEngine {
                 if (ach.condition(this.data)) {
                     this.data.achievements.push(ach.id);
                     // ADD THE PAYLOAD HERE:
-                    this._pushNotification('ACHIEVEMENT UNLOCKED', ach.title, { type: 'achievement', id: ach.id });
-                    this._triggerOSNotification('PodCube Achievement', ach.title);
+                    this._pushNotification('NEW PERK UNLOCKED', ach.title, { type: 'achievement', id: ach.id });
+                    this._triggerOSNotification('PodCube™ Perk Unlocked!', ach.title);
                 }
             } catch (e) {
                 console.warn(`[PodUser] Condition check skipped for "${ach.id}":`, e.message);
@@ -215,6 +215,10 @@ class PodUserEngine {
             metadata: {
                 model:     cfg.model     || 'PRIC Security Payload',
                 origin:    cfg.origin    || 'PodCube HQ',
+                locale:    cfg.locale,   // ADDED THIS
+                region:    cfg.region,   // ADDED THIS
+                zone:      cfg.zone,     // ADDED THIS
+                planet:    cfg.planet,   // ADDED THIS
                 date:      cfg.date      || 'Unknown',
                 integrity: cfg.integrity || '100'
             }
@@ -247,30 +251,40 @@ class PodUserEngine {
             payload,
             timestamp: Date.now()
         });
+
+        // Play the notification chime
+        try {
+            const chime = new Audio('./poduser/bingbong_hilo-3.mp3');
+            chime.volume = 0.6; // Set to a pleasant volume (0.0 to 1.0)
+            
+            // The catch block prevents the app from crashing if the browser 
+            // blocks autoplay (e.g., if a notification fires before the user clicks the page)
+            chime.play().catch(e => {
+                console.warn('[PodUser] Chime blocked by browser autoplay policy or missing file:', e.message);
+            });
+        } catch (e) {
+            console.warn('[PodUser] Failed to play notification chime:', e);
+        }
     }
 
-   markNotificationRead(id) {
-        const initialLength = this.data.notifications.length;
-        // Filter the specific notification out of the array entirely
-        this.data.notifications = this.data.notifications.filter(x => x.id !== id);
-        
-        if (this.data.notifications.length !== initialLength) {
+    markNotificationRead(id) {
+        const n = this.data.notifications.find(x => x.id === id);
+        if (n && !n.read) {
+            n.read = true;
             this.save();
         }
     }
 
     markAllNotificationsRead() {
-        if (this.data.notifications.length > 0) {
-            // Empty the array entirely
-            this.data.notifications = [];
+        const anyUnread = this.data.notifications.some(n => !n.read);
+        if (anyUnread) {
+            this.data.notifications.forEach(n => { n.read = true; });
             this.save();
         }
     }
 
     get unreadCount() {
-        // Notifications are always unread until dismissed (deleted).
-        // The 'read' field is not used — markNotificationRead removes entries entirely.
-        return this.data.notifications.length;
+        return this.data.notifications.filter(n => !n.read).length;
     }
 
     async requestOSNotifications() {
