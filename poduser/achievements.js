@@ -9,58 +9,58 @@ window.addEventListener('PodCube:Ready', () => {
     PodUser.registerAchievement({
         id: 'first_transmission',
         title: 'Feed Explorer',
-        desc: 'Listened to your first PodCube Transmission.',
+        desc: 'Listen to your first PodCube Transmission.',
         icon: '📡',
         condition: (data) => data.history.length >= 1,
         reward: {
             type: 'image',
             url: './poduser/assets/images/Time%20Eggnogstic.webp',
             caption: 'Thank you for choosing, or having already chosen, podcube™',
-        }
+        },
     });
 
     PodUser.registerAchievement({
         id: 'frequent_visitor',
         title: 'Dependable Asset',
-        desc: 'Logged into the PodCube Explorer 5 separate times.',
+        desc: 'Log into the PodCube Explorer 5 separate times.',
         icon: '🖥️',
         condition: (data) => data.visits >= 5,
         reward: {
             type: 'image',
             url: './poduser/assets/images/PodCube%20Fact%20(16).webp',
             caption: 'PodCube Fun Fact!',
-        }
+        },
     });
 
     PodUser.registerAchievement({
         id: 'first_punchcard',
         title: 'Record Keeper',
-        desc: 'Printed your first Punchcard.',
+        desc: 'Print your first Punchcard.',
         icon: '🖨️',
         condition: (data) => data.punchcards >= 1,
         reward: {
             type: 'image',
             url: './poduser/assets/images/Desk%20mic%20and%20paper.webp',
             caption: 'Making and sharing PodCube™ Punchcards is a great way to connect with friends!',
-        }
+        },
     });
 
     PodUser.registerAchievement({
         id: 'game_gamer',
         title: 'Data Routing Expert',
-        desc: 'Scored 5000 or higher in Adiabatic Dash.',
+        desc: 'Score 5000 or higher in Adiabatic Dash.',
         icon: '🕹️',
         condition: (data) => (data.games['freaky-frogger'] || 0) >= 5000,
         reward: {
             type: 'video',
             url: './poduser/assets/video/%F0%9F%85%BF%EF%B8%8F.webm',
-        }
+        },
     });
 
     PodUser.registerAchievement({
         id: 'circleday_song',
         title: 'We Built a Time Machine',
-        desc: 'Celebrate with Ryan in the Far Future',
+        desc: 'Celebrate with Ryan in the Far Future.',
         condition: (data) => data.history.includes('47f946b5-45b7-4f35-9bc6-497e81332ee9'),
         reward: {
             type: 'audio',
@@ -76,7 +76,7 @@ window.addEventListener('PodCube:Ready', () => {
                 planet: 'Earth',
                 date: '4220-01-15',
             }
-        }
+        },
     });
 
     PodUser.registerAchievement({
@@ -89,6 +89,45 @@ window.addEventListener('PodCube:Ready', () => {
             type: 'image',
             url: './poduser/assets/images/Precious%20B.webp',
             caption: 'Also: dude toots? Not even once.',
+        }
+    });
+
+    PodUser.registerAchievement({
+        id: 'lance_lacer_psa',
+        title: 'An Important PSA',
+        desc: 'Get to know Twibbie™ Star Lance Lacer',
+        icon: '📫',
+        condition: (data) => ['10657cf3-cf31-49a2-abce-7f7ab9a6ef61', 'c48444fa-b492-4c8a-8104-90027af60f27'].every(id => data.history.includes(id)),
+        reward: {
+            type: 'video',
+            url: './poduser/assets/video/LanceLacerPSA.webm',
+        },
+    });
+
+    PodUser.registerAchievement({
+        id: 'burger_day_invite',
+        title: 'Friends in Management',
+        desc: 'Listen to transmissions from the P.R.I.C.',
+        icon: '💼',
+        condition: (data) => data.history.filter(id => {
+                const ep = window.PodCube?.findEpisode?.(id);
+                return ep?.origin?.includes('Innovation Campus');
+            }).length >= 3,
+    });
+
+    PodUser.registerAchievement({
+        id: 'burger_day_canceled',
+        title: 'Maybe Next Year',
+        desc: 'Listen to transmissions from the P.R.I.C.',
+        icon: '❌',
+        condition: (data) => data.history.filter(id => {
+                const ep = window.PodCube?.findEpisode?.(id);
+                return ep?.origin?.includes('Innovation Campus');
+            }).length >= 6,
+        reward: {
+            type: 'image',
+            url: './poduser/assets/images/CANCELLED%20BURGER%20DAY.webp',
+            caption: 'Please report to your personal physician at your soonest convenience.',
         },
     });
 
