@@ -8,6 +8,7 @@ class PodUserEngine {
         this.dbName    = 'PodCube_MemoryCard';
         this.dbVersion = 1;
         this.db        = null;
+        this._lastChimeTime = 0;
 
         this.data = {
             username:      this._generateUsername(),
@@ -189,9 +190,18 @@ class PodUserEngine {
             try {
                 if (ach.condition(this.data)) {
                     this.data.achievements.push(ach.id);
-                    // ADD THE PAYLOAD HERE:
-                    this._pushNotification('NEW PERK UNLOCKED', ach.title, { type: 'achievement', id: ach.id });
-                    this._triggerOSNotification('PodCube™ Perk Unlocked!', ach.title);
+                    
+                    // Show the Perk Title in the header, and the Description in the body
+                    this._pushNotification(
+                        `NEW PERK: ${ach.title}`, 
+                        ach.desc, 
+                        { type: 'achievement', id: ach.id }
+                    );
+                    
+                    this._triggerOSNotification(
+                        `NEW PERK: ${ach.title}`, 
+                        ach.desc
+                    );
                 }
             } catch (e) {
                 console.warn(`[PodUser] Condition check skipped for "${ach.id}":`, e.message);
@@ -252,18 +262,19 @@ class PodUserEngine {
             timestamp: Date.now()
         });
 
-        // Play the notification chime
-        try {
-            const chime = new Audio('./poduser/bingbong_hilo-3.mp3');
-            chime.volume = 0.6; // Set to a pleasant volume (0.0 to 1.0)
-            
-            // The catch block prevents the app from crashing if the browser 
-            // blocks autoplay (e.g., if a notification fires before the user clicks the page)
-            chime.play().catch(e => {
-                console.warn('[PodUser] Chime blocked by browser autoplay policy or missing file:', e.message);
-            });
-        } catch (e) {
-            console.warn('[PodUser] Failed to play notification chime:', e);
+        // Play the notification chime (debounced to avoid firing too many times on multiple perk unlocks)
+        const now = Date.now();
+        if (now - this._lastChimeTime > 1000) {
+            this._lastChimeTime = now;
+            try {
+                const chime = new Audio('./poduser/bingbong_hilo-3.mp3');
+                chime.volume = 0.6; 
+                chime.play().catch(e => {
+                    console.warn('[PodUser] Chime blocked by browser autoplay policy or missing file:', e.message);
+                });
+            } catch (e) {
+                console.warn('[PodUser] Failed to play notification chime:', e);
+            }
         }
     }
 

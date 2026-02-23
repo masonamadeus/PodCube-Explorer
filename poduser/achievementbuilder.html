@@ -530,6 +530,10 @@ body.drop-active::after {
                 <label>Icon <span class="hint">— emoji</span></label>
                 <input type="text" id="f-icon" placeholder="🎙️" oninput="generate()" style="width:70px;">
             </div>
+            <div class="field">
+                <label>Display Order <span class="hint">— e.g., 999 for bottom</span></label>
+                <input type="number" id="f-order" placeholder="0" oninput="generate()">
+            </div>
         </div>
         <div class="toggle-field">
             <input type="checkbox" id="f-hidden" onchange="generate()">
@@ -1197,6 +1201,7 @@ function loadIntoForm(item) {
     document.getElementById('f-desc').value = ach.desc || '';
     document.getElementById('f-icon').value = ach.icon || '';
     document.getElementById('f-hidden').checked = !!ach.hiddenGoal;
+    document.getElementById('f-order').value = ach.order || '';
 
     if (ach.reward) {
         setReward(ach.reward.type);
@@ -1288,6 +1293,7 @@ function saveToLibrary(silent = false) {
         desc: document.getElementById('f-desc').value,
         icon: document.getElementById('f-icon').value,
         hiddenGoal: document.getElementById('f-hidden').checked,
+        order: parseInt(document.getElementById('f-order').value) || 0,
         reward: getRewardObj()
     };
 
@@ -1371,6 +1377,7 @@ function stringifyAchievement(ach) {
     lines.push(`        desc: ${jss(ach.desc)},`);
     if (ach.icon) lines.push(`        icon: ${jss(ach.icon)},`);
     if (ach.hiddenGoal) lines.push(`        hiddenGoal: true,`);
+    if (ach.order) lines.push(`        order: ${ach.order},`);
     
     let condStr = ach.condition.toString();
     condStr = condStr.replace(/^function\s*(?:anonymous)?\s*\(data\)\s*\{/, '(data) => {');
@@ -1844,6 +1851,7 @@ function generate() {
     const title  = v('f-title') || 'Achievement Title';
     const desc   = v('f-desc')  || 'Describe the criteria here.';
     const icon   = v('f-icon');
+    const order  = v('f-order');
     const hidden = document.getElementById('f-hidden').checked;
 
     const warningEl = document.getElementById('id-warning');
@@ -1899,6 +1907,7 @@ function generate() {
     lines.push(`        desc: ${jss(desc)},`);
     if (icon)   lines.push(`        icon: ${jss(icon)},`);
     if (hidden) lines.push(`        hiddenGoal: true,`);
+    if (order)  lines.push(`        order: ${order},`);
     lines.push(`        condition: ${conditionStr}`);
     if (rewardStr) lines.push(`        reward: ${rewardStr},`);
     lines.push(`    });`);

@@ -453,6 +453,10 @@ class Episode {
             this.tags = Array.isArray(normalized.metadata?.tags) ? normalized.metadata.tags : [];
             this.description = normalized.description || null;
 
+            // Internal: Cleaned title and description for search engine
+            this._plainTitle = this.title ? FeedNormalizer.stripHtml(this.title).toLowerCase() : "";
+            this._plainDescription = this.description ? FeedNormalizer.stripHtml(this.description).toLowerCase() : "";
+
             // Audio
             this.audioUrl = normalized.audioUrl || null;
             this.duration = normalized.duration || null;
@@ -1074,8 +1078,9 @@ class PodCubeEngine {
                         // B. Special: Full-Text Search
                         else if (key === 'search') {
                             const q = value.toLowerCase();
-                            const match = (e.title && e.title.toLowerCase().includes(q)) ||
-                                          (e.description && e.description.toLowerCase().includes(q)) ||
+                            // Use cleaned plaintext strings instead of the raw HTML
+                            const match = (e._plainTitle && e._plainTitle.includes(q)) ||
+                                          (e._plainDescription && e._plainDescription.includes(q)) ||
                                           (e.tags && e.tags.some(t => t.toLowerCase().includes(q)));
                             if (!match) return false;
                         }
@@ -1149,13 +1154,13 @@ class PodCubeEngine {
             if (!query) return [];
             const q = query.toLowerCase();
             return this.episodes.filter(e => {
-                const titleMatch = e.title && e.title.toLowerCase().includes(q);
-                const descMatch = e.description && e.description.toLowerCase().includes(q);
+                // Use cleaned plaintext strings here
+                const titleMatch = e._plainTitle && e._plainTitle.includes(q);
+                const descMatch = e._plainDescription && e._plainDescription.includes(q);
                 const tagMatch = e.tags && e.tags.some(t => t.toLowerCase().includes(q));
                 const modelMatch = e.model && e.model.toLowerCase().includes(q);
                 const originMatch = e.origin && e.origin.toLowerCase().includes(q);
                 const yearMatch = e.date && e.date.year && e.date.year.toString().includes(q);
-                // Check the full formatted date string (e.g. searching for "BCE")
                 const dateStringMatch = e.date && e.date.toString().toLowerCase().includes(q);
 
                 return titleMatch || descMatch || tagMatch || modelMatch || originMatch || yearMatch || dateStringMatch;

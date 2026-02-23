@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PodCube Achievement Sorter</title>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+
+<script src="https://bodgelab.com/podcube.js" type="module"></script>
+<script src="./poduser.js"></script>
+<script src="./achievements.js"></script>
+
+<style>
+:root {
+    --primary: #1768da;
+    --primary-dim: #e1e8f3;
+    --primary-dark: #0d4da1;
+    --bg: #fdfdfc;
+    --orange: #f18701;
+}
+
+body {
+    font-family: "Fustat", "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    margin: 0; padding: 0;
+    padding-bottom: 60px;
+}
+
+/* ── TOOL HEADER ────────────────────────────────────────── */
+.tool-header {
+    position: sticky; top: 0; z-index: 100;
+    background: #fff; border-bottom: 3px double var(--primary);
+    padding: 16px 24px;
+    display: flex; justify-content: space-between; align-items: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+.tool-header h1 {
+    font-family: "Libertinus Math", Georgia, serif; font-size: 1.4em;
+    color: var(--primary); margin: 0;
+}
+.tool-header p {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em;
+    color: #888; margin: 4px 0 0;
+}
+
+.btn {
+    font-family: inherit; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 10px 20px; border: 1px solid var(--orange);
+    background: var(--orange); color: #fff; cursor: pointer;
+    transition: all 0.1s;
+}
+.btn:hover { filter: brightness(1.1); }
+.btn:active { transform: scale(0.98); }
+
+#copy-flash {
+    font-size: 10px; font-weight: bold; color: var(--primary);
+    text-transform: uppercase; margin-right: 10px; opacity: 0;
+    transition: opacity 0.3s;
+}
+#copy-flash.show { opacity: 1; }
+
+/* ── GALLERY STYLES (Pulled from profile-ui.js) ─────────── */
+.container { padding: 24px; max-width: 1400px; margin: 0 auto; }
+
+.achievement-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(265px, 1fr));
+    grid-auto-rows: 1fr;
+    gap: 10px;
+}
+
+.ach-card {
+    background: #fff; border: 1px solid var(--primary);
+    border-top: 3px solid var(--primary); padding: 14px;
+    display: flex; flex-direction: column; cursor: grab;
+    user-select: none;
+}
+.ach-card:active { cursor: grabbing; }
+
+/* Dragging feedback styles */
+.sortable-ghost { opacity: 0.4; background: var(--primary-dim); border: 2px dashed var(--primary); }
+.sortable-drag { box-shadow: 0 10px 20px rgba(0,0,0,0.15); transform: rotate(2deg); cursor: grabbing !important; }
+
+.ach-card-header { display: flex; align-items: flex-start; gap: 12px; flex: 1; pointer-events: none; }
+.ach-icon { font-size: 1.6em; width: 32px; text-align: center; flex-shrink: 0; line-height: 1.3; color: transparent; text-shadow: 0 0 var(--primary); }
+.ach-meta { flex: 1; }
+.ach-title { font-family: "Libertinus Math", serif; font-size: 1em; font-weight: 700; color: var(--primary); margin: 0 0 4px; line-height: 1.2; }
+.ach-desc { font-family: "Fustat", sans-serif; font-size: 10px; color: #666; text-transform: uppercase; line-height: 1.5; letter-spacing: 0.02em; margin: 0; }
+
+.ach-reward { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--primary-dim); flex-shrink: 0; pointer-events: none; }
+.ach-reward-section-label { font-family: 'Fustat', sans-serif; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--primary); opacity: 0.5; margin-bottom: 8px; }
+.ach-reward-media-wrapper { height: 140px; width: 100%; background: #f0f0f0; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 4px; position: relative; margin-bottom: 8px; }
+.ach-reward-caption { font-family: "Fustat", sans-serif; font-size: 9px; text-transform: uppercase; color: var(--primary); margin-top: 5px; letter-spacing: 0.04em; }
+
+/* Dummy styles for interactive buttons so they look right but don't do anything */
+.hero-btn { width: 85%; padding: 12px; border: 1px solid transparent; background: repeating-linear-gradient(45deg, var(--primary-dim), var(--primary-dim) 10px, #fff 10px, #fff 20px); display: flex; align-items: center; gap: 10px; }
+.hero-btn-icon { font-size: 1.2em; }
+.hero-btn-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
+</style>
+</head>
+<body>
+
+<div class="tool-header">
+    <div>
+        <h1>Drag-and-Drop Order Tool</h1>
+        <p>Visually arrange your achievements, then copy the compiled code.</p>
+    </div>
+    <div style="display: flex; align-items: center;">
+        <span id="copy-flash">Code Copied!</span>
+        <button class="btn" onclick="exportSortedArray()">⎘ Copy achievements.js</button>
+    </div>
+</div>
+
+<div class="container">
+    <div id="gallery" class="achievement-gallery">
+        </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────
+// INITIALIZATION
+// ─────────────────────────────────────────────────────────────────
+
+window.addEventListener('PodCube:Ready', () => {
+    // Sort initially by their current order so it matches reality
+    const list = [...PodUser.achievements].sort((a, b) => (a.order || 0) - (b.order || 0));
+    renderGrid(list);
+    
+    // Initialize Sortable JS
+    const galleryEl = document.getElementById('gallery');
+    new Sortable(galleryEl, {
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        dragClass: 'sortable-drag'
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────
+// RENDERER
+// ─────────────────────────────────────────────────────────────────
+
+function renderGrid(list) {
+    const gallery = document.getElementById('gallery');
+    gallery.innerHTML = list.map(ach => {
+        let rewardHtml = '';
+        if (ach.reward) {
+            rewardHtml = `
+                <div class="ach-reward">
+                    <div class="ach-reward-section-label">Unlocked Perk</div>
+                    ${buildMockReward(ach.reward)}
+                </div>`;
+        }
+        
+        return `
+            <div class="ach-card" data-id="${ach.id}">
+                <div class="ach-card-header">
+                    <div class="ach-icon">${ach.icon || '🏆'}</div>
+                    <div class="ach-meta">
+                        <h4 class="ach-title">${escapeHtml(ach.title)} ${ach.hiddenGoal ? '<span style="font-size:0.7em; color:var(--orange);">[HIDDEN]</span>' : ''}</h4>
+                        <p class="ach-desc">${escapeHtml(ach.desc)}</p>
+                    </div>
+                </div>
+                ${rewardHtml}
+            </div>
+        `;
+    }).join('');
+}
+
+function buildMockReward(reward) {
+    const r = Array.isArray(reward) ? reward[0] : reward; 
+    if (!r) return '';
+    
+    if (r.type === 'image') {
+        const safeUrl = escapeForAttribute(resolvePreviewUrl(r.url));
+        return `
+            <div class="ach-reward-media-wrapper">
+                <img src="${safeUrl}" style="width: 100%; height: 100%; object-fit: cover;">
+            </div>
+            ${r.caption ? `<div class="ach-reward-caption">${escapeHtml(r.caption)}</div>` : ''}
+        `;
+    } else if (r.type === 'video') {
+        const safeUrl = escapeForAttribute(resolvePreviewUrl(r.url));
+        return `
+            <div class="ach-reward-media-wrapper" style="background: #000;">
+                <video src="${safeUrl}" style="width: 100%; height: 100%; object-fit: cover;"></video>
+                <div style="position: absolute; display: flex; align-items: center; justify-content: center;">
+                    <svg viewBox="0 0 24 24" width="40" height="40" fill="#fff" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"><path d="M8 5v14l11-7z"/></svg>
+                </div>
+            </div>`;
+    } else if (r.type === 'audio') {
+        return `
+            <div class="ach-reward-media-wrapper" style="background: transparent; height: auto;">
+                <div class="hero-btn" style="width: 100%; margin: 0;">
+                    <span class="hero-btn-icon">▶</span>
+                    <span class="hero-btn-text">
+                        <strong style="font-size: 12px; font-family: 'Libertinus Math';">${escapeHtml(r.meta?.title || 'Audio File')}</strong>
+                        <span style="font-size: 9px; color: #666; text-transform: uppercase; font-family: 'Fustat';">Supplementary Audio File</span>
+                    </span>
+                </div>
+            </div>`;
+    } else if (r.type === 'game') {
+        return `
+            <div class="ach-reward-media-wrapper" style="background: transparent; height: auto;">
+                <div class="hero-btn" style="width: 100%; margin: 0; background: #1a1a1a; border-color: var(--orange);">
+                    <span class="hero-btn-icon" style="color: var(--orange);">🎮</span>
+                    <span class="hero-btn-text" style="color: #fff;">
+                        <strong style="font-size: 12px; font-family: 'Libertinus Math';">${escapeHtml(r.buttonText || 'Launch Module')}</strong>
+                        <span style="font-size: 9px; color: #888; text-transform: uppercase; font-family: 'Fustat';">Productivity Task</span>
+                    </span>
+                </div>
+            </div>`;
+    } else if (r.type === 'text') {
+        return `
+            <div style="background: #f9f9f9; border: 1px solid var(--primary-dim); border-radius: 4px; padding: 10px; height: 100px; display: flex; flex-direction: column;">
+                <div style="white-space:pre-wrap; flex: 1; overflow: hidden; font-size: 10px; font-family: monospace; color: #aaa;">${escapeHtml(r.content)}</div>
+            </div>`;
+    }
+    return '';
+}
+
+// ─────────────────────────────────────────────────────────────────
+// EXPORTER & STRINGIFIER
+// ─────────────────────────────────────────────────────────────────
+
+function exportSortedArray() {
+    const orderedIds = Array.from(document.querySelectorAll('.ach-card')).map(el => el.dataset.id);
+    let finalOutput = [];
+    finalOutput.push(`/**\n * achievements.js — PodCube Achievement Definitions\n * \n * Visually arranged via PodCube Order Sorter\n */\n\nwindow.addEventListener('PodCube:Ready', () => {\n`);
+
+    orderedIds.forEach((id, index) => {
+        const ach = PodUser.achievements.find(a => a.id === id);
+        if (ach) {
+            ach.order = index; 
+            finalOutput.push(stringifyAchievement(ach));
+        }
+    });
+
+    finalOutput.push(`\n});`);
+
+    navigator.clipboard.writeText(finalOutput.join('\n\n')).then(() => {
+        const flash = document.getElementById('copy-flash');
+        flash.classList.add('show');
+        setTimeout(() => flash.classList.remove('show'), 2000);
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// UTILITIES & PATH RESOLUTION
+// ─────────────────────────────────────────────────────────────────
+
+function resolvePreviewUrl(url) {
+    if (!url) return '';
+    let resolved = url;
+    // Fix the relative pathing so it previews correctly inside the tool
+    if (resolved.startsWith('./poduser/')) resolved = resolved.replace('./poduser/', './');
+    if (resolved.startsWith('poduser/')) resolved = resolved.replace('poduser/', './');
+    try {
+        resolved = encodeURI(decodeURI(resolved)).replace(/'/g, '%27');
+    } catch (e) {}
+    return resolved;
+}
+
+function escapeForAttribute(text) {
+    if (typeof text !== 'string') return text;
+    return text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+function escapeHtml(text) {
+    if (typeof text !== 'string') return text;
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function jss(s) {
+    if (s == null) return "''";
+    return `'${String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r')}'`;
+}
+
+function stringifyAchievement(ach) {
+    let lines = ['    PodUser.registerAchievement({'];
+    lines.push(`        id: ${jss(ach.id)},`);
+    lines.push(`        title: ${jss(ach.title)},`);
+    lines.push(`        desc: ${jss(ach.desc)},`);
+    if (ach.icon) lines.push(`        icon: ${jss(ach.icon)},`);
+    if (ach.hiddenGoal) lines.push(`        hiddenGoal: true,`);
+    if (ach.order !== undefined) lines.push(`        order: ${ach.order},`);
+    
+    let condStr = ach.condition.toString();
+    condStr = condStr.replace(/^function\s*(?:anonymous)?\s*\(data\)\s*\{/, '(data) => {');
+    condStr = condStr.replace(/^function\s*(?:anonymous)?\s*\(\)\s*\{/, '() => {');
+    condStr = condStr.split('\n').map((l, i) => i === 0 ? l : '        ' + l.trim()).join('\n');
+    lines.push(`        condition: ${condStr},`);
+    
+    if (ach.reward) {
+        let rLines = [`        reward: {`, `            type: ${jss(ach.reward.type)},`];
+        const safeUrl = (url) => jss(encodeURI(decodeURI(url || '')).replace(/'/g, '%27'));
+
+        if (ach.reward.type === 'audio') {
+            rLines.push(`            meta: {`);
+            Object.keys(ach.reward.meta).forEach(k => {
+                if (ach.reward.meta[k]) {
+                    const val = k === 'url' ? safeUrl(ach.reward.meta[k]) : jss(ach.reward.meta[k]);
+                    rLines.push(`                ${k}: ${val},`);
+                }
+            });
+            rLines.push(`            }`);
+        } else if (ach.reward.type === 'image') {
+            rLines.push(`            url: ${safeUrl(ach.reward.url)},`);
+            if (ach.reward.caption) rLines.push(`            caption: ${jss(ach.reward.caption)},`);
+        } else if (ach.reward.type === 'video') {
+            rLines.push(`            url: ${safeUrl(ach.reward.url)},`);
+        } else if (ach.reward.type === 'game') {
+            rLines.push(`            gameId: ${jss(ach.reward.gameId)},`);
+            if (ach.reward.buttonText) rLines.push(`            buttonText: ${jss(ach.reward.buttonText)},`);
+        } else if (ach.reward.type === 'text') {
+            rLines.push(`            content: ${jss(ach.reward.content)},`);
+        }
+        rLines.push(`        }`);
+        lines.push(rLines.join('\n'));
+    }
+    lines.push('    });');
+    return lines.join('\n');
+}
+
+</script>
+</body>
+</html>

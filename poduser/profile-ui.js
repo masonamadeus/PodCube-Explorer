@@ -55,19 +55,6 @@
         letter-spacing: 0.08em;
     }
 
-    /* ── PROFILE STATS ────────────────────────────── */
-    .profile-stat-grid {
-        display: grid;
-        grid-template-columns: repeat(6, 1fr);
-        gap: 8px;
-    }
-    @media (max-width: 900px) {
-        .profile-stat-grid { grid-template-columns: repeat(3, 1fr); }
-    }
-    @media (max-width: 500px) {
-        .profile-stat-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-
     /* ── ACHIEVEMENT FILTER BAR ───────────────────── */
     .ach-filter-bar { display: flex; gap: 4px; }
     .ach-filter-btn {
@@ -619,7 +606,7 @@ function _renderAchievements(userData) {
         btn.classList.toggle('active', btn.dataset.filter === _achFilter);
     });
 
-    let list = PodUser.achievements;
+    let list = [...PodUser.achievements].sort((a, b) => (a.order || 0) - (b.order || 0));
     if (_achFilter === 'unlocked') list = list.filter(a =>  userData.achievements.includes(a.id));
     if (_achFilter === 'locked')   list = list.filter(a => !userData.achievements.includes(a.id));
 
@@ -714,10 +701,10 @@ function _buildLockedRewardPlaceholder(ach) {
     // Determine the lock icon hint based on reward type, without revealing what it is
     const rewardTypeHint = {
         'audio': '📡',
-        'video': '📼',
+        'video': '📽️',
         'image': '🖼',
         'game':  '🎮',
-        'text':  '📋',
+        'text':  '💬',
     }[ach.reward?.type] || '🔒';
 
     // For hidden-goal achievements, don't even hint at the reward type

@@ -25,7 +25,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; 
 
     scrollbar-color: var(--primary-dark) var(--primary-dim);
-    scrollbar-width: none;
+    scrollbar-width: thin;
 }
 
 .icon-svg {
@@ -1856,13 +1856,7 @@ h1 {
 /* ========== BUFFER & AUDIO STATE SECTION ========== */
 
 /* Status grid boxes */
-.stat-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 12px;
-    width: 100%;
-    margin: 0;
-}
+
 
 .stat-box {
     border: 1px solid var(--primary);
@@ -2272,7 +2266,7 @@ label {
 /* --- STATS GRID --- */
 .stat-grid { 
     display: grid; 
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); 
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); 
     gap: 12px; 
     width:94%;
     margin:auto;
