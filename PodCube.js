@@ -582,15 +582,11 @@ class PodCubeEngine {
         this.logo = null;
         this.isReady = false;
         this.lastSave = 0;
-        
 
         // Feed Cache
         this._lastFetchedUrl = null; 
         this._lastFetchTime = null; 
-
-        // Audio Cache
-        this._currentObjectUrl = null; // Track current URL to revoke it later
-
+        
         // Audio State
         this._audio = new Audio();
         this._audio.preload = "metadata";
@@ -599,12 +595,13 @@ class PodCubeEngine {
         this._isLoading = false;
         this._hasPreloadedNext = false;
 
-
+        // Queue and playback state
         this._queue = [];
         this._queueIndex = -1;
         this._stopAfterCurrent = false;
         this._volume = 1.0;
         this._radioMode = false;
+        this._randomPoolFilter = null; // Track filters to be applied to random selection
         this._listeners = {};
 
         this._audio.addEventListener('ended', () => {
@@ -640,10 +637,17 @@ class PodCubeEngine {
         });
 
         this._audio.addEventListener('play', () => {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.playbackState = 'playing';
+            }
             this._emit('play', this.nowPlaying)
         });
 
         this._audio.addEventListener('pause', () => {
+            // Force mobile OS to keep the lock screen controls visible while paused
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.playbackState = 'paused';
+            }
             this._saveSession(); // Force save on pause
             this._emit('pause', this.nowPlaying);
         });
@@ -654,19 +658,6 @@ class PodCubeEngine {
             if (now - this.lastSave > 5000) {
                 this._saveSession();
                 this.lastSave = now;
-            }
-
-            // Media session lock screen scrubber
-            if ('mediaSession' in navigator && this._audio.duration) {
-                try {
-                    navigator.mediaSession.setPositionState({
-                        duration: this._audio.duration,
-                        playbackRate: this._audio.playbackRate,
-                        position: this._audio.currentTime
-                    });
-                } catch (e) {
-                    // Ignore errors (some browsers throw if duration isn't fully resolved yet)
-                }
             }
 
             // Emit status as usual
@@ -735,6 +726,13 @@ class PodCubeEngine {
                 navigator.mediaSession.setActionHandler('nexttrack', () => this.next());
                 navigator.mediaSession.setActionHandler('seekbackward', () => this.skipBack());
                 navigator.mediaSession.setActionHandler('seekforward', () => this.skipForward());
+
+                navigator.mediaSession.setActionHandler('seekto', (details) => {
+                    if (details.seekTime !== undefined) {
+                        this.seek(details.seekTime);
+                        this._updateMediaPosition(); // Sync the UI back up
+                    }
+                });
             }
 
             this.isReady = true;
@@ -901,10 +899,6 @@ class PodCubeEngine {
     get all() { return this.episodes; }
     get latest() { return this.getByReleaseOrder()[0] || null; }
 
-    get random() {
-        if (this.episodes.length === 0) return null;
-        return this.episodes[Math.floor(Math.random() * this.episodes.length)];
-    }
 
     get models() {
         const models = this.episodes
@@ -928,6 +922,36 @@ class PodCubeEngine {
             }
         });
         return [...tags].sort();
+    }
+
+    
+
+    get random() {
+        if (this.episodes.length === 0) return null;
+        
+        let pool = this.episodes;
+
+        // If the application provided a filter, apply it
+        if (this._randomPoolFilter) {
+            const filteredPool = this._randomPoolFilter(pool);
+            
+            // Only use the filtered pool if there's actually something left
+            if (filteredPool && filteredPool.length > 0) {
+                pool = filteredPool;
+            }
+        }
+
+        return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    /**
+    * Provide a callback to filter the pool of episodes before a random one is selected.
+    * The callback should accept an array of episodes and return a filtered array.
+    */
+    setRandomPoolFilter(callback) {
+        if (typeof callback === 'function' || callback === null) {
+            this._randomPoolFilter = callback;
+        }
     }
 
     getNearestToToday() {
@@ -1265,12 +1289,6 @@ class PodCubeEngine {
             const token = ++this._loadingToken;
             this._isLoading = true;
             this._hasPreloadedNext = false;
-            
-            // Clean up any previous object URLs if they exist
-            if (this._currentObjectUrl) {
-                URL.revokeObjectURL(this._currentObjectUrl);
-                this._currentObjectUrl = null;
-            }
 
             // Direct stream assignment
             this._audio.src = ep.audioUrl;
@@ -1284,7 +1302,8 @@ class PodCubeEngine {
 
             if ('mediaSession' in navigator && ep) {
                 // Determine artwork: use feed image if parsed, otherwise fallback to local asset
-                const artworkUrl = this.logo || './PODCUBE.png';
+                const fallbackUrl = new URL('./PODCUBE.png', window.location.href).href;
+                const artworkUrl = this.logo || fallbackUrl;
 
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: ep.title,
@@ -1322,6 +1341,24 @@ class PodCubeEngine {
 
     _cancelPreload() {
         this._hasPreloadedNext = false; // Allow preloading again for the NEW next track
+        if (this._preloader) {
+            this._preloader.removeAttribute('src');
+            this._preloader.load(); // This forces the browser to close the network connection I guess
+        }
+    }
+
+    _updateMediaPosition() {
+        if ('mediaSession' in navigator && this._audio.duration && !isNaN(this._audio.duration)) {
+            try {
+                navigator.mediaSession.setPositionState({
+                    duration: this._audio.duration,
+                    playbackRate: this._audio.playbackRate,
+                    position: this._audio.currentTime
+                });
+            } catch (e) {
+                // Ignore errors if duration isn't fully resolved yet
+            }
+        }
     }
 
     async play(episode) {
@@ -1351,6 +1388,8 @@ class PodCubeEngine {
             } else {
                 await this._audio.play();
             }
+
+            this._updateMediaPosition();
         } catch (e) {
             log.error("Play failed:", e);
             this._emit('error', { episode: this.nowPlaying, error: e });
@@ -1360,6 +1399,7 @@ class PodCubeEngine {
     pause() {
         try {
             this._audio.pause();
+            this._updateMediaPosition();
         } catch (e) {
             log.error("Pause failed:", e);
         }
@@ -1456,6 +1496,7 @@ class PodCubeEngine {
     seek(seconds) {
         try {
             this._audio.currentTime = Math.max(0, seconds);
+            this._updateMediaPosition();
         } catch (e) {
             log.error("Seek failed:", e);
         }
@@ -1465,6 +1506,7 @@ class PodCubeEngine {
         try {
             const newTime = this._audio.currentTime + CONFIG.SKIP_FORWARD;
             this._audio.currentTime = Math.min(newTime, this._audio.duration || Infinity);
+            this._updateMediaPosition();
             log.info(`Skipped forward ${CONFIG.SKIP_FORWARD}s`);
         } catch (e) {
             log.error("Skip forward failed:", e);
@@ -1475,6 +1517,7 @@ class PodCubeEngine {
         try {
             const newTime = this._audio.currentTime - CONFIG.SKIP_BACK;
             this._audio.currentTime = Math.max(0, newTime);
+            this._updateMediaPosition();
             log.info(`Skipped back ${CONFIG.SKIP_BACK}s`);
         } catch (e) {
             log.error("Skip back failed:", e);
@@ -1697,14 +1740,11 @@ class PodCubeEngine {
         
         this._clearSession(); 
 
-        if (this._currentObjectUrl) {
-            URL.revokeObjectURL(this._currentObjectUrl);
-            this._currentObjectUrl = null;
-        }
         this._audio.removeAttribute('src');
 
         if ('mediaSession' in navigator) {
             navigator.mediaSession.metadata = null;
+            navigator.mediaSession.playbackState = 'none'; // Dismiss from lock screen
         }
 
         this._emit('queue:changed', {queue: [], index: -1});

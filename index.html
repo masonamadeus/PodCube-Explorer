@@ -18,6 +18,8 @@
     <script src="./libraries/jsQR.min.js"></script><!-- QR CODE READER -->
 
     <script src="/podcube.js" type="module"></script>
+    
+    <script src="./degradation.js"></script>
     <script src="./poduser/poduser.js"></script>
     <script src="./poduser/profile-ui.js"></script>
     <script src="./poduser/achievements.js"></script>
@@ -28,6 +30,30 @@
 </head>
 
 <body>
+
+    <!-- SPLASH SCREEN -->
+<div id="startup-splash" style="position: fixed; inset: 0; z-index: 9999999; background: #fdfdfc; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s ease;">
+        <img src="./PODCUBE.png" alt="PodCube Logo" style="width: 100px; height: 100px; margin-bottom: 20px; animation: pulse 2s infinite;">
+        <h1 style="color: #1768da; margin-bottom: 10px; font-family: 'Libertinus Math', serif; font-size: 2.5em; letter-spacing: -0.02em;">PodCube™ <i>Explorer</i></h1>
+        
+        <div style="font-family: 'Fustat', sans-serif; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.1em; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+            <span id="splash-status" style="font-weight: 700;">Establishing secure connection...</span>
+            
+            <div id="splash-loading-bar" style="width: 200px; height: 2px; background: #e1e8f3; overflow: hidden; position: relative;">
+                <div style="position: absolute; top: 0; left: 0; height: 100%; width: 40%; background: #1768da; animation: splashLoad 1s infinite linear;"></div>
+            </div>
+        </div>
+
+        <style>
+            @keyframes splashLoad {
+                0% { left: -40%; }
+                100% { left: 100%; }
+            }
+        </style>
+    </div>
+
+
+<!-- NAV BAR AND HEADER -->
     <div class="sticky-top">
         <header>
             <div style="display:flex; align-items:center;">
@@ -635,11 +661,7 @@
     </div>
 
     
-    <!-- ── STATS ──────────────────────────────────────────────── -->
-    <div class="section">
-        <h3>Terminal Statistics</h3>
-        <div class="stat-grid profile-stat-grid" id="prof-stats-grid"></div>
-    </div>
+    
 
     <!-- ── SYSTEM ALERTS ──────────────────────────────────────── -->
     <div class="section">
@@ -651,6 +673,13 @@
             </button>
         </div>
         <div id="prof-notifications" class="notifications-scroll"></div>
+    </div>
+
+
+    <!-- ── STATS ──────────────────────────────────────────────── -->
+    <div class="section">
+        <h3>Terminal Statistics</h3>
+        <div class="stat-grid profile-stat-grid" id="prof-stats-grid"></div>
     </div>
 
 
@@ -669,9 +698,10 @@
 
     
 
-    <!-- ── MEMORY CARD (bottom, intentionally low-key) ────────── -->
+    <!-- MEMORY CARD (bottom, intentionally low-key)  -->
     <div class="section">
         <div class="memory-card-section">
+            
             <p style="font-family:'Fustat'; font-size:11px; text-transform:uppercase;
                       color:#888; line-height:1.6; margin-bottom:16px; letter-spacing:0.03em;">
                 Your progress, scores, and unlocked content are stored locally. Use the code below
@@ -713,6 +743,18 @@
                     Import
                 </button>
             </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-family: 'Fustat'; font-size: 9px; color: var(--danger); text-transform: uppercase;">
+                EMERGENCY MAINTENANCE
+            </span>
+            <button id="btn-degauss" class="icon-btn" style="color: var(--danger); border-color: var(--danger);"
+                onclick="repairTerminal()">
+                DE-GAUSS TERMINAL
+            </button>
         </div>
     </div>
 
@@ -803,7 +845,11 @@
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.random</code>
-                        <p>Returns a random episode from the collection</p>
+                        <p>Returns a random episode from the collection. If a random pool filter is set, it is applied first; if the filter yields no results, falls back to the full episode list.</p>
+                    </div>
+                    <div class="api-method">
+                        <code class="api-signature">PodCube.setRandomPoolFilter(callback)</code>
+                        <p>Provide a callback to restrict which episodes are eligible for random selection. The callback receives the full episodes array and must return a filtered array. Pass <code>null</code> to clear the filter. Used by Radio Mode's auto-queue logic as well as direct calls to <code>PodCube.random</code>.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.where(filters, sort)</code>
@@ -837,8 +883,8 @@
                     <div class="api-method">
                         <code class="api-signature">PodCube.findRelated(episode, limit)</code>
                         <p>Find episodes related to the given episode using weighted scoring: model matching (12 points
-                            exact, 4 points prefix), origin (10 points), locale (6), region (4), zone (2), shared tags
-                            (3 each), and same year (5). Minimum threshold: 7 points. Default limit is 10.</p>
+                            exact, 4 points prefix), origin (10 points), locale (6), region (4), zone (2, but the value <code>"USA"</code> is explicitly excluded to prevent overly broad matches), shared tags
+                            (3 each), and same lore year (5). Planet is not scored. Minimum threshold: 7 points. Default limit is 10.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.getNearestToToday()</code>
@@ -925,11 +971,11 @@
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.getByDuration(reverse)</code>
-                        <p>Episodes sorted by duration (longest first). Pass true for shortest first.</p>
+                        <p>Episodes sorted by duration (shortest first by default). Pass true for longest first.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.getByIntegrity(reverse)</code>
-                        <p>Episodes sorted by integrity value (highest first). Pass true for lowest first.</p>
+                        <p>Episodes sorted by integrity value (lowest first by default). Pass true for highest first.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.sortBy(field, reverse)</code>
@@ -945,8 +991,7 @@
                 <div class="api-methods">
                     <div class="api-method">
                         <code class="api-signature">PodCube.play(episode)</code>
-                        <p>Play a specific episode (adds to queue with playNow=true). If no episode provided, resumes
-                            current track. If queue is empty, this does nothing.</p>
+                        <p>Play a specific episode (adds to queue with playNow=true). If no episode provided, resumes current track. If queue is empty and Radio Mode is active, automatically picks a random track and plays it. If queue is empty and Radio Mode is off, this does nothing.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.pause()</code>
@@ -1005,8 +1050,8 @@
                     <div class="api-method">
                         <code class="api-signature">PodCube.setRadioMode(enabled)</code>
                         <p>Enable/disable Radio Mode. When enabled, automatically queues a random track when reaching
-                            the end of the queue, creating infinite playback. If enabled while already at queue end,
-                            immediately queues next random track (and plays if currently playing).</p>
+                            the end of the queue, creating infinite playback. If enabled while the queue is empty or exhausted,
+                            immediately loads the next random track into position — but does <strong>not</strong> auto-play it (user must call <code>play()</code>). Respects any active random pool filter.</p>
                     </div>
                 </div>
             </div>
@@ -1045,8 +1090,7 @@
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.clearQueue()</code>
-                        <p>Remove all tracks from queue, cancel preload, stop playback, clear session, and revoke object
-                            URLs</p>
+                        <p>Remove all tracks from queue, cancel preload, stop playback, clear session, remove audio src, and dismiss OS media session controls.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.removeFromQueue(index)</code>
@@ -1058,6 +1102,10 @@
                         <p>Move a track from one position to another in the queue. Automatically adjusts current index
                             to maintain playback continuity.</p>
                     </div>
+                    <div class="api-method">
+                        <code class="api-signature">PodCube.skipTo(index)</code>
+                        <p>Jump directly to a specific index in the queue and begin playback. Does nothing if the index is out of bounds.</p>
+                    </div>
                 </div>
             </div>
             <!-- Playlist Management -->
@@ -1067,19 +1115,18 @@
                     <div class="api-method">
                         <code class="api-signature">PodCube.savePlaylist(name, episodes)</code>
                         <p>Save array of episodes as a named playlist to localStorage. Returns playlist object with
-                            {name, created, episodes}.</p>
+                            <code>{name, created, episodes, totalDuration}</code>.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.loadPlaylist(name)</code>
                         <p>Load playlist by name. Returns
-                            <code>{ name, created, episodes }</code>
+                            <code>{ name, created, episodes, totalDuration }</code>
                             or null if not found. Episodes are automatically rehydrated from current feed.
                         </p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.getPlaylists()</code>
-                        <p>Get all saved playlists. Returns array of playlist objects (name and metadata only, not full
-                            episodes).</p>
+                        <p>Get all saved playlists. Returns array of fully-loaded playlist objects, each with name, created timestamp, totalDuration, and rehydrated episode arrays.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.deletePlaylist(name)</code>
@@ -1102,11 +1149,11 @@
                     <div class="api-method">
                         <code class="api-signature">PodCube.exportPlaylist(name)</code>
                         <p>Export playlist for sharing using Nano-GUID v7 compression (20-bit ID stream + plaintext
-                            title). Returns {name, episodes, code, url} or null on error.</p>
+                            title). Returns <code>{name, episodes, code, totalDuration, url}</code> or null on error.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.importPlaylist(code)</code>
-                        <p>Import a playlist from a share code. Returns {name, episodes, missingCount} or null if
+                        <p>Import a playlist from a share code. Returns <code>{name, episodes, totalDuration, missingCount}</code> or null if
                             invalid. Uses fuzzy matching via nanoId.</p>
                     </div>
                     <div class="api-method">
@@ -1144,7 +1191,7 @@
                     <div class="api-method">
                         <code class="api-signature">PodCube.on(event, callback)</code>
                         <p>Subscribe to event. Returns unsubscribe function. Available events: 'play', 'pause', 'track',
-                            'timeupdate', 'queue:changed', 'queueEnd', 'error'</p>
+                            'ended', 'timeupdate', 'queue:changed', 'queueEnd', 'error'</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.off(event, callback)</code>
@@ -1181,6 +1228,12 @@
                     <p><strong>Payload:</strong> <code>Episode</code> - The newly loaded episode (or null if cleared)
                     </p>
                     <p><strong>Note:</strong> Fires when a new track is loaded, before playback starts</p>
+                </div>
+
+                <div class="api-method">
+                    <code class="api-signature">ended</code>
+                    <p><strong>Payload:</strong> <code>Episode</code> - The episode that just finished playing</p>
+                    <p><strong>Note:</strong> Fires when a track reaches its natural end. In Radio Mode, this fires before the next random track is auto-queued. Does not fire when playback is manually stopped or skipped.</p>
                 </div>
 
                 <div class="api-method">
@@ -1225,7 +1278,7 @@
                     <div class="api-method">
                         <code class="api-signature">PodCube.destroy()</code>
                         <p>Clean up all resources: clear session, stop playback, clear queue, remove all event
-                            listeners, revoke object URLs, and null audio elements</p>
+                            listeners, and null audio elements.</p>
                     </div>
                 </div>
             </div>
@@ -1257,6 +1310,18 @@
                         <code class="api-signature">PodCube.DEBUG</code>
                         <p>Current debug mode state (boolean)</p>
                     </div>
+                    <div class="api-method">
+                        <code class="api-signature">PodCube.isReady</code>
+                        <p>Boolean — true once <code>init()</code> has completed successfully. False before initialization or if init threw an error.</p>
+                    </div>
+                    <div class="api-method">
+                        <code class="api-signature">PodCube.logo</code>
+                        <p>Feed logo URL string extracted during <code>init()</code> (from the RSS <code>&lt;image&gt;</code> tag or JSON <code>icon</code> field). Null before initialization or if the feed provides no logo.</p>
+                    </div>
+                    <div class="api-method">
+                        <code class="api-signature">PodCube.Episode</code>
+                        <p>Reference to the Episode class itself. Useful for <code>instanceof</code> checks: <code>ep instanceof PodCube.Episode</code>.</p>
+                    </div>
                 </div>
             </div>
             <!-- Episode Object Properties -->
@@ -1269,7 +1334,7 @@
                     </div>
                     <div class="api-method">
                         <code class="api-signature">episode.nanoId</code>
-                        <p>5-character hex ID derived from GUID (first 20 bits) for playlist compression</p>
+                        <p>5-character hex string (20 bits) computed from the full episode GUID via FNV-1a hash. Used as the compressed identifier in playlist share codes.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">episode.title</code>
@@ -1323,16 +1388,15 @@
                     </div>
                     <div class="api-method">
                         <code class="api-signature">episode.anniversary</code>
-                        <p>Human-readable time from lore date to today (e.g., "2 years ago", "3 months from now", "in
-                            500 years")</p>
+                        <p>Distance from the episode's lore date to today. Returns <code>"today"</code> on an exact date match, a human-readable string otherwise (e.g., <code>"2 years ago"</code>, <code>"3 months from now"</code>, <code>"500 years from now"</code>, <code>"4 days ago"</code>), or <code>null</code> if the episode has no lore date. Resolution cascades: years → months → weeks → days.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">episode.integrity</code>
-                        <p>Integrity string from metadata (e.g., "94.7%"), or null</p>
+                        <p>Raw integrity string from feed metadata (e.g., <code>"94.7"</code>). Never null — defaults to <code>"0.0"</code> for TWIBBIE/NONE episodes, or <code>"0"</code> for TRANSMISSION/HQ episodes without metadata. Described in-universe as a fake transmission quality percentage.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">episode.integrityValue</code>
-                        <p>Numeric integrity value (0-100) parsed from integrity string, or null</p>
+                        <p>Numeric float parsed from integrity metadata. Never null — defaults to <code>0</code> if metadata is missing, invalid, or the episode type is TWIBBIE/NONE. No upper bound is enforced; value is whatever the feed provides.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">episode.tags</code>
@@ -1352,11 +1416,11 @@
                     </div>
                     <div class="api-method">
                         <code class="api-signature">episode.timestamp</code>
-                        <p>Duration formatted as "MM:SS" or "HH:MM:SS"</p>
+                        <p>Duration formatted as M:SS (e.g., <code>"62:05"</code>). Minutes are not zero-padded; seconds are. Returns <code>"0:00"</code> if duration is unavailable. Note: for HH:MM:SS formatting use <code>status.durationFormatted</code> instead.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">episode.weirdDuration</code>
-                        <p>Quirky duration format for display with random suffixes (e.g., "5.42ish", "12.8sorta")</p>
+                        <p>Duration formatted with a randomly selected whimsical suffix. The format is <code>M.FF&lt;suffix&gt;</code> where M is whole minutes and FF is fractional minutes. Example outputs: <code>"5.42ish minutes"</code>, <code>"12.8 minutes (+/- a bit)"</code>, <code>"30.5 or so minutes"</code>. Returns "IDK?" if duration is unavailable.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">episode.sizeBytes</code>

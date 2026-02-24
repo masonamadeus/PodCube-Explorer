@@ -29,7 +29,7 @@ const PlaylistSharing = {
                 </div>
             </div>
             <div class="pc-share-footer">
-                <span class="pc-share-label">COPY/PASTE THIS CARD INTO BODGELAB.COM/S/PODCUBE</span>
+                <span class="pc-share-label">COPY/PASTE THIS CARD INTO POWEREDBYPODCUBE.COM</span>
                 <div class="pc-share-code-box">${exportData.code}</div>
             </div>
         `;

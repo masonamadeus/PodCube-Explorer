@@ -18,7 +18,8 @@ class PodUserEngine {
             punchcards:    0,    // count of printed punchcards
             punchcardExport: 0, // count of exported punchcards
             achievements:  [],   // unlocked achievement IDs
-            notifications: []    // { id, title, body, read, timestamp }
+            notifications: [],    // { id, title, body, read, timestamp }
+            degradation: 0,
         };
 
         this.achievements = [];
@@ -42,6 +43,7 @@ class PodUserEngine {
 
                 if (!sessionStorage.getItem('podcube_session_logged')) {
                     this.data.visits += 1;
+                    this.data.degradation = (this.data.degradation || 0) + 1;
                     sessionStorage.setItem('podcube_session_logged', 'true');
                     
                     if (this.data.visits === 1) {
@@ -50,6 +52,14 @@ class PodUserEngine {
                             `Welcome, ${this.data.username}. Your activity is now being monitored by Brigistics for quality assurance. Please begin reviewing the available transmissions.\nThere are silent activities available on the "Interactive" tab to keep your hands busy while you listen.\nYou have also been granted access to print and share PodCube™ PunchCards.\nClick or tap this Alert to clear it.`
                         );
                     }
+                }
+
+                if (this.data.degradation >= 100) {
+                    this._pushNotification(
+                        'CRITICAL: TEMPORAL DESYNC',
+                        'Terminal has exceeded maximum safe temporal exposure limits. Interface corruption is critical. Please navigate to your Personnel Record (My Profile) and initiate a DE-GAUSS sequence immediately.',
+                        { type: 'maintenance', target: 'btn-degauss' }
+                    );
                 }
 
                 this._checkAchievements(); // Evaluate inline

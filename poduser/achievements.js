@@ -93,11 +93,24 @@ window.addEventListener('PodCube:Ready', () => {
     });
 
     PodUser.registerAchievement({
+        id: 'listens_15',
+        title: 'Introducing HORUS',
+        desc: 'Listen to 15 transmissions',
+        icon: '🧠',
+        order: 6,
+        condition: (data) => data.history.length >= 15,
+        reward: {
+            type: 'video',
+            url: './poduser/assets/video/Podcube%20-%20Horus%20promo.webm',
+        }
+    });
+
+    PodUser.registerAchievement({
         id: 'chosen_older_relative_ad',
         title: 'Chosen Older Relative',
         desc: 'The Family Friendly Mobster Show on Twibbie™',
         icon: '🍴',
-        order: 6,
+        order: 7,
         condition: (data) => data.history.includes('10657cf3-cf31-49a2-abce-7f7ab9a6ef61'),
         reward: {
             type: 'audio',
@@ -121,7 +134,7 @@ window.addEventListener('PodCube:Ready', () => {
         title: 'The Family-Friendly Mobster Show',
         desc: 'Twibbie™ On-Demand\'s Latest Ultra-Violent Series',
         icon: '🔪',
-        order: 7,
+        order: 8,
         condition: (data) => {
         const c1 = data.history.includes('10657cf3-cf31-49a2-abce-7f7ab9a6ef61');
         const c2 = new Date().getDay() === 2;
@@ -139,7 +152,7 @@ window.addEventListener('PodCube:Ready', () => {
         title: 'That Time of Year Again',
         desc: 'Tractors, Shovels, Trowels, Friends, & Family',
         icon: '🍔',
-        order: 8,
+        order: 9,
         condition: (data) => {
         const c1 = data.history.includes('5d56771c-cf4a-4006-a3de-bd391ed10f57');
         const c2 = data.history.filter(id => {
@@ -170,7 +183,7 @@ window.addEventListener('PodCube:Ready', () => {
         title: 'The Feel-Good Heist Movie',
         desc: 'Get HYPED for Twibbie™\'s Summer Blockbuster',
         icon: '🦷',
-        order: 9,
+        order: 10,
         condition: (data) => data.history.includes('a6cfeba3-1a52-4c3a-ba31-b247fe6acac1'),
         reward: {
             type: 'image',
@@ -184,7 +197,7 @@ window.addEventListener('PodCube:Ready', () => {
         title: 'Dusty\'s Barnyard Bash',
         desc: 'Where can you get twelve pounds of corn?',
         icon: '🌽',
-        order: 10,
+        order: 11,
         condition: (data) => ['df644391-1afc-4876-9ee4-3107d5368ea6', '40f7f29e-357a-40cd-b46a-497e76363138', '5d56771c-cf4a-4006-a3de-bd391ed10f57', 'b7fcfdba-44e8-4457-ad07-e32bb4f1e92a'].every(id => data.history.includes(id)),
         reward: {
             type: 'audio',
@@ -208,7 +221,7 @@ window.addEventListener('PodCube:Ready', () => {
         title: '50cc\'s of Pog Champ',
         desc: 'Every Monday Night on Twibbie™',
         icon: '⚕️',
-        order: 11,
+        order: 12,
         condition: (data) => {
         const c1 = data.history.includes('10657cf3-cf31-49a2-abce-7f7ab9a6ef61');
         const c2 = new Date().getDay() === 1;
@@ -226,7 +239,7 @@ window.addEventListener('PodCube:Ready', () => {
         title: 'Monochrome\'s Analysis',
         desc: 'Tune in Monday Nights on Twibbie™',
         icon: '⚕️',
-        order: 12,
+        order: 13,
         condition: (data) => data.history.includes('10657cf3-cf31-49a2-abce-7f7ab9a6ef61'),
         reward: {
             type: 'audio',
@@ -250,7 +263,7 @@ window.addEventListener('PodCube:Ready', () => {
         title: 'Drink It Normally',
         desc: 'Sample the new flavors of Sprot™',
         icon: '🍹',
-        order: 13,
+        order: 14,
         condition: (data) => data.history.includes('ed5b0184-15ca-4457-adad-baca5ba9c226'),
         reward: {
             type: 'video',
@@ -263,7 +276,7 @@ window.addEventListener('PodCube:Ready', () => {
         title: 'Military Strategist',
         desc: 'Report for uniform inspection, soldier.',
         icon: '🪖',
-        order: 14,
+        order: 15,
         condition: (data) => data.history.includes('d85f55e5-7327-47d7-abbe-d64668678b7a'),
         reward: {
             type: 'image',
@@ -277,7 +290,7 @@ window.addEventListener('PodCube:Ready', () => {
         title: 'Seneschals of Scion',
         desc: 'Become fart-filled. Don\'t Teabag.',
         icon: '💨',
-        order: 15,
+        order: 16,
         condition: (data) => data.history.includes('41f484d9-31d0-4e62-8388-6ac46ad6e8bd'),
         reward: {
             type: 'audio',
@@ -301,7 +314,7 @@ window.addEventListener('PodCube:Ready', () => {
         title: 'Seneschals of Scion Art',
         desc: 'Eventually we\'ll fix the bugs.',
         icon: '🍇',
-        order: 16,
+        order: 17,
         condition: (data) => data.history.includes('41f484d9-31d0-4e62-8388-6ac46ad6e8bd'),
         reward: {
             type: 'image',
@@ -315,7 +328,7 @@ window.addEventListener('PodCube:Ready', () => {
         title: 'Missing the Kissing',
         desc: 'Remember All The Good Times in the Past',
         icon: '💋',
-        order: 17,
+        order: 18,
         condition: (data) => ['11f81f38-b627-404e-94ef-17b5b7b78516', 'c4c2238e-bb19-42ca-a9d4-c4400fa3258e', '5bed71be-b8f2-4251-8f3b-a09b5599f535'].every(id => data.history.includes(id)),
         reward: {
             type: 'audio',
@@ -339,7 +352,7 @@ window.addEventListener('PodCube:Ready', () => {
         title: 'Maybe Next Year',
         desc: 'Listen to transmissions from the P.R.I.C.',
         icon: '❌',
-        order: 18,
+        order: 19,
         condition: (data) => data.history.filter(id => {
         const ep = window.PodCube?.findEpisode?.(id);
         return ep?.origin?.includes('Innovation Campus');
@@ -356,7 +369,7 @@ window.addEventListener('PodCube:Ready', () => {
         title: 'Bottomless Peace & Serenity',
         desc: 'Dusty\'s Sponsored Wellness Break',
         icon: '🍗',
-        order: 19,
+        order: 20,
         condition: (data) => ['df644391-1afc-4876-9ee4-3107d5368ea6', '40f7f29e-357a-40cd-b46a-497e76363138', '5d56771c-cf4a-4006-a3de-bd391ed10f57', 'b7fcfdba-44e8-4457-ad07-e32bb4f1e92a'].filter(id => data.history.includes(id)).length >= 3,
         reward: {
             type: 'audio',
@@ -381,7 +394,7 @@ window.addEventListener('PodCube:Ready', () => {
         desc: 'Meet Mystical Jeremy',
         icon: '⛺',
         hiddenGoal: true,
-        order: 20,
+        order: 21,
         condition: (data) => ['5bed71be-b8f2-4251-8f3b-a09b5599f535'].every(id => data.history.includes(id)),
         reward: {
             type: 'image',
@@ -395,7 +408,7 @@ window.addEventListener('PodCube:Ready', () => {
         title: 'This is My Apprentice',
         desc: 'Meet Malchistimo',
         icon: '🪄',
-        order: 21,
+        order: 22,
         condition: (data) => data.history.includes('5bed71be-b8f2-4251-8f3b-a09b5599f535'),
         reward: {
             type: 'image',
@@ -408,7 +421,7 @@ window.addEventListener('PodCube:Ready', () => {
         id: 'circleday_song',
         title: 'We Built a Time Machine',
         desc: 'Celebrate with Ryan in the Far Future.',
-        order: 22,
+        order: 23,
         condition: (data) => data.history.includes('47f946b5-45b7-4f35-9bc6-497e81332ee9'),
         reward: {
             type: 'audio',
@@ -428,11 +441,25 @@ window.addEventListener('PodCube:Ready', () => {
     });
 
     PodUser.registerAchievement({
+        id: 'listens_25',
+        title: 'From Humble Beginnings',
+        desc: 'Listen to quite a few transmissions',
+        icon: '🏆',
+        order: 24,
+        condition: (data) => data.history.length >= 25,
+        reward: {
+            type: 'image',
+            url: './poduser/assets/images/bad%20podcube%20logo.webp',
+            caption: 'Early Concept art for podcube logo',
+        }
+    });
+
+    PodUser.registerAchievement({
         id: 'eli_music_lofi',
         title: 'LoFi Cube to Defrigulate To',
         desc: 'Keep up with the Brads',
         icon: '🎵',
-        order: 23,
+        order: 25,
         condition: (data) => ['ddc645b8-45c2-4c8d-b8f4-fb2403baa9c8', '07305a01-c665-48b5-b1f3-d5c1676c2942', 'd8496fcb-c9d3-45e2-adbb-3da3adf74192', '0f36c68c-7843-4446-95f0-535abfcb5904', 'c73f6f72-2e05-4995-95c8-052b27255489', 'e4499c0d-3364-47a6-a2f2-12d660d484c1', 'df644391-1afc-4876-9ee4-3107d5368ea6'].filter(id => data.history.includes(id)).length >= 6,
         reward: {
             type: 'audio',
@@ -456,7 +483,7 @@ window.addEventListener('PodCube:Ready', () => {
         title: 'Chris Ricepy',
         desc: 'Stunts & Stuff',
         icon: '🛹',
-        order: 24,
+        order: 26,
         condition: (data) => data.history.length >= 50,
         reward: {
             type: 'audio',
@@ -476,11 +503,24 @@ window.addEventListener('PodCube:Ready', () => {
     });
 
     PodUser.registerAchievement({
+        id: 'sprot_commercial',
+        title: 'The Leisure Liquid',
+        desc: 'Learn about Sprot™',
+        icon: '🥤',
+        order: 27,
+        condition: (data) => data.history.includes('bd5eb302-0c4e-420d-aee6-a9071e10c79a'),
+        reward: {
+            type: 'video',
+            url: './poduser/assets/video/SPROT.webm',
+        }
+    });
+
+    PodUser.registerAchievement({
         id: 'mystical_jeremy_concept',
         title: 'Freeform Secular Madrigals',
         desc: 'Keep up with Jeremy',
         icon: '🪄',
-        order: 25,
+        order: 28,
         condition: (data) => ['c4c2238e-bb19-42ca-a9d4-c4400fa3258e', '5bed71be-b8f2-4251-8f3b-a09b5599f535'].every(id => data.history.includes(id)),
         reward: {
             type: 'image',
@@ -494,7 +534,7 @@ window.addEventListener('PodCube:Ready', () => {
         title: 'Can\'t Feel My Feelings',
         desc: 'Ryan Briswold\'s Greatest Hit Song',
         icon: '🎸',
-        order: 26,
+        order: 29,
         condition: (data) => data.history.includes('c03f18bc-74a1-4df4-bcf4-9a3c74c2c8d9'),
         reward: {
             type: 'audio',
@@ -514,26 +554,42 @@ window.addEventListener('PodCube:Ready', () => {
     });
 
     PodUser.registerAchievement({
-        id: 'caughtup_intro',
-        title: 'PodCube™ Brand Kit',
-        desc: 'Listen to Every Available Transmission',
+        id: 'listens_37',
+        title: 'Feej Explorer',
+        desc: 'Listen to just shy of forty transmissions',
         icon: '🏆',
-        order: 27,
-        condition: (data) => data.history.length >= PodCube.episodes.length,
+        order: 30,
+        condition: (data) => data.history.length >= 40,
         reward: {
-            type: 'audio',
-            meta: {
-                url: './poduser/assets/audio/PodCube_Notif1.mp3',
-                title: 'PodCube™ Notification Sound',
-                description: 'Created by Eli Rexford Chambers (eliwhodoesmusic.com)',
-                model: 'Eli Rexford Chambers, Senior Harmonic Audio Resonance Technician',
-                origin: 'PodCube Research & Innovation Campus',
-                locale: 'Miami',
-                region: 'FL',
-                zone: 'USA',
-                planet: 'Earth',
-                date: '2021-10-01',
-            }
+            type: 'video',
+            url: './poduser/assets/video/PC_PROPOGANDA.webm',
+        }
+    });
+
+    PodUser.registerAchievement({
+        id: 'listens_48',
+        title: 'Whats In YOUR Mind',
+        desc: 'Listen to nearly fifty transmissions',
+        icon: '🏆',
+        order: 31,
+        condition: (data) => data.history.length >= 48,
+        reward: {
+            type: 'video',
+            url: './poduser/assets/video/PodCube%20HORUS%20Vid.webm',
+        }
+    });
+
+    PodUser.registerAchievement({
+        id: 'sprot_art',
+        title: 'Over 55,000 Vitamins & Minerals',
+        desc: 'Smooth, Powerful, Radiating, Organic, Tasty',
+        icon: '🍾',
+        order: 32,
+        condition: (data) => ['bd5eb302-0c4e-420d-aee6-a9071e10c79a', 'ed5b0184-15ca-4457-adad-baca5ba9c226'].every(id => data.history.includes(id)),
+        reward: {
+            type: 'image',
+            url: './poduser/assets/images/Wanna%20Buy%20A%20Sprot.webp',
+            caption: 'This drawing was found underneath Swartz Plander\'s desk at the P.R.I.C.',
         }
     });
 
@@ -543,7 +599,7 @@ window.addEventListener('PodCube:Ready', () => {
         desc: 'Listen to every available transmission',
         icon: '🏆',
         hiddenGoal: true,
-        order: 28,
+        order: 33,
         condition: (data) => data.history.length >= PodCube.episodes.length,
         reward: {
             type: 'audio',
@@ -568,7 +624,7 @@ window.addEventListener('PodCube:Ready', () => {
         desc: 'Listen to every available transmission',
         icon: '🏆',
         hiddenGoal: true,
-        order: 29,
+        order: 34,
         condition: (data) => data.history.length >= PodCube.episodes.length,
         reward: {
             type: 'audio',
@@ -592,7 +648,7 @@ window.addEventListener('PodCube:Ready', () => {
         title: 'That\'s Basically Improv',
         desc: 'Listen to 75 Transmissions',
         icon: '🏆',
-        order: 30,
+        order: 35,
         condition: (data) => data.history.length >= 75,
         reward: {
             type: 'audio',
@@ -616,7 +672,7 @@ window.addEventListener('PodCube:Ready', () => {
         title: 'Salvatore Solitaro\'s Legacy',
         desc: 'The Saucy Dog Himself',
         icon: '🏆',
-        order: 31,
+        order: 36,
         condition: (data) => ['10657cf3-cf31-49a2-abce-7f7ab9a6ef61', 'e7cba5b6-e17c-40ba-8297-970c5cc9dab6'].every(id => data.history.includes(id)),
         reward: {
             type: 'audio',
@@ -640,7 +696,7 @@ window.addEventListener('PodCube:Ready', () => {
         title: 'Warm Cube Summer',
         desc: 'Listen in at Wexton Industries',
         icon: '🎶',
-        order: 32,
+        order: 37,
         condition: (data) => data.history.filter(id => {
         const ep = window.PodCube?.findEpisode?.(id);
         return ep?.origin?.includes('Wexton');
@@ -663,12 +719,49 @@ window.addEventListener('PodCube:Ready', () => {
     });
 
     PodUser.registerAchievement({
+        id: 'caughtup_intro',
+        title: 'PodCube™ Brand Kit',
+        desc: 'Listen to Every Available Transmission',
+        icon: '🏆',
+        order: 38,
+        condition: (data) => data.history.length >= PodCube.episodes.length,
+        reward: {
+            type: 'audio',
+            meta: {
+                url: './poduser/assets/audio/PodCube_Notif1.mp3',
+                title: 'PodCube™ Notification Sound',
+                description: 'Created by Eli Rexford Chambers (eliwhodoesmusic.com)',
+                model: 'Eli Rexford Chambers, Senior Harmonic Audio Resonance Technician',
+                origin: 'PodCube Research & Innovation Campus',
+                locale: 'Miami',
+                region: 'FL',
+                zone: 'USA',
+                planet: 'Earth',
+                date: '2021-10-01',
+            }
+        }
+    });
+
+    PodUser.registerAchievement({
+        id: 'food_and_wine',
+        title: 'The Finer Things',
+        desc: 'Listen to transmissions about food',
+        icon: '🍷',
+        order: 39,
+        condition: (data) => ['e95f82b4-8c8a-4d0d-9040-6ae079642e73', 'b7fcfdba-44e8-4457-ad07-e32bb4f1e92a'].every(id => data.history.includes(id)),
+        reward: {
+            type: 'video',
+            url: './poduser/assets/video/PC_PROMO_FOOD%20AND%20WINE.webm',
+        }
+    });
+
+    PodUser.registerAchievement({
         id: 'frequent_visitor_5',
         title: 'PodCube™ Passenger',
         desc: 'Log into the PodCube Explorer 5 separate times.',
         icon: '🖥️',
         hiddenGoal: true,
-        order: 33,
+        order: 40,
         condition: (data) => data.visits >= 5,
         reward: {
             type: 'image',
@@ -683,7 +776,7 @@ window.addEventListener('PodCube:Ready', () => {
         desc: 'Log in to PodCube Explorer 10 separate times.',
         icon: '🖥️',
         hiddenGoal: true,
-        order: 34,
+        order: 41,
         condition: (data) => data.visits >= 10,
         reward: {
             type: 'image',
@@ -698,7 +791,7 @@ window.addEventListener('PodCube:Ready', () => {
         desc: 'Log in to PodCube™ Explorer 15 separate times.',
         icon: '🖥️',
         hiddenGoal: true,
-        order: 35,
+        order: 42,
         condition: (data) => data.visits >= 15,
         reward: {
             type: 'image',
@@ -713,7 +806,7 @@ window.addEventListener('PodCube:Ready', () => {
         desc: 'Log in to PodCube™ Explorer 20 separate times.',
         icon: '🖥️',
         hiddenGoal: true,
-        order: 36,
+        order: 43,
         condition: (data) => data.visits >= 20,
         reward: {
             type: 'image',
@@ -727,7 +820,7 @@ window.addEventListener('PodCube:Ready', () => {
         desc: 'Log in to PodCube™ Explorer 25 separate times.',
         icon: '🖥️',
         hiddenGoal: true,
-        order: 37,
+        order: 44,
         condition: (data) => data.visits >= 25,
         reward: {
             type: 'image',
@@ -742,7 +835,7 @@ window.addEventListener('PodCube:Ready', () => {
         desc: 'Log in to PodCube™ Explorer 30 separate times.',
         icon: '🖥️',
         hiddenGoal: true,
-        order: 38,
+        order: 45,
         condition: (data) => data.visits >= 30,
         reward: {
             type: 'image',
@@ -756,7 +849,7 @@ window.addEventListener('PodCube:Ready', () => {
         desc: 'Log in to PodCube™ Explorer 35 separate times.',
         icon: '🖥️',
         hiddenGoal: true,
-        order: 39,
+        order: 46,
         condition: (data) => data.visits >= 35,
         reward: {
             type: 'image',
@@ -771,7 +864,7 @@ window.addEventListener('PodCube:Ready', () => {
         desc: 'Log in to PodCube™ Explorer 40 separate times.',
         icon: '🖥️',
         hiddenGoal: true,
-        order: 40,
+        order: 47,
         condition: (data) => data.visits >= 40,
         reward: {
             type: 'image',
@@ -785,7 +878,7 @@ window.addEventListener('PodCube:Ready', () => {
         desc: 'Log in to PodCube™ Explorer 45 separate times.',
         icon: '🖥️',
         hiddenGoal: true,
-        order: 41,
+        order: 48,
         condition: (data) => data.visits >= 45,
         reward: {
             type: 'image',
@@ -800,7 +893,7 @@ window.addEventListener('PodCube:Ready', () => {
         desc: 'Log in to PodCube™ Explorer 50 separate times.',
         icon: '🖥️',
         hiddenGoal: true,
-        order: 42,
+        order: 49,
         condition: (data) => data.visits >= 50,
         reward: {
             type: 'image',
@@ -814,7 +907,7 @@ window.addEventListener('PodCube:Ready', () => {
         desc: 'Log in to PodCube™ Explorer 55 separate times.',
         icon: '🖥️',
         hiddenGoal: true,
-        order: 43,
+        order: 50,
         condition: (data) => data.visits >= 55,
         reward: {
             type: 'image',
@@ -829,7 +922,7 @@ window.addEventListener('PodCube:Ready', () => {
         desc: 'Log in to PodCube™ Explorer 60 separate times.',
         icon: '🖥️',
         hiddenGoal: true,
-        order: 44,
+        order: 51,
         condition: (data) => data.visits >= 60,
         reward: {
             type: 'image',
@@ -843,7 +936,7 @@ window.addEventListener('PodCube:Ready', () => {
         desc: 'Log in to PodCube™ Explorer 65 separate times.',
         icon: '🖥️',
         hiddenGoal: true,
-        order: 45,
+        order: 52,
         condition: (data) => data.visits >= 65,
         reward: {
             type: 'image',
@@ -858,7 +951,7 @@ window.addEventListener('PodCube:Ready', () => {
         desc: 'Log in to PodCube™ Explorer 70 separate times.',
         icon: '🖥️',
         hiddenGoal: true,
-        order: 46,
+        order: 53,
         condition: (data) => data.visits >= 70,
         reward: {
             type: 'image',
@@ -872,7 +965,7 @@ window.addEventListener('PodCube:Ready', () => {
         desc: 'Log in to PodCube™ Explorer 75 separate times.',
         icon: '🖥️',
         hiddenGoal: true,
-        order: 47,
+        order: 54,
         condition: (data) => data.visits >= 75,
         reward: {
             type: 'image',
@@ -887,7 +980,7 @@ window.addEventListener('PodCube:Ready', () => {
         desc: 'Log in to PodCube™ Explorer 80 separate times.',
         icon: '🖥️',
         hiddenGoal: true,
-        order: 48,
+        order: 55,
         condition: (data) => data.visits >= 80,
         reward: {
             type: 'image',
@@ -901,7 +994,7 @@ window.addEventListener('PodCube:Ready', () => {
         desc: 'Log in to PodCube™ Explorer 85 separate times.',
         icon: '🖥️',
         hiddenGoal: true,
-        order: 49,
+        order: 56,
         condition: (data) => data.visits >= 85,
         reward: {
             type: 'image',
@@ -916,7 +1009,7 @@ window.addEventListener('PodCube:Ready', () => {
         desc: 'Log in to PodCube™ Explorer 90 separate times.',
         icon: '🖥️',
         hiddenGoal: true,
-        order: 50,
+        order: 57,
         condition: (data) => data.visits >= 90,
         reward: {
             type: 'image',
@@ -930,7 +1023,7 @@ window.addEventListener('PodCube:Ready', () => {
         desc: 'Log in to PodCube™ Explorer 95 separate times.',
         icon: '🖥️',
         hiddenGoal: true,
-        order: 51,
+        order: 58,
         condition: (data) => data.visits >= 95,
         reward: {
             type: 'image',
@@ -945,7 +1038,7 @@ window.addEventListener('PodCube:Ready', () => {
         desc: 'Log in to PodCube™ Explorer 100 separate times.',
         icon: '🖥️',
         hiddenGoal: true,
-        order: 52,
+        order: 59,
         condition: (data) => data.visits >= 100,
         reward: {
             type: 'image',
@@ -955,11 +1048,11 @@ window.addEventListener('PodCube:Ready', () => {
 
     PodUser.registerAchievement({
         id: 'frequent_visitor_105',
-        title: 'PodCube™ Deity',
+        title: 'PodCube™ Brad',
         desc: 'Log in to PodCube™ Explorer 105 separate times.',
         icon: '🖥️',
         hiddenGoal: true,
-        order: 53,
+        order: 60,
         condition: (data) => data.visits >= 105,
         reward: {
             type: 'image',

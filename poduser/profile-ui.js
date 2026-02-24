@@ -41,6 +41,10 @@
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
+    .profile-hero .hero-btn .hero-btn-icon {
+        color: transparent;
+        text-shadow: 0 0 var(--primary);
+    }
     .profile-username {
         font-size: 1.8em;
         color: var(--primary);
@@ -808,16 +812,15 @@ window.handleNotificationClick = function(id) {
     const n = PodUser.data.notifications.find(x => x.id === id);
     if (!n) return;
 
-    // Read notifications with no payload have no action — guard is in the renderer
-    // but belt-and-suspenders here too
+    // Read notifications with no payload have no action
     if (n.read && !n.payload) return;
 
     const payload = n.payload;
 
-    // Mark as read (persists to DB, stays visible as history)
+    // Mark as read
     PodUser.markNotificationRead(id);
 
-    // Execute Navigation Payload
+    // --- SCENARIO A: ACHIEVEMENT CLICK ---
     if (payload && payload.type === 'achievement') {
         if (typeof switchTab !== 'undefined') switchTab('profile', true);
         
@@ -841,8 +844,37 @@ window.handleNotificationClick = function(id) {
                 }, 2000);
             }
         }, 100);
-    } else {
-        // Standard notification — mark read and re-render in place
+    } 
+    // --- SCENARIO B: MAINTENANCE (DE-GAUSS) CLICK ---
+    else if (payload && payload.type === 'maintenance') {
+        if (typeof switchTab !== 'undefined') switchTab('profile', true);
+        renderUserUI(PodUser.data);
+
+        setTimeout(() => {
+            const btn = document.getElementById(payload.target);
+            if (btn) {
+                // Scroll to the bottom of the page
+                btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Flash the button red to draw their eye
+                btn.style.transition = 'box-shadow 0.4s ease, transform 0.4s ease, background-color 0.4s ease, color 0.4s ease';
+                btn.style.boxShadow = '0 0 25px var(--danger)';
+                btn.style.transform = 'scale(1.05)';
+                btn.style.backgroundColor = 'var(--danger)';
+                btn.style.color = '#fff';
+                
+                // Snap it back to normal after 2 seconds
+                setTimeout(() => {
+                    btn.style.boxShadow = 'none';
+                    btn.style.transform = 'none';
+                    btn.style.backgroundColor = 'transparent';
+                    btn.style.color = 'var(--danger)';
+                }, 2000);
+            }
+        }, 100);
+    } 
+    // --- SCENARIO C: STANDARD ALERT ---
+    else {
         renderUserUI(PodUser.data);
     }
 };

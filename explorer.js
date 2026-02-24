@@ -31,8 +31,11 @@ window.addEventListener('PodCube:Ready', async () => {
         PodUser.onUpdate((data) => {
             renderUserUI(data)
             syncArchiveUI();
+            initDegradation(data.degradation);
         });
+
         renderUserUI(PodUser.data);
+        initDegradation(PodUser.data.degradation);
 
         updateStatusIndicator(`Connected to ${PodCube.FEED_TYPE.toUpperCase()} Feed`);
 
@@ -71,6 +74,16 @@ window.addEventListener('PodCube:Ready', async () => {
                 PodUser.logListen(episode.id);
                 }
             }
+        });
+
+        // SET RANDOM FILTER TO AVOID PLAYED EPISODES IN RADIO MODE
+        PodCube.setRandomPoolFilter((episodes) => {
+            const history = PodUser.data.history;
+            if (!history || history.length === 0) return episodes;
+
+            // Convert to Set once per random selection for blazing fast O(1) lookups
+            const playedSet = new Set(history);
+            return episodes.filter(ep => !playedSet.has(ep.id));
         });
 
         // 3. Restore Session & Sync State
@@ -116,11 +129,43 @@ window.addEventListener('PodCube:Ready', async () => {
         if (PodCube.nowPlaying) {
              loadEpisodeInspector(PodCube.nowPlaying);
         }
+
+        const splash = document.getElementById('startup-splash');
+        if (splash) {
+            const statusText = document.getElementById('splash-status');
+            if (statusText) statusText.textContent = "Logging in...";
+            
+            // Guarantee a minimum 600ms display time so it doesn't "flicker" if the cache is super fast
+            setTimeout(() => {
+                splash.style.opacity = '0';
+                splash.style.pointerEvents = 'none'; // Let clicks pass through instantly
+                
+                // Remove from DOM entirely after the 0.5s CSS transition finishes
+                setTimeout(() => splash.remove(), 500); 
+            }, 600);
+        }
         
     } catch (e) {
         console.error("Initialization Failed:", e);
         const ind = document.getElementById('statusIndicator');
         if(ind) ind.textContent = `System Failure: ${e.message || 'Unknown error'}`;
+
+        const splash = document.getElementById('startup-splash');
+        if (splash) {
+            const statusText = document.getElementById('splash-status');
+            if (statusText) {
+                statusText.textContent = "CONNECTION FAILED";
+                statusText.style.color = "var(--danger)";
+            }
+            const loadBar = document.getElementById('splash-loading-bar');
+            if (loadBar) loadBar.style.display = 'none';
+            
+            // Let them see the error, then fade out so they can see the main UI's error state
+            setTimeout(() => {
+                splash.style.opacity = '0';
+                splash.style.pointerEvents = 'none';
+            }, 2500);
+        }
     }
 });
 
