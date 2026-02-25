@@ -1,5 +1,5 @@
 // BUMPED TO v2 to force users to download the new caching rules!
-const CACHE_NAME = 'podcube-explorer-v3';
+const CACHE_NAME = 'podcube-explorer-v3.1';
 
 // Detect if we are running locally
 const isLocalhost = Boolean(
