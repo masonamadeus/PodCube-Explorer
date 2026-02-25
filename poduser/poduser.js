@@ -17,6 +17,7 @@ class PodUserEngine {
             games:         {},   // { gameId: highScore }
             punchcards:    0,    // count of printed punchcards
             punchcardExport: 0, // count of exported punchcards
+            punchcardImport: 0, // count of IMPORTED punchcards
             achievements:  [],   // unlocked achievement IDs
             notifications: [],    // { id, title, body, read, timestamp }
             degradation: 0,
@@ -41,6 +42,18 @@ class PodUserEngine {
                 this.db = e.target.result;
                 await this._load();
 
+                // MIGRATE LONG IDS TO NANO ONES (probably just for me)
+                let migrated = false;
+                this.data.history = this.data.history.map(id => {
+                    if (id.length > 10) { // It's an old UUID!
+                        migrated = true;
+                        return window.PodCube.findEpisode(id)?.nanoId || id;
+                    }
+                    return id;
+                });
+
+                if (migrated) await this.save();
+
                 if (!sessionStorage.getItem('podcube_session_logged')) {
                     this.data.visits += 1;
                     this.data.degradation = (this.data.degradation || 0) + 1;
@@ -52,14 +65,6 @@ class PodUserEngine {
                             `Welcome, ${this.data.username}. Your activity is now being monitored by Brigistics for quality assurance. Please begin reviewing the available transmissions.\nThere are silent activities available on the "Interactive" tab to keep your hands busy while you listen.\nYou have also been granted access to print and share PodCube™ PunchCards.\nClick or tap this Alert to clear it.`
                         );
                     }
-                }
-
-                if (this.data.degradation >= 100) {
-                    this._pushNotification(
-                        'CRITICAL: TEMPORAL DESYNC',
-                        'Terminal has exceeded maximum safe temporal exposure limits. Interface corruption is critical. Please navigate to your Personnel Record (My Profile) and initiate a DE-GAUSS sequence immediately.',
-                        { type: 'maintenance', target: 'btn-degauss' }
-                    );
                 }
 
                 this._checkAchievements(); // Evaluate inline
@@ -155,10 +160,12 @@ class PodUserEngine {
     // ACTION HOOKS (Fixed Race Conditions)
     // ─────────────────────────────────────────────────────────────
 
-    async logListen(episodeId) {
-        if (!episodeId) return; // Prevent logging undefined DOM events
-        if (!this.data.history.includes(episodeId)) {
-            this.data.history.push(episodeId);
+    async logListen(nanoId) {
+        if (!nanoId) return; // Prevent logging undefined DOM events
+
+        this.addTemporalExposure(1);
+        if (!this.data.history.includes(nanoId)) {
+            this.data.history.push(nanoId);
             this._checkAchievements(); 
             await this.save(); 
         }
@@ -166,6 +173,7 @@ class PodUserEngine {
 
     async logGameScore(gameId, score) {
         const best = this.data.games[gameId] || 0;
+        this.addTemporalExposure(1);
         if (score > best) {
             this.data.games[gameId] = score;
             this._checkAchievements();
@@ -174,13 +182,22 @@ class PodUserEngine {
     }
 
     async logPunchcardPrinted() {
+        this.addTemporalExposure(1);
         this.data.punchcards += 1;
         this._checkAchievements();
         await this.save();
     }
 
     async logPunchcardExport() {
+        this.addTemporalExposure(1);
         this.data.punchcardExport += 1;
+        this._checkAchievements();
+        await this.save();
+    }
+
+    async logPunchcardImport(){
+        this.addTemporalExposure(1);
+        this.data.punchcardImport += 1;
         this._checkAchievements();
         await this.save();
     }
@@ -194,24 +211,30 @@ class PodUserEngine {
     }
 
     _checkAchievements() {
+        // Create an evaluation context that includes our helper
+        const evalContext = {
+            ...this.data,
+            hasListened: (id) => {
+                const ep = window.PodCube.findEpisode(id);
+                return ep ? this.data.history.includes(ep.nanoId) : false;
+            }
+        };
+
         for (const ach of this.achievements) {
             if (this.data.achievements.includes(ach.id)) continue;
 
             try {
-                if (ach.condition(this.data)) {
+                // Pass evalContext instead of this.data
+                if (ach.condition(evalContext)) {
                     this.data.achievements.push(ach.id);
                     
-                    // Show the Perk Title in the header, and the Description in the body
                     this._pushNotification(
                         `NEW PERK: ${ach.title}`, 
                         ach.desc, 
                         { type: 'achievement', id: ach.id }
                     );
                     
-                    this._triggerOSNotification(
-                        `NEW PERK: ${ach.title}`, 
-                        ach.desc
-                    );
+                    this._triggerOSNotification(`NEW PERK: ${ach.title}`, ach.desc);
                 }
             } catch (e) {
                 console.warn(`[PodUser] Condition check skipped for "${ach.id}":`, e.message);
@@ -258,9 +281,9 @@ class PodUserEngine {
     // NOTIFICATIONS
     // ─────────────────────────────────────────────────────────────
 
-    addNotification(title, body, payload = null) {
+    async addNotification(title, body, payload = null) {
         this._pushNotification(title, body, payload);
-        this.save();
+        await this.save();
     }
 
     _pushNotification(title, body, payload = null) {
@@ -288,19 +311,19 @@ class PodUserEngine {
         }
     }
 
-    markNotificationRead(id) {
+    async markNotificationRead(id) {
         const n = this.data.notifications.find(x => x.id === id);
         if (n && !n.read) {
             n.read = true;
-            this.save();
+            await this.save();
         }
     }
 
-    markAllNotificationsRead() {
+    async markAllNotificationsRead() {
         const anyUnread = this.data.notifications.some(n => !n.read);
         if (anyUnread) {
             this.data.notifications.forEach(n => { n.read = true; });
-            this.save();
+            await this.save();
         }
     }
 
@@ -317,6 +340,27 @@ class PodUserEngine {
     _triggerOSNotification(title, body) {
         if ('Notification' in window && Notification.permission === 'granted') {
             new Notification(title, { body, icon: './PODCUBE.png' });
+        }
+    }
+
+    async addTemporalExposure(amount = 1) {
+        const oldVal = this.data.degradation || 0;
+        this.data.degradation = oldVal + amount;
+
+        // If they JUST crossed the critical threshold mid-session, alert them!
+        if (oldVal < 100 && this.data.degradation >= 100) {
+            this.addNotification(
+                'CRITICAL: TEMPORAL DESYNC',
+                'Terminal has exceeded maximum safe temporal exposure limits. Interface corruption is critical. Please navigate to your Personnel Record (My Profile) and initiate a DE-GAUSS sequence immediately.',
+                { type: 'maintenance', target: 'btn-degauss' }
+            );
+        }
+
+        await this.save();
+
+        // Live-update the UI degradation without needing a page refresh!
+        if (typeof updateDegradation === 'function') {
+            updateDegradation(this.data.degradation);
         }
     }
 

@@ -51,14 +51,29 @@ const log = {
 // ==========================================
 
 // FNV-1a Hash Implementation: Reduces collision risk for short IDs
+// URL-Safe Base64 Character Set
+const B64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+
+// 30-Bit Hash: 1.07 Billion combinations, mapped perfectly to 5 B64 characters
 function fnv1aHash(str) {
     let hash = 0x811c9dc5;
     for (let i = 0; i < str.length; i++) {
         hash ^= str.charCodeAt(i);
         hash = Math.imul(hash, 0x01000193);
     }
-    // Return unsigned 32-bit hex, truncated to 5 chars (20 bits)
-    return (hash >>> 0).toString(16).padStart(8, '0').substring(0, 5);
+    
+    // Mask down to exactly 30 bits
+    hash = (hash >>> 0) & 0x3FFFFFFF; 
+
+    // Map those 30 bits directly into 5 Base64 characters (6 bits each)
+    let nano = '';
+    nano += B64_CHARS[(hash >> 24) & 0x3F];
+    nano += B64_CHARS[(hash >> 18) & 0x3F];
+    nano += B64_CHARS[(hash >> 12) & 0x3F];
+    nano += B64_CHARS[(hash >> 6) & 0x3F];
+    nano += B64_CHARS[hash & 0x3F];
+    
+    return nano;
 }
 
 
@@ -586,6 +601,7 @@ class PodCubeEngine {
         // Feed Cache
         this._lastFetchedUrl = null; 
         this._lastFetchTime = null; 
+        this._episodeMap = new Map();
         
         // Audio State
         this._audio = new Audio();
@@ -750,19 +766,9 @@ class PodCubeEngine {
      */
     findEpisode(id) {
         if (!id) return null;
-        if (typeof id === 'object') return id; // Already an object
-
-        // 1. Try exact match (Fastest)
-        let match = this.episodes.find(e => e.id === id);
-        if (match) return match;
-
-        // 2. Try fuzzy match (Handles RSS URL vs JSON UUID differences)
-        const clean = FeedNormalizer.extractGUID(id);
-        if (clean) {
-            match = this.episodes.find(e => e.id.includes(clean));
-        }
+        if (typeof id === 'object') return id; 
         
-        return match || null;
+        return this._episodeMap.get(id) || null;
     }
 
     /**
@@ -855,6 +861,24 @@ class PodCubeEngine {
             if (this.episodes.length === 0) {
                 throw new Error(`No valid episodes found in ${format.toUpperCase()} feed`);
             }
+
+            // Nano-GUID Collision check && add to episode map
+            const idSet = new Set();
+            for (const ep of this.episodes) {
+                if (idSet.has(ep.nanoId)) {
+                    log.error(`CRITICAL: Nano-GUID Collision detected on ID: ${ep.nanoId}! Episodes will overwrite each other in Punchcards.`);
+                }
+                idSet.add(ep.nanoId);
+
+                // Add episodes to set for faster lookup (achievements, etc.)
+                this._episodeMap.set(ep.id, ep);
+                this._episodeMap.set(ep.nanoId, ep);
+                const clean = FeedNormalizer.extractGUID(ep.id);
+                if (clean) this._episodeMap.set(clean, ep);
+            }
+
+
+            
 
             log.info(`Parsed ${this.episodes.length} episodes from ${format.toUpperCase()} feed`);
         } catch (e) {
@@ -1956,58 +1980,29 @@ class PodCubeEngine {
     // --- PLAYLIST SHARING / EXPORT ---
 
     /**
-     * COMPRESS: Nano-GUID v7 (20-bit Stream)
-     * Packs 5 hex chars (20 bits) per episode into a continuous byte stream.
-     * Safety: 1,048,576 combinations (0.4% collision risk @ 100 eps).
-     * Efficiency: ~3.5 chars per episode.
+     * Compress Nano-GUIDs
      */
     _compressPlaylist(name, episodes) {
         if (!name || !episodes || episodes.length === 0) return null;
         try {
-            // 1. Enforce 32 char limit
             const safeName = name.trim().substring(0, 32); 
-
-            // 2. Plaintext Encoding (URL Safe)
-            // We MUST escape dots (.) because we use dot as the delimiter in the final string
-            // encodeURIComponent leaves dots alone, so we handle them manually.
             const encodedName = encodeURIComponent(safeName).replace(/\./g, '%2E');
 
-            // 3. Build Hex Stream (ID Packing)
-            let hexStream = episodes
+            // Concatenate the 5-character B64 strings directly
+            const ids64 = episodes
                 .filter(ep => ep && ep.nanoId)
                 .map(ep => ep.nanoId)
                 .join('');
-            if (hexStream.length === 0) return null;
-
-            if (hexStream.length % 2 !== 0) hexStream += '0';
             
-            const bytes = new Uint8Array(hexStream.length / 2);
-            for (let i = 0; i < hexStream.length; i += 2) {
-                bytes[i / 2] = parseInt(hexStream.substr(i, 2), 16);
-            }
-
-            let binary = '';
-            for (let i = 0; i < bytes.byteLength; i++) {
-                binary += String.fromCharCode(bytes[i]);
-            }
-            
-            // ID payload uses Base64URL
-            const ids64 = btoa(binary)
-                .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            if (ids64.length === 0) return null;
 
             return `${encodedName}.${ids64}`;
-
         } catch (e) {
             log.error("Compression failed:", e);
             return null;
         }
     }
 
-    
-
-    /**
-     * DECOMPRESS: Unpacks 20-bit stream & Plaintext Titles
-     */
     _decompressPlaylist(code) {
         if (!code) return null;
         try {
@@ -2016,27 +2011,13 @@ class PodCubeEngine {
 
             const [namePayload, ids64] = parts;
             
-            // 1. Decode Name (Plaintext)
             let name = namePayload;
-            try {
-                name = decodeURIComponent(namePayload);
-            } catch (e) {
-                // If decoding fails (rare), keep the raw string
-                console.warn("Name decode failed, using raw");
-            }
+            try { name = decodeURIComponent(namePayload); } catch (e) {}
 
-            // 2. Decode IDs
-            const binary = atob(ids64.replace(/-/g, '+').replace(/_/g, '/'));
-            let hexStream = "";
-            for (let i = 0; i < binary.length; i++) {
-                hexStream += binary.charCodeAt(i).toString(16).padStart(2, '0');
-            }
-
+            // Since every ID is exactly 5 characters, just slice the string up!
             const shortIds = [];
-            const CHUNK = 5;
-            for (let i = 0; i < hexStream.length; i += CHUNK) {
-                const chunk = hexStream.substr(i, CHUNK);
-                if (chunk.length === CHUNK) shortIds.push(chunk);
+            for (let i = 0; i < ids64.length; i += 5) {
+                shortIds.push(ids64.substr(i, 5));
             }
 
             return { name, shortIds };
@@ -2057,9 +2038,8 @@ class PodCubeEngine {
 
         const foundEpisodes = [];
         data.shortIds.forEach(shortId => {
-            // O(1) Lookup speed improvement
-            // We match against the pre-calculated nanoId instead of regexing on the fly
-            const match = this.episodes.find(ep => ep.nanoId === shortId.toLowerCase());
+            // Use our O(1) Map lookup! No .toLowerCase() because Base64 is case-sensitive.
+            const match = this.findEpisode(shortId);
             if (match) foundEpisodes.push(match);
         });
 
@@ -2501,7 +2481,7 @@ async restoreSession() {
 
         // Reconstruct Queue
         const queue = state.queue
-            .map(id => this.episodes.find(e => e.id === id))
+            .map(id => this.findEpisode(id))
             .filter(Boolean);
 
         if (queue.length === 0) {

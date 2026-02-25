@@ -1,10 +1,11 @@
-const CACHE_NAME = 'podcube-explorer-v1';
+// BUMPED TO v2 to force users to download the new caching rules!
+const CACHE_NAME = 'podcube-explorer-v3';
 
 // Detect if we are running locally
 const isLocalhost = Boolean(
-  self.location.hostname === 'localhost' ||
-  self.location.hostname === '[::1]' ||
-  self.location.hostname.match(/^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/)
+    self.location.hostname === 'localhost' ||
+    self.location.hostname === '[::1]' ||
+    self.location.hostname.match(/^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/)
 );
 
 self.addEventListener('install', (event) => {
@@ -13,11 +14,41 @@ self.addEventListener('install', (event) => {
         event.waitUntil(
             caches.open(CACHE_NAME).then((cache) => {
                 return cache.addAll([
+                    // ROOT
                     './',
                     './index.html',
                     './explorer.css',
                     './explorer.js',
-                    './PODCUBE.png'
+                    './PodCube.js',
+                    './degradation.js',
+                    './playlist-sharing.js',
+
+                    // PODUSER
+                    './poduser/poduser.js',
+                    './poduser/profile-ui.js',
+                    './poduser/achievements.js',
+                    './poduser/bingbong_hilo-3.mp3',
+
+                    // INTERACTIVE
+                    './interactive/interactive.js',
+                    './interactive/interactive.css',
+                    './interactive/games/active-games.json',
+
+                    // INTERACTIVE => BASE GAMES
+                    './interactive/games/quiz.js',
+                    './interactive/games/snake.js',
+                    './interactive/games/datadash.js',
+                    './interactive/games/bouncingbox.js',
+
+                    // LIBRARIES
+                    './libraries/html2canvas.min.js',
+                    './libraries/jsQR.min.js',
+                    './libraries/qrcode.min.js',
+                    
+                    // IMAGES
+                    './favicon.png',
+                    './PODCUBE.png',
+                    './CLEAN-LOGO.png'
                 ]);
             })
         );
@@ -32,13 +63,30 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Production Mode: Cache-first, fallback to network
+    const url = new URL(event.request.url);
+
+    // ===================================================================
+    // THE FIREWALL: Exclude External Traffic (Pinecast, Analytics, Audio)
+    // ===================================================================
+    // If the request is NOT going to our own domain, bypass the cache entirely.
+    if (!url.origin.includes(self.location.hostname)) {
+        event.respondWith(fetch(event.request));
+        return;
+    }
+
+    // ===================================================================
+    // INTERNAL TRAFFIC: Cache-first, fallback to network + Dynamic Caching
+    // ===================================================================
     event.respondWith(
         caches.match(event.request).then((cachedResponse) => {
-            return cachedResponse || fetch(event.request).then((response) => {
-                // Optionally cache new successful requests here
-                return response;
-            });
+            // Serve the App Shell from cache if we have it
+            if (cachedResponse) {
+                return cachedResponse;
+            }
+
+            // Otherwise, fetch it normally (The browser will automatically 
+            // manage its own HTTP cache for images and dynamic media here!)
+            return fetch(event.request);
         })
     );
 });

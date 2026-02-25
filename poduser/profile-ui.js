@@ -539,11 +539,9 @@ window.renameUser = function() {
         }
     };
 
-    // Defensive: remove any stale listeners before adding fresh ones
-    nameEl.removeEventListener('blur', saveRename);
-    nameEl.removeEventListener('keydown', keydownHandler);
-    nameEl.addEventListener('blur', saveRename);
-    nameEl.addEventListener('keydown', keydownHandler);
+    // Overwrite to prevent leaks??
+    nameEl.onblur = saveRename;
+    nameEl.onkeydown = keydownHandler;
 };
 
 function _renderProfileStats(userData) {
@@ -789,9 +787,9 @@ function _buildRewardHtml(ach) {
             return sectionLabel + `
             <div style="position: relative; background: #f9f9f9; border: 1px solid var(--primary-dim); border-radius: 4px; padding: 16px; margin-top: 8px; height: 140px; display: flex; flex-direction: column;">
                 <div style="white-space:pre-wrap; flex: 1; overflow-y: auto; font-size: 11px; font-family: monospace; color: #333;">${escapeHtml(ach.reward.content)}</div>
-                <button onclick="navigator.clipboard.writeText('${escapeForAttribute(ach.reward.content)}'); this.textContent='COPIED!'; setTimeout(()=>this.textContent='COPY CODE', 1500);" 
+                <button onclick="navigator.clipboard.writeText('${escapeForAttribute(ach.reward.content)}'); this.textContent='COPIED!'; setTimeout(()=>this.textContent='COPY TEXT', 1500);" 
                         style="position: absolute; top: 6px; right: 6px; font-size: 8px; font-weight: bold; font-family: 'Fustat'; padding: 4px 8px; background: var(--primary); color: #fff; border: none; border-radius: 2px; cursor: pointer; text-transform: uppercase; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    COPY CODE
+                    COPY TEXT
                 </button>
             </div>`;
         default:

@@ -461,6 +461,59 @@ body.drop-active::after {
     text-align: left;
 }
 
+/* ── FULLSCREEN LIGHTBOX (Imported from profile-ui) ─ */
+.ach-lightbox-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 999999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+.ach-lightbox-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+.ach-lightbox-content {
+    max-width: 90vw;
+    max-height: 80vh;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+    border: 3px double var(--primary);
+    background: #000;
+    transform: scale(0.95);
+    transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.ach-lightbox-overlay.active .ach-lightbox-content {
+    transform: scale(1);
+}
+.ach-lightbox-caption {
+    color: #fff;
+    font-family: "Fustat", sans-serif;
+    margin-top: 15px;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: center;
+}
+.ach-lightbox-close {
+    position: absolute;
+    top: 20px; right: 30px;
+    color: #fff;
+    font-size: 40px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    line-height: 1;
+    padding: 10px;
+    opacity: 0.7;
+}
+.ach-lightbox-close:hover { opacity: 1; }
+
 /* ── RESPONSIVE ───────────────────────────────────── */
 @media (max-width: 1100px) {
     .app { grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr 1fr; height: auto; }
@@ -1004,6 +1057,60 @@ function resolvePreviewUrl(url) {
     return resolved;
 }
 
+/** Open the Fullscreen Lightbox */
+window.openAchLightbox = function(type, url, caption) {
+    let overlay = document.getElementById('ach-lightbox');
+    
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'ach-lightbox';
+        overlay.className = 'ach-lightbox-overlay';
+        overlay.innerHTML = `
+            <button class="ach-lightbox-close" onclick="closeAchLightbox()">×</button>
+            <div id="ach-lightbox-body" style="display:flex; flex-direction:column; align-items:center;"></div>
+        `;
+        document.body.appendChild(overlay);
+        
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay || e.target === document.getElementById('ach-lightbox-body')) {
+                closeAchLightbox();
+            }
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && document.getElementById('ach-lightbox')?.classList.contains('active')) {
+                closeAchLightbox();
+            }
+        });
+    }
+
+    const body = document.getElementById('ach-lightbox-body');
+    body.innerHTML = ''; 
+
+    if (type === 'image') {
+        body.innerHTML = `<img src="${url}" class="ach-lightbox-content" style="object-fit:contain;">`;
+    } else if (type === 'video') {
+        body.innerHTML = `<video src="${url}" class="ach-lightbox-content" controls autoplay style="object-fit:contain;"></video>`;
+    }
+
+    if (caption && caption !== 'undefined' && caption.trim() !== '') {
+        body.innerHTML += `<div class="ach-lightbox-caption">${escapeHtml(caption)}</div>`;
+    }
+
+    void overlay.offsetWidth;
+    overlay.classList.add('active');
+};
+
+/** Close Lightbox and pause video */
+window.closeAchLightbox = function() {
+    const overlay = document.getElementById('ach-lightbox');
+    if (overlay) {
+        overlay.classList.remove('active');
+        const vid = overlay.querySelector('video');
+        if (vid) vid.pause();
+    }
+};
+
 // ─────────────────────────────────────────────────────────────────
 // VIRTUAL LIBRARY MANAGEMENT & DECOMPILATION
 // ─────────────────────────────────────────────────────────────────
@@ -1147,14 +1254,15 @@ function parseExpression(expr) {
     if ((m = expr.match(/^data\.history\.length\s*>=\s*(\d+)$/))) {
         return { type: 'listen_count', params: { n: m[1] } };
     }
-    if ((m = expr.match(/^data\.history\.includes\(\s*'(.*)'\s*\)$/))) {
+    // Updated to support parsing BOTH old (.history.includes) and new (.hasListened) formats
+    if ((m = expr.match(/^data\.(?:history\.includes|hasListened)\(\s*'(.*)'\s*\)$/))) {
         return { type: 'specific_episode', params: { id: m[1].replace(/\\'/g, "'") } };
     }
-    if ((m = expr.match(/^\[(.*)\]\.every\(id\s*=>\s*data\.history\.includes\(id\)\)$/))) {
+    if ((m = expr.match(/^\[(.*)\]\.every\(id\s*=>\s*data\.(?:history\.includes|hasListened)\(id\)\)$/))) {
         let ids = m[1].split(',').map(s => s.trim().replace(/^'|'$/g, '').replace(/\\'/g, "'")).join('\n');
         return { type: 'episode_set_all', params: { ids } };
     }
-    if ((m = expr.match(/^\[(.*)\]\.filter\(id\s*=>\s*data\.history\.includes\(id\)\)\.length\s*>=\s*(\d+)$/))) {
+    if ((m = expr.match(/^\[(.*)\]\.filter\(id\s*=>\s*data\.(?:history\.includes|hasListened)\(id\)\)\.length\s*>=\s*(\d+)$/))) {
         let ids = m[1].split(',').map(s => s.trim().replace(/^'|'$/g, '').replace(/\\'/g, "'")).join('\n');
         return { type: 'episode_set_any', params: { n: m[2], ids } };
     }
@@ -1166,6 +1274,12 @@ function parseExpression(expr) {
     }
     if ((m = expr.match(/^data\.punchcardExport\s*>=\s*(\d+)$/))) {
         return { type: 'punchcard_export_count', params: { n: m[1] } };
+    }
+    if ((m = expr.match(/^data\.punchcardImport\s*>=\s*(\d+)$/))) {
+        return { type: 'punchcard_import_count', params: { n: m[1] } };
+    }
+    if ((m = expr.match(/^\(data\.degradation\s*\|\|\s*0\)\s*>=\s*(\d+)$/))) {
+        return { type: 'degradation_level', params: { n: m[1] } };
     }
     if ((m = expr.match(/^data\.visits\s*>=\s*(\d+)$/))) {
         return { type: 'visit_count', params: { n: m[1] } };
@@ -1181,6 +1295,16 @@ function parseExpression(expr) {
     }
     if ((m = expr.match(/^new Date\(\)\.getDay\(\)\s*===\s*(\d+)$/))) {
         return { type: 'day_of_week', params: { day: m[1] } };
+    }
+    if ((m = expr.match(/^data\.achievements\.includes\(\s*'(.*)'\s*\)$/))) {
+        return { type: 'achievement_unlocked', params: { id: m[1].replace(/\\'/g, "'") } };
+    }
+    if ((m = expr.match(/^\[(.*)\]\.every\(id\s*=>\s*data\.achievements\.includes\(id\)\)$/))) {
+        let ids = m[1].split(',').map(s => s.trim().replace(/^'|'$/g, '').replace(/\\'/g, "'")).join('\n');
+        return { type: 'achievement_set_all', params: { ids } };
+    }
+    if ((m = expr.match(/^data\.achievements\.length\s*>=\s*(\d+)$/))) {
+        return { type: 'achievement_count', params: { n: m[1] } };
     }
     
     return { type: 'custom', params: { expr: expr } };
@@ -1466,7 +1590,7 @@ const COND_TYPES = {
         fields: [
             { key: 'id', label: 'Episode ID', type: 'text', isEpisodeId: true, single: true }
         ],
-        generate: (p) => `data.history.includes(${jss(p.id || 'EPISODE-ID')})`
+        generate: (p) => `data.hasListened(${jss(p.id || 'EPISODE-ID')})`
     },
     episode_set_all: {
         label: 'All of these episodes listened',
@@ -1477,7 +1601,7 @@ const COND_TYPES = {
         generate: (p) => {
             const ids = parseIdList(p.ids);
             if (!ids.length) return `/* Add episode IDs above */`;
-            return `[${ids.map(jss).join(', ')}].every(id => data.history.includes(id))`;
+            return `[${ids.map(jss).join(', ')}].every(id => data.hasListened(id))`;
         }
     },
     episode_set_any: {
@@ -1491,7 +1615,7 @@ const COND_TYPES = {
             const ids = parseIdList(p.ids);
             const n   = parseInt(p.n) || 1;
             if (!ids.length) return `/* Add episode IDs above */`;
-            return `[${ids.map(jss).join(', ')}].filter(id => data.history.includes(id)).length >= ${n}`;
+            return `[${ids.map(jss).join(', ')}].filter(id => data.hasListened(id)).length >= ${n}`;
         }
     },
     origin_count: {
@@ -1530,6 +1654,22 @@ const COND_TYPES = {
         ],
         generate: (p) => `data.punchcardExport >= ${parseInt(p.n) || 1}`
     },
+    punchcard_import_count: {
+        label: 'Punchcards Imported',
+        tip: 'data.punchcardImport increments when a punchcard code is successfully read and inserted.',
+        fields: [
+            { key: 'n', label: 'Minimum imported', placeholder: '1', type: 'number' }
+        ],
+        generate: (p) => `data.punchcardImport >= ${parseInt(p.n) || 1}`
+    },
+    degradation_level: {
+        label: 'Terminal Degradation',
+        tip: 'data.degradation goes up every login. Reaches critical desync at 100.',
+        fields: [
+            { key: 'n', label: 'Minimum degradation', placeholder: '100', type: 'number' }
+        ],
+        generate: (p) => `(data.degradation || 0) >= ${parseInt(p.n) || 100}`
+    },
     game_score: {
         label: 'Game high score',
         tip: 'data.games is an object keyed by game ID. Scores are set via PodUser.logGameScore().',
@@ -1563,6 +1703,33 @@ const COND_TYPES = {
             }
         ],
         generate: (p) => `new Date().getDay() === ${parseInt(p.day) || 0}`
+    },achievement_unlocked: {
+        label: 'Prerequisite: Single Achievement',
+        tip: 'Requires another specific achievement to be unlocked first.',
+        fields: [
+            { key: 'id', label: 'Achievement ID', placeholder: 'first_transmission', type: 'text' }
+        ],
+        generate: (p) => `data.achievements.includes(${jss(p.id || 'ACHIEVEMENT-ID')})`
+    },
+    achievement_set_all: {
+        label: 'Prerequisite: Multiple Achievements',
+        tip: 'Requires all listed achievements to be unlocked first. One ID per line.',
+        fields: [
+            { key: 'ids', label: 'Achievement IDs (one per line)', type: 'textarea' }
+        ],
+        generate: (p) => {
+            const ids = parseIdList(p.ids);
+            if (!ids.length) return `/* Add achievement IDs above */`;
+            return `[${ids.map(jss).join(', ')}].every(id => data.achievements.includes(id))`;
+        }
+    },
+    achievement_count: {
+        label: 'Total Achievements Unlocked',
+        tip: 'Requires the user to have unlocked a certain total number of perks/achievements.',
+        fields: [
+            { key: 'n', label: 'Minimum unlocked', placeholder: '10', type: 'number' }
+        ],
+        generate: (p) => `data.achievements.length >= ${parseInt(p.n) || 1}`
     },
     custom: {
         label: 'Custom expression',
@@ -1990,8 +2157,12 @@ function updatePreview(icon, title, desc, hidden) {
             if (url) {
                 const safeUrl = escapeForAttribute(resolvePreviewUrl(url));
                 mediaHtml = `
-                    <div style="height: 140px; background: #f0f0f0; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; margin-bottom: 8px;">
+                    <div onclick="openAchLightbox('image', '${safeUrl}', '${escapeForAttribute(cap || '')}')" 
+                         style="height: 140px; background: #f0f0f0; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; cursor: zoom-in; position: relative;" title="View Fullscreen">
                         <img src="${safeUrl}" style="width: 100%; height: 100%; object-fit: cover;">
+                        <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0">
+                            <span style="font-size: 24px; color:transparent; text-shadow: 0 0 var(--primary);">🔍</span>
+                        </div>
                     </div>
                     ${cap ? `<div style="font-family: 'Fustat', sans-serif; font-size: 9px; text-transform: uppercase; color: var(--primary); letter-spacing: 0.04em;">${escapeHtml(cap)}</div>` : ''}
                 `;
@@ -2001,8 +2172,9 @@ function updatePreview(icon, title, desc, hidden) {
             if (url) {
                 const safeUrl = escapeForAttribute(resolvePreviewUrl(url));
                 mediaHtml = `
-                    <div style="height: 140px; background: #000; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative;">
-                        <video src="${safeUrl}" style="width: 100%; height: 100%; object-fit: cover;" controls playsinline></video>
+                    <div onclick="openAchLightbox('video', '${safeUrl}', '')" 
+                         style="height: 140px; background: #000; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; cursor: zoom-in;" title="View Fullscreen">
+                        <video src="${safeUrl}" style="width: 100%; height: 100%; object-fit: cover; pointer-events: none;" muted playsinline></video>
                         <div style="position: absolute; pointer-events: none; display: flex; align-items: center; justify-content: center;">
                             <svg viewBox="0 0 24 24" width="40" height="40" fill="#fff" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
                                 <path d="M8 5v14l11-7z"/>

@@ -99,6 +99,10 @@ function initDegradation(visits) {
         document.body.appendChild(overlay);
     }
 
+    updateDegradation(visits)
+}
+
+function updateDegradation(visits){
     applyTemporalMetrics(visits);
     startTemporalTextGlitches(visits);
 }

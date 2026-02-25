@@ -71,7 +71,7 @@ window.addEventListener('PodCube:Ready', async () => {
         PodCube.on('ended', (episode) => {
             if (episode && window.PodUser) {
                 if (!episode._excludeFromExport && !episode._internal){
-                PodUser.logListen(episode.id);
+                PodUser.logListen(episode.nanoId);
                 }
             }
         });
@@ -83,7 +83,7 @@ window.addEventListener('PodCube:Ready', async () => {
 
             // Convert to Set once per random selection for blazing fast O(1) lookups
             const playedSet = new Set(history);
-            return episodes.filter(ep => !playedSet.has(ep.id));
+            return episodes.filter(ep => !playedSet.has(ep.nanoId));
         });
 
         // 3. Restore Session & Sync State
@@ -607,13 +607,19 @@ function renderArchiveResults(results) {
 function syncArchiveUI() {
     const queueIds = new Set(PodCube.queueItems.map(ep => ep.id));
     const playingId = PodCube.nowPlaying?.id;
+    
+    // This Set contains 5-character Nano-GUIDs
     const historyIds = window.PodUser ? new Set(window.PodUser.data.history) : new Set();
 
     const cards = document.querySelectorAll('#archiveList .ep-card, #inspectorRelated .related-ep-card');
     
     cards.forEach(card => {
-        const id = card.dataset.epId;
+        const id = card.dataset.epId; // This is the Long UUID
         if (!id) return;
+
+        // Grab the Nano-ID for history matching
+        const ep = PodCube.findEpisode(id);
+        const nanoId = ep ? ep.nanoId : null;
 
         const queueBtn = card.querySelector('.btn-queue');
 
@@ -631,7 +637,8 @@ function syncArchiveUI() {
             card.classList.remove('selected');
         }
 
-        if (historyIds.has(id)) {
+        // Check against the nanoId, not the Long UUID
+        if (nanoId && historyIds.has(nanoId)) {
             card.classList.add('is-played');
         } else {
             card.classList.remove('is-played');
@@ -1468,6 +1475,11 @@ function handleIncomingPlaylistCode(rawInput) {
             animatePunchcardIssue(playlist);
         }, 100);
         
+
+        if (window.PodUser) {
+            window.PodUser.logPunchcardImport();
+        }
+
         logCommand(`// Punchcard accepted. "${finalName}" registered.`);
         return true;
     } else {
@@ -2424,7 +2436,6 @@ document.addEventListener('keydown', (e) => {
 
 /**
  * Generate a QR code and append to container
- * FIXES: QRCode library requires container as first parameter
  */
 function generateQRCode(container, text, size = 200) {
     if (!container) return false;
@@ -2441,7 +2452,7 @@ function generateQRCode(container, text, size = 200) {
             height: size,
             colorDark: '#000000',
             colorLight: '#ffffff',
-            correctLevel: QRCode.CorrectLevel.H
+            correctLevel: QRCode.CorrectLevel.M
         });
         return true;
     } catch (e) {
