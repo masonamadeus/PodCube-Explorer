@@ -1640,7 +1640,7 @@
     <!-- INSPECTOR TEMPLATES -->
     <template id="tmpl-inspector-view">
         <div class="inspector-header-wrapper">
-            <div class="inspector-top-bar" style="display:flex; justify-content:space-between; align-items:center; padding-bottom:15px;">
+            <div class="inspector-top-bar" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed var(--primary-dim);margin-bottom: 7px; padding-bottom:7px;">
                 <div style="display:flex; gap:5px;" class="insp-nav-buttons">
                     <button class="icon-btn insp-btn-prev" style="color:var(--primary);"><< PREV</button>
                     <button class="icon-btn insp-btn-next-nav" style="color:var(--primary);">NEXT >></button>
@@ -1682,6 +1682,12 @@
                         <span class="inspector-header-label">Type</span>
                         <span class="inspector-header-value insp-type"></span>
                     </div>
+
+                    <div class="inspector-header-item">
+                        <span class="inspector-header-label">Tags</span>
+                        <span class="inspector-header-value insp-tag-count"></span>
+                    </div>
+
                     <div class="inspector-header-item">
                         <span class="inspector-header-label">Integrity</span>
                         <span class="inspector-header-value insp-integrity"></span>
@@ -1694,10 +1700,7 @@
                     
                     
 
-                    <div class="inspector-header-item">
-                        <span class="inspector-header-label">Tags</span>
-                        <span class="inspector-header-value insp-tag-count"></span>
-                    </div>
+                  
 
                     
 

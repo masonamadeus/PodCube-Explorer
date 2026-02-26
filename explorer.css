@@ -527,7 +527,9 @@ h1 {
     display: flex;
     gap: 8px;
     flex-shrink: 0;
-    margin-top: 20px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--primary-dim);
     justify-content: end;
 }
 
@@ -541,7 +543,6 @@ h1 {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
     gap: 5px 5px;
-    border-top: 1px solid #eee;
     padding-top:5px;
 }
 
