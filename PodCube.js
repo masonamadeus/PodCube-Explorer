@@ -1,4 +1,3 @@
-
 /**
  * PodCube.js - The Complete Engine
  * Middleware between raw podcast feeds and public-facing applications.
@@ -616,6 +615,7 @@ class PodCubeEngine {
         // Queue and playback state
         this._queue = [];
         this._queueIndex = -1;
+        this._queueDurationCache = null;
         this._stopAfterCurrent = false;
         this._volume = 1.0;
         this._radioMode = false;
@@ -670,16 +670,30 @@ class PodCubeEngine {
             this._emit('pause', this.nowPlaying);
         });
         
-        // Throttled save for timeupdate (every ~5 seconds)
+        // Throttled save + position sync for timeupdate (every ~5 seconds).
+        // _updateMediaPosition() MUST be called here - without regular position
+        // state updates the OS considers playback stale and disables lock-screen
+        // resume controls, which is the root cause of "cannot unpause on mobile".
         this._audio.addEventListener('timeupdate', () => {
             const now = Date.now();
             if (now - this.lastSave > 5000) {
                 this._saveSession();
+                this._updateMediaPosition();
                 this.lastSave = now;
             }
 
             // Emit status as usual
-            this._emit('timeupdate', this.status);
+            const ct = this._audio.currentTime;
+            const dur = this._audio.duration || 0;
+            this._emit('timeupdate', {
+                playing: !this._audio.paused,
+                time: ct,
+                duration: dur,
+                percent: dur ? (ct / dur) * 100 : 0,
+                episodeId: this.nowPlaying?.id || null,
+                currentTimeFormatted: this._formatTime(ct),
+                durationFormatted: this._formatTime(dur),
+            });
 
             // Only run if we haven't preloaded yet
             if (this._audio.duration && !this._hasPreloadedNext) {
@@ -704,6 +718,20 @@ class PodCubeEngine {
                 episode: this.nowPlaying
             });
         });
+
+        // Sync position state with the OS as soon as duration is known for a new track.
+        // Without this the lock-screen scrubber shows 0:00 until the first seek action.
+        this._audio.addEventListener('loadedmetadata', () => {
+            this._updateMediaPosition();
+        });
+
+        this._audio.addEventListener('durationchange', () => {
+            this._updateMediaPosition();
+        });
+
+        // Register OS media controls immediately at construction time, not after feed load.
+        // This ensures handlers are always present regardless of init() timing.
+        this._initMediaSession();
     }
 
     async init(force = false) {
@@ -734,24 +762,6 @@ class PodCubeEngine {
             const format = CONFIG.FEED_TYPE === "json" ? "json" : "rss";
 
             await this._loadFromFeed(rawFeed, format);
-
-            // Media session setup
-            if ('mediaSession' in navigator) {
-                // Bind native OS controls directly to the engine's methods
-                navigator.mediaSession.setActionHandler('play', () => this.play());
-                navigator.mediaSession.setActionHandler('pause', () => this.pause());
-                navigator.mediaSession.setActionHandler('previoustrack', () => this.prev());
-                navigator.mediaSession.setActionHandler('nexttrack', () => this.next());
-                navigator.mediaSession.setActionHandler('seekbackward', () => this.skipBack());
-                navigator.mediaSession.setActionHandler('seekforward', () => this.skipForward());
-
-                navigator.mediaSession.setActionHandler('seekto', (details) => {
-                    if (details.seekTime !== undefined) {
-                        this.seek(details.seekTime);
-                        this._updateMediaPosition(); // Sync the UI back up
-                    }
-                });
-            }
 
             this.isReady = true;
             log.info(`Ready. Loaded ${this.episodes.length} episodes via ${CONFIG.FEED_TYPE.toUpperCase()}.`);
@@ -1375,9 +1385,6 @@ class PodCubeEngine {
             // We do not await 'canplay' here to keep the UI responsive.
             // HTML5 audio handles buffering automatically.
 
-            // Check token again before playing
-            if (token !== this._loadingToken) return; 
-
             if ('mediaSession' in navigator && ep) {
                 // Determine artwork: use feed image if parsed, otherwise fallback to local asset
                 const fallbackUrl = new URL('./PODCUBE.png', window.location.href).href;
@@ -1385,8 +1392,8 @@ class PodCubeEngine {
 
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: ep.title,
-                    artist: ep.model || 'PodCube™ Transmission',
-                    album: ep.location || 'Unknown Origin',
+                    artist: ep.location || 'Unknown Origin',
+                    album: ep.model || 'PodCube™ Transmission',
                     artwork: [
                         { src: artworkUrl, sizes: '512x512', type: 'image/png' },
                         { src: artworkUrl, sizes: '192x192', type: 'image/png' }
@@ -1402,6 +1409,12 @@ class PodCubeEngine {
                     this._emit('error', { episode: ep, error: playErr });
                 }
             }
+
+            // Check token 
+            if (token !== this._loadingToken){
+                this._isLoading = false;
+                return;
+            }  
             
             this._isLoading = false;
             this._emit('track', ep);
@@ -1437,6 +1450,85 @@ class PodCubeEngine {
                 // Ignore errors if duration isn't fully resolved yet
             }
         }
+    }
+
+    /**
+     * Register all MediaSession action handlers.
+     * Called once from the constructor so handlers are available immediately,
+     * independent of feed loading state. Safe to call in non-supporting browsers.
+     */
+    _initMediaSession() {
+        if (!('mediaSession' in navigator)) return;
+
+        // PLAY: Must handle iOS audio context suspension after interruptions.
+        // After a phone call or audio focus loss, audio.play() can fail. We detect
+        // a broken/empty state and reload if necessary before resuming.
+        navigator.mediaSession.setActionHandler('play', async () => {
+            try {
+                if (!this.nowPlaying) return;
+
+                // If audio src is missing or stale (can happen after iOS interruption),
+                // do a full reload rather than a bare play() call.
+                const needsReload = !this._audio.src
+                    || this._audio.src === window.location.href
+                    || this._audio.error !== null;
+
+                if (needsReload) {
+                    await this._loadAndPlay(true);
+                } else {
+                    await this._audio.play();
+                }
+                this._updateMediaPosition();
+            } catch (e) {
+                log.warn("MediaSession play action failed:", e);
+                // Last resort: full reload of the current track
+                try { await this._loadAndPlay(true); } catch (_) {}
+            }
+        });
+
+        navigator.mediaSession.setActionHandler('pause', () => {
+            this.pause();
+        });
+
+        // STOP: Sent by Wear OS, some headphones, and CarPlay. Must be handled or
+        // the OS may show a broken controls state.
+        navigator.mediaSession.setActionHandler('stop', () => {
+            this.pause();
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.playbackState = 'none';
+            }
+        });
+
+        navigator.mediaSession.setActionHandler('previoustrack', () => this.prev());
+        navigator.mediaSession.setActionHandler('nexttrack', () => this.next());
+
+        // SEEK BACKWARD/FORWARD: Use the OS-provided seekOffset when available.
+        // iOS passes 10s by default; other devices/headphones may pass different values.
+        // Falling back to our CONFIG values only when the OS doesn't specify.
+        navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+            const offset = (details && details.seekOffset != null)
+                ? details.seekOffset
+                : CONFIG.SKIP_BACK;
+            this._audio.currentTime = Math.max(0, this._audio.currentTime - offset);
+            this._updateMediaPosition();
+        });
+
+        navigator.mediaSession.setActionHandler('seekforward', (details) => {
+            const offset = (details && details.seekOffset != null)
+                ? details.seekOffset
+                : CONFIG.SKIP_FORWARD;
+            const max = this._audio.duration || Infinity;
+            this._audio.currentTime = Math.min(this._audio.currentTime + offset, max);
+            this._updateMediaPosition();
+        });
+
+        navigator.mediaSession.setActionHandler('seekto', (details) => {
+            if (details && details.seekTime !== undefined) {
+                this.seek(details.seekTime);
+            }
+        });
+
+        log.info("MediaSession handlers registered.");
     }
 
     async play(episode) {
@@ -1543,6 +1635,9 @@ class PodCubeEngine {
                 }
                 this.pause();
                 this._emit('queueEnd'); // Optional: new event
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.playbackState = 'none';
+                }
             }
         } catch (e) {
             log.error("Next failed:", e);
@@ -1691,28 +1786,12 @@ class PodCubeEngine {
     }
 
     get queueDuration() {
-        if (this._queue.length === 0) return 0;
-
-        let total = 0;
-
-        // Add remaining time of current track
-        const currentEp = this._queue[this._queueIndex];
-        if (currentEp) {
-            if (this._audio.duration && !this._audio.paused) {
-                // If playing, use actual remaining time
-                total += Math.max(0, this._audio.duration - this._audio.currentTime);
-            } else {
-                // If paused/stopped, use full duration
-                total += currentEp.duration || 0;
-            }
+        if (this._queueDurationCache === null) {
+            this._queueDurationCache = this._queue.reduce(
+                (sum, ep) => sum + (ep.duration || 0), 0
+            );
         }
-
-        // Add duration of all future tracks
-        for (let i = this._queueIndex + 1; i < this._queue.length; i++) {
-            total += this._queue[i].duration || 0;
-        }
-
-        return total;
+        return this._queueDurationCache;
     }
 
     addToQueue(input, playNow = false) {
@@ -1852,7 +1931,8 @@ class PodCubeEngine {
 
     removeFromQueue(index) {
         if (index < 0 || index >= this._queue.length) {
-            throw new Error(`Invalid queue index: ${index}`);
+            log.warn(`removeFromQueue: Invalid index ${index}`);
+            return;
         }
 
         const isCurrentTrack = (index === this._queueIndex);
@@ -1947,6 +2027,7 @@ class PodCubeEngine {
     skipTo(index) {
         if (index < 0 || index >= this._queue.length) return;
         this._queueIndex = index;
+        this._cancelPreload();
         this._loadAndPlay();
     }
 
@@ -2165,14 +2246,6 @@ class PodCubeEngine {
             totalDuration: pl.totalDuration,
             url: url.toString()
         };
-    }
-
-    getImportCodeFromUrl() {
-        const params = new URLSearchParams(window.location.search);
-        const url = new URL(window.location.href);
-        url.searchParams.delete('importPlaylist');
-        window.history.replaceState({}, document.title, url.toString());
-        return params.get('importPlaylist') || null;
     }
 
     // --- DISCOVERY & BROWSING ---
@@ -2513,6 +2586,7 @@ class PodCubeEngine {
 
 
     _emit(event, data) {
+        if (event === 'queue:changed') this._queueDurationCache = null;
         try {
             if (this._listeners[event]) {
                 // COPY the array via [...spread] before iterating
@@ -2693,6 +2767,11 @@ async restoreSession() {
 
         // Stop playback
         this.pause();
+
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = 'none';
+            navigator.mediaSession.metadata = null;
+        }
 
         // Clear queue
         this.clearQueue();

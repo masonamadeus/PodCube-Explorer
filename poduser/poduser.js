@@ -209,8 +209,6 @@ class PodUserEngine {
         const best = this.data.games[gameId] || 0;
         if (score > best) {
             this.data.games[gameId] = score;
-            
-            this.addTemporalExposure(1);
             this._checkAchievements();
             await this.save();
         }
@@ -387,7 +385,7 @@ class PodUserEngine {
         // If they JUST crossed the critical threshold mid-session, alert them!
         if (oldVal < 100 && this.data.degradation >= 100) {
             const title = 'CRITICAL: TEMPORAL DESYNC';
-            const body = 'Terminal has exceeded maximum safe temporal exposure limits. Interface corruption is critical. Please navigate to your Personnel Record (My Profile) and initiate a DE-GAUSS sequence immediately.';
+            const body = 'Terminal has exceeded maximum safe temporal exposure limits. Permanent interface corruption is imminent. Please click here and initiate a DE-GAUSS sequence immediately.';
             
             // 1. Use the synchronous push so it gets safely bundled into the save below
             this._pushNotification(title, body, { type: 'maintenance', target: 'btn-degauss' });
@@ -409,6 +407,10 @@ class PodUserEngine {
     // DATA PORTABILITY
     // ─────────────────────────────────────────────────────────────
 
+    // ─────────────────────────────────────────────────────────────
+    // DATA PORTABILITY (V2.1 Ultra-High Density)
+    // ─────────────────────────────────────────────────────────────
+
     exportCode() {
         const playlists = [];
         if (window.PodCube && typeof window.PodCube.getPlaylists === 'function') {
@@ -418,47 +420,136 @@ class PodUserEngine {
             });
         }
 
-        const minified = {
-            u: this.data.username,
-            v: this.data.visits,
-            h: this.data.history,
-            g: this.data.games,
-            gp: this.data.gamePlays,
-            p: this.data.punchcards,
-            e: this.data.punchcardExport,
-            i: this.data.punchcardImport,
-            a: this.data.achievements,
-            pl: playlists,
-            vl: this.data.volume, // Persist volume in export
-        };
-        return btoa(JSON.stringify(minified)).replace(/=/g, '');
+        let achBits = 0n;
+        this.achievements.forEach(ach => {
+            const bitIndex = ach.uid !== undefined ? ach.uid : ach.order; 
+            if (this.data.achievements.includes(ach.id)) {
+                achBits |= (1n << BigInt(bitIndex));
+            }
+        });
+
+        const params = new URLSearchParams();
+        params.set('u', this.data.username);
+        
+        // Stats: visits.punchcards.exports.imports.volume
+        params.set('s', [
+            this.data.visits || 0,
+            this.data.punchcards || 0,
+            this.data.punchcardExport || 0,
+            this.data.punchcardImport || 0,
+            this.data.volume ?? 100
+        ].join('.'));
+
+        params.set('h', this.data.history.join('')); 
+        
+        // Games: gameId_score_plays.gameId2_score_plays
+        const combinedGames = [];
+        const allGameKeys = new Set([...Object.keys(this.data.games || {}), ...Object.keys(this.data.gamePlays || {})]);
+        
+        allGameKeys.forEach(k => {
+            const score = this.data.games[k] || 0;
+            const plays = this.data.gamePlays[k] || 0;
+            combinedGames.push(`${k}_${score}_${plays}`);
+        });
+        
+        if (combinedGames.length > 0) params.set('g', combinedGames.join('.'));
+        
+        params.set('a', achBits.toString(16)); 
+        
+        const plStr = playlists.join('|');
+        if (plStr) params.set('pl', plStr);
+        
+        return 'v2.' + params.toString();
     }
 
     async importCode(code) {
         if (!code?.trim()) return false;
         try {
-            const clean  = code.trim();
-            const padded = clean + '='.repeat((4 - (clean.length % 4)) % 4);
-            const parsed = JSON.parse(atob(padded));
+            let clean = code.trim();
+            
+            // Extract from URL if necessary
+            if (clean.includes('memory=')) {
+                try {
+                    const urlObj = new URL(clean);
+                    clean = urlObj.searchParams.get('memory') || clean;
+                } catch(e) {
+                    clean = clean.split('memory=')[1].split('&')[0];
+                }
+            }
 
-            // Merge parsed data over defaults to maintain object integrity
+            // Reject legacy/invalid codes immediately
+            if (!clean.startsWith('v2.')) {
+                console.warn('[PodUser] Invalid or deprecated Memory Card format.');
+                return false;
+            }
+
+            const params = new URLSearchParams(clean.substring(3));
+            
+            // STATS
+            const stats = (params.get('s') || '').split('.');
+            const v = parseInt(stats[0] || '0', 10);
+            const p = parseInt(stats[1] || '0', 10);
+            const e = parseInt(stats[2] || '0', 10);
+            const i = parseInt(stats[3] || '0', 10);
+            const vl = parseInt(stats[4] ?? '100', 10);
+
+            // HISTORY
+            const parsedHistory = [];
+            const hStr = params.get('h') || '';
+            for (let idx = 0; idx < hStr.length; idx += 5) {
+                parsedHistory.push(hStr.substring(idx, idx + 5));
+            }
+
+            // GAMES
+            const parsedGames = {};
+            const parsedGamePlays = {};
+            const gParam = params.get('g') || '';
+            if (gParam) {
+                gParam.split('.').forEach(chunk => {
+                    const parts = chunk.split('_');
+                    if (parts.length >= 3) {
+                        const plays = parseInt(parts.pop(), 10);
+                        const score = parseInt(parts.pop(), 10);
+                        const gameId = parts.join('_'); 
+                        if (gameId) {
+                            parsedGames[gameId] = score;
+                            parsedGamePlays[gameId] = plays;
+                        }
+                    }
+                });
+            }
+
+            // ACHIEVEMENTS
+            const parsedAchievements = [];
+            const bits = BigInt('0x' + (params.get('a') || '0'));
+            this.achievements.forEach(ach => {
+                const bitIndex = ach.uid !== undefined ? ach.uid : ach.order;
+                if ((bits & (1n << BigInt(bitIndex))) !== 0n) {
+                    parsedAchievements.push(ach.id);
+                }
+            });
+
+            // FINAL MERGE
             this.data = {
                 ...this._getDefaultData(),
-                username:      parsed.u  || this.data.username,
-                visits:        parsed.v  || 0,
-                history:       parsed.h  || [],
-                games:         parsed.g  || {},
-                gamePlays:     parsed.gp || {},
-                punchcards:    parsed.p  || 0,
-                punchcardExport: parsed.e || 0,
-                punchcardImport: parsed.i || 0,
-                achievements:  parsed.a  || [],
-                volume:        parsed.vl != null ? parsed.vl : 100,
+                username: params.get('u') || this.data.username,
+                visits: v,
+                history: parsedHistory,
+                games: parsedGames,
+                gamePlays: parsedGamePlays,
+                punchcards: p,
+                punchcardExport: e,
+                punchcardImport: i,
+                achievements: parsedAchievements,
+                volume: vl,
             };
 
-            // Handle Playlist Imports
-            if (parsed.pl && window.PodCube?.importPlaylist) {
-                parsed.pl.forEach(plCode => {
+            // PLAYLISTS
+            const plParam = params.get('pl') || '';
+            const plArray = plParam ? plParam.split('|') : [];
+            
+            if (plArray.length > 0 && window.PodCube?.importPlaylist) {
+                plArray.forEach(plCode => {
                     const res = window.PodCube.importPlaylist(plCode);
                     if (res?.episodes?.length > 0) {
                         let finalName = res.name;
@@ -478,8 +569,8 @@ class PodUserEngine {
             
             this.addNotification('System Restore', 'External personnel data successfully grafted into local memory.');
             return true;
-        } catch (e) {
-            console.error('[PodUser] Invalid backup code:', e);
+        } catch (err) {
+            console.error('[PodUser] Restore failed:', err);
             return false;
         }
     }

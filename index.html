@@ -100,13 +100,15 @@
                 </div>
             </div>
         
-            <div style="display:flex; flex-direction: column; align-items: flex-start; gap: 4px;">
-                <div id="statusIndicator" class="meta" style="color: #888;">Initializing...</div>
+            <div style="display:flex; gap: 5px;">
+                <!--<div id="statusIndicator" class="meta" style="color: #888;">Initializing...</div>-->
                 <div id="userBadge" class="user-badge" onclick="switchTab('profile', true)">
                     <span class="text-muted" style="font-family:'Fustat'; font-size:9px;">LOGGED IN: </span>
                     <strong id="ub-name" style="font-family:'Fustat'; font-size:11px; color:var(--primary);">---</strong>
                     <span id="ub-notif" class="notif-dot" style="display:none;">0</span>
                 </div>
+                <button id="themeToggleBtn" class="icon-btn" onclick="toggleTheme()" style="padding: 4px 8px; font-size: 14px; color: transparent; text-shadow: 0 0 var(--primary);" title="Toggle Night Mode">🌙</button>
+                
             </div>
         </header>
         <div class="tabs-wrapper">
@@ -182,7 +184,6 @@
             </p>
             <div id="geoDistribution"></div>
         </div>
-        <button class="icon-btn" onclick="showDistributionAnalysis()">Refresh Distribution Statistics</button>
     </div>
 
 <!-- BROWSE & SEARCH TAB -->
@@ -358,7 +359,7 @@
 
                 <div class="player-transport-row">
                     <div class="player-transport-main-group">
-                        <button class="player-transport-btn" onclick="run('PodCube.prev()')"><svg viewBox="0 0 24 24"
+                        <button class="player-transport-btn" style="border-left: 3px double var(--primary);" onclick="run('PodCube.prev()')"><svg viewBox="0 0 24 24"
                                 class="icon-svg">
                                 <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
                             </svg></button>
@@ -378,7 +379,7 @@
                                 <path
                                     d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z" />
                             </svg></button>
-                        <button class="player-transport-btn" onclick="run('PodCube.next()')"><svg viewBox="0 0 24 24"
+                        <button class="player-transport-btn" style="border-right: 3px double var(--primary);" onclick="run('PodCube.next()')"><svg viewBox="0 0 24 24"
                                 class="icon-svg">
                                 <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
                             </svg></button>
@@ -438,7 +439,7 @@
                 <div class="punchcard-row punchcard-top-row">
                     <label class="punchcard-label">PODCUBE™ PUNCHCARD MACHINE</label>
                     <button class="punchcard-btn punchcard-btn-clr" onclick="run('PodCube.clearQueue()')"
-                        style="color:var(--danger); border-color:var(--danger); background-color:white;"
+                        style="color:var(--danger); border-color:var(--danger); background-color:var(--bg-body);"
                         title="Clear Write Buffer">CLEAR</button>
                 </div>
 
@@ -686,7 +687,6 @@
             <h3>Productivity Modules</h3>
             <p class="text-muted mb-20">Select a task. Performance is monitored.</p>
             <div id="pc-cartridge-slot" class="game-menu-grid"></div>
-            <!-- <div id="pc-loading" class="meta text-muted" style="text-align:center;">INITIALIZING...</div>-->
         </div>
     
         <div id="pc-machine-view" class="game-stage" style="display:none;">
@@ -696,18 +696,17 @@
             </div>
     
             <div class="pc-game-container">
+    
                 <div class="pc-game-hud pc-hud">
                     <div class="pc-hud-cell">
                         <span class="pc-hud-label">STATUS</span>
                         <span class="pc-hud-val" id="pc-hud-status">READY</span>
                     </div>
-    
                     <div class="pc-hud-cell"
                         style="flex:1; align-items:center; justify-content:flex-end; padding-bottom:4px;">
                         <span id="pc-hud-aux"
                             style="font-family:'Fustat'; font-weight:700; font-size:12px; color:var(--primary); text-transform:uppercase; letter-spacing:0.05em; display:none;"></span>
                     </div>
-    
                     <div class="pc-hud-cell">
                         <span class="pc-hud-label">DATA</span>
                         <span class="pc-hud-val" id="pc-hud-score">0</span>
@@ -716,9 +715,7 @@
     
                 <div class="pc-game-board">
                     <canvas id="pc-canvas" width="400" height="300" class="pc-game-canvas"></canvas>
-    
                     <div id="pc-dom-layer" class="pc-layer-dom"></div>
-    
                     <div id="pc-overlay" class="pc-overlay hidden">
                         <div class="pc-text-title" id="pc-overlay-msg">READY</div>
                         <p class="pc-text-body" id="pc-overlay-desc">System Ready.</p>
@@ -726,12 +723,35 @@
                     </div>
                 </div>
     
-                <div class="pc-game-controls-help" id="pc-controls-help">
-                    <p>MOVE: ARROWS / SWIPE / WASD </p>
-                    <p>ACTION: SPACE / TAP</p>
+                <div class="pc-controls-strip" id="pc-controls">
+    
+                    <div class="pc-action-cluster">
+                        <div class="pc-action-item">
+                            <span class="pc-action-key">Primary</span>
+                            <button class="pc-action-btn" data-action="Q" aria-label="Q">Q</button>
+                        </div>
+                        <div class="pc-action-item">
+                            <span class="pc-action-key">Secondary</span>
+                            <button class="pc-action-btn" data-action="E" aria-label="E">E</button>
+                        </div>
+                    </div>
+    
+                    <div class="pc-dpad">
+                        <button class="pc-dpad-btn pc-dpad-up" data-action="UP" aria-label="Up">▲</button>
+                        <button class="pc-dpad-btn pc-dpad-left" data-action="LEFT" aria-label="Left">◄</button>
+                        <div class="pc-dpad-center"></div>
+                        <button class="pc-dpad-btn pc-dpad-right" data-action="RIGHT" aria-label="Right">►</button>
+                        <button class="pc-dpad-btn pc-dpad-down" data-action="DOWN" aria-label="Down">▼</button>
+                    </div>
+    
                 </div>
+    
+            </div>
+            <div class="pc-controls-helper">
+                <span>Keyboard Supported: WASD / Arrows</span>
             </div>
         </div>
+    
     </div>
 
 <!-- USER PROFILE TAB -->
@@ -791,45 +811,37 @@
     
     
     
-        <!-- MEMORY CARD (bottom, intentionally low-key)  -->
+        <!-- MEMORY CARD -->
         <div class="section">
             <div class="memory-card-section">
-    
-                <p style="font-family:'Fustat'; font-size:11px; text-transform:uppercase;
-                          color:#888; line-height:1.6; margin-bottom:16px; letter-spacing:0.03em;">
-                    Your progress, scores, and unlocked content are stored locally. Use the code below
-                    to back up or restore your profile on another device.
+                <p style="font-family:'Fustat'; font-size:11px; text-transform:uppercase; color:#888; line-height:1.6; margin-bottom:16px; letter-spacing:0.03em;">
+                    Your progress, scores, and unlocked content are stored locally. Save this Memory Card QR code to back up or restore your profile.
                 </p>
     
-                <!-- Export: hidden code + eyeball reveal -->
-                <div class="sharing-code-box" style="margin-bottom:10px; align-items:center;">
-                    <code id="prof-export-code" class="login-code-hidden"
-                        style="word-break:break-all; flex:1; font-size:11px;">
-                        Generating...
-                    </code>
-                    <button id="prof-eyeball-btn" class="icon-btn" onclick="toggleLoginCode()" style="white-space:nowrap;">
-                        Reveal
-                    </button>
-                    <button class="icon-btn" onclick="copyToClipboard('prof-export-code');" style="white-space:nowrap;">
-                        Copy
-                    </button>
-                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:20px; justify-content:center; align-items:flex-start;">
+                    
+                    <div style="display:flex; flex-direction:column; align-items:center; gap:10px;">
+                        <div id="prof-qr-container" style="background:#fff; border:3px double var(--primary); padding:10px; width:160px; height:160px; display:flex; justify-content:center; align-items:center;">
+                            <span class="text-muted" style="font-size:10px;">GENERATING...</span>
+                        </div>
+                        <button class="hero-btn" onclick="downloadMemoryCard()" style="padding: 8px 12px; width:100%;">
+                            <span class="hero-btn-icon" style="font-size:1.2em;color:transparent;text-shadow: 0 0 var(--primary);">📇</span>
+                            <span class="hero-btn-text">
+                                <strong style="font-size:12px;">SAVE CARD</strong>
+                                <span style="font-size:9px;">Download Image</span>
+                            </span>
+                        </button>
+                    </div>
     
-                <!-- Import -->
-                <div class="playlist-controls" style="gap:8px;">
-                    <input type="text" id="prof-import-input" placeholder="PASTE BACKUP CODE TO RESTORE"
-                        style="font-family:monospace; font-size:11px; flex:1; margin:0;">
-                    <button class="icon-btn" style="white-space:nowrap;" onclick="PodUser.importCode(document.getElementById('prof-import-input').value)
-                            .then(ok => {
-                                if (ok) {
-                                    document.getElementById('prof-import-input').value = '';
-                                    renderUserUI(PodUser.data);
-                                } else {
-                                    alert('Invalid backup code. Please check and try again.');
-                                }
-                            })">
-                        Import
-                    </button>
+                    <div style="flex:1; min-width:200px; display:flex; flex-direction:column; gap:10px;">
+                        <label class="punchcard-label" style="margin-bottom:0;">RESTORE FROM IMAGE</label>
+                        <div class="punchcard-reader-wrapper" id="memCardReader" 
+                             style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:20px; cursor:pointer; min-height: 160px;" 
+                             onclick="document.getElementById('memCardUpload').click()">
+                            <span style="font-family:'Fustat'; font-size:11px; font-weight:bold; color:var(--primary);">CLICK TO BROWSE OR DROP IMAGE</span>
+                            <input type="file" id="memCardUpload" accept="image/*" style="display:none;" onchange="handleMemoryCardUpload(event)">
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1244,11 +1256,6 @@
                         <p>Import a playlist from a share code. Returns <code>{name, episodes, totalDuration, missingCount}</code> or null if
                             invalid. Uses fuzzy matching via nanoId.</p>
                     </div>
-                    <div class="api-method">
-                        <code class="api-signature">PodCube.getImportCodeFromUrl()</code>
-                        <p>Extract importPlaylist parameter from current URL, remove it from history, and return the
-                            code. Returns null if not found.</p>
-                    </div>
                 </div>
             </div>
             <!-- State & Events -->
@@ -1531,7 +1538,7 @@
             </svg>
         </button>
         <div class="transport-main">
-            <button class="control-btn" onclick="run('PodCube.prev()')" title="Previous">
+            <button class="control-btn" onclick="run('PodCube.prev()')" style="border-left: 3px double var(--primary);" title="Previous">
                 <svg viewBox="0 0 24 24" class="icon-svg">
                     <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
                 </svg>
@@ -1542,7 +1549,7 @@
                     <path d="M8 5v14l11-7z" />
                 </svg>
             </button>
-            <button class="control-btn" onclick="run('PodCube.next()')" title="Next">
+            <button class="control-btn" onclick="run('PodCube.next()')" style="border-right: 3px double var(--primary);" title="Next">
                 <svg viewBox="0 0 24 24" class="icon-svg">
                     <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
                 </svg>
@@ -1579,7 +1586,9 @@
 <!-- CODE MONITOR -->
     <div class="code-monitor">
         <span class="monitor-prompt">>></span>
-        <span class="monitor-text" id="monitorText">System Ready</span>
+        <div class="monitor-text-wrapper">
+            <span class="monitor-text" id="monitorText">System Ready</span>
+        </div>
         <span class="monitor-timestamp" id="monitorTimestamp"></span>
     </div>
 
@@ -1612,7 +1621,7 @@
                     <div class="ep-title"><span class="ep-played-icon" title="Played">✓</span><span class="et-text"></span></div>
                 </div>
                 <div class="ep-meta-row primary-meta">
-                    <span class="ep-type ep-tag"></span>
+                    <span class="ep-type ep-tag" style="display:none;"></span>
                     <span class="ep-model"></span>
                 </div>
                 <div class="ep-meta-row secondary-meta">
@@ -1717,9 +1726,13 @@
             </div>
             
         </div>
-        </div>
     
         <div class="inspector-body-wrapper">
+
+            <div class="inspector-section insp-tags-section" style="display:none;">
+                <h4 class="inspector-section-title">Classification Tags</h4>
+                <div class="inspector-tag-list insp-tags-list"></div>
+            </div>
             <div class="inspector-section">
                 <h4 class="inspector-section-title">Executive Summary</h4>
                 <div class="inspector-prose">
@@ -1759,10 +1772,7 @@
                 </div>
             </div>
     
-            <div class="inspector-section insp-tags-section" style="display:none;">
-                <h4 class="inspector-section-title">Classification Tags</h4>
-                <div class="inspector-tag-list insp-tags-list"></div>
-            </div>
+            
     
             <div class="inspector-section">
                 <h4 class="inspector-section-title">Temporal Analysis</h4>

@@ -1,3 +1,30 @@
+// DARK MODE??
+
+if (localStorage.getItem('podcube_theme') === 'dark') {
+    document.documentElement.classList.add('dark-theme');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (document.documentElement.classList.contains('dark-theme')) {
+        const btn = document.getElementById('themeToggleBtn');
+        if (btn) btn.innerHTML = '🔆';
+    }
+});
+
+function toggleTheme() {
+    const isDark = document.documentElement.classList.toggle('dark-theme');
+    localStorage.setItem('podcube_theme', isDark ? 'dark' : 'light');
+    
+    // Update the button icon
+    const btn = document.getElementById('themeToggleBtn');
+    if (btn) btn.innerHTML = isDark ? '🔆' : '🌙';
+    
+    if (typeof logCommand === 'function') {
+        logCommand(`// Display mode updated: ${isDark ? 'NIGHT_SHIFT' : 'DAY_SHIFT'}`);
+    }
+}
+
+
 // --- STATE MANAGEMENT ---
 const AppState = {
     selectedEpisode: null,
@@ -209,17 +236,48 @@ function initUIControls() {
     startPodChatMonitor();
 }
 
-// Phase 7: Handle URL-driven entry points now that everything is fully wired up.
+// Phase 7: Handle URL-driven entry points (Deep Links)
 function handleDeepLinks() {
-    const importCode = PodCube.getImportCodeFromUrl();
-    if (importCode) handleIncomingPlaylistCode(importCode);
+    const url = new URL(window.location.href);
+    let urlCleaned = false;
 
+    // 1. Process Memory Card (Profile Restore)
+    const memoryCode = url.searchParams.get('memory');
+    if (memoryCode) {
+        url.searchParams.delete('memory');
+        urlCleaned = true;
+        
+        if (window.PodUser) {
+            window.PodUser.importCode(memoryCode).then(ok => {
+                if (ok) {
+                    alert("Personnel data restored successfully.");
+                    switchTab('profile', true);
+                } else {
+                    alert("Invalid or corrupt Memory Card data.");
+                }
+            });
+        }
+    }
+
+    // 2. Process Punchcard (Playlist Import)
+    const playlistCode = url.searchParams.get('importPlaylist');
+    if (playlistCode) {
+        url.searchParams.delete('importPlaylist');
+        urlCleaned = true;
+        
+        handleIncomingPlaylistCode(playlistCode);
+    }
+
+    // 3. Clean the Address Bar (Execute exactly once to prevent history corruption)
+    if (urlCleaned) {
+        // Pass 'history.state' to preserve the navigation state established by initNavigation()
+        window.history.replaceState(history.state, document.title, url.toString());
+    }
+
+    // 4. Pre-load the Inspector UI
     const savedInspectorId = localStorage.getItem('podcube_last_inspected');
-    
-    // 2. Safely look up the episode using the engine (returns null if it no longer exists)
     const savedEpisode = savedInspectorId ? PodCube.findEpisode(savedInspectorId) : null;
 
-    // Pre-load the inspector with the saved episode, falling back to logical defaults
     if (savedEpisode) {
         loadEpisodeInspector(savedEpisode);
     } else if (PodCube.nowPlaying) {
@@ -228,6 +286,7 @@ function handleDeepLinks() {
         loadEpisodeInspector(PodCube.latest);
     }
 }
+
 
 // Phase 8a: Fade out and remove the splash screen on a successful boot.
 function dismissSplash() {
@@ -315,9 +374,30 @@ function run(code, silent = false) {
 
 function logCommand(code) {
     const monitorText = document.getElementById('monitorText');
+    const wrapper = monitorText?.parentElement;
     const timestamp = new Date().toLocaleTimeString();
     
-    if (monitorText) monitorText.textContent = code;
+    if (monitorText && wrapper) {
+        // Reset the animation states completely on every new message
+        monitorText.classList.remove('marquee-active');
+        monitorText.style.transform = 'none';
+        monitorText.textContent = code;
+        
+        // Wait 1 frame for the browser to render the new text so we can measure it
+        requestAnimationFrame(() => {
+            if (monitorText.scrollWidth > wrapper.clientWidth) {
+                // Calculate distance it needs to slide (+15px buffer to clear the edge)
+                const distance = monitorText.scrollWidth - wrapper.clientWidth + 15;
+                // Calculate duration so the scroll speed remains constant (approx 30px per sec)
+                const duration = Math.max(3, distance / 30); 
+                
+                // Inject the math into CSS variables and trigger animation
+                monitorText.style.setProperty('--marquee-dist', `-${distance}px`);
+                monitorText.style.setProperty('--marquee-dur', `${duration}s`);
+                monitorText.classList.add('marquee-active');
+            }
+        });
+    }
     
     const timestampEl = document.getElementById('monitorTimestamp');
     if (timestampEl) timestampEl.textContent = timestamp;
@@ -671,7 +751,7 @@ function renderArchiveResults(results) {
         else {clone.querySelector('.ep-title').textContent = ep.title;}
 
         clone.querySelector('.ep-date').textContent = ep.date?.toString() || 'No Date';
-        clone.querySelector('.ep-type').textContent = ep.episodeType || 'unknown';
+        //clone.querySelector('.ep-type').textContent = ep.episodeType || 'unknown';
         clone.querySelector('.ep-model').textContent = ep.model || 'Unknown Model';
         clone.querySelector('.ep-duration').textContent = ep.duration ? `${ep.weirdDuration}` : '0:00';
         clone.querySelector('.ep-location').textContent = ep.location || 'Unknown Location';
@@ -1801,6 +1881,13 @@ function renderPunchcardDOM(pl, indexSuffix) {
 
     // --- RENAME LOGIC ---
     const titleEl = card.querySelector('.pc-share-title');
+
+    // Kill drag/drop when editing title
+    titleEl.addEventListener('mouseenter', () => card.setAttribute('draggable', 'false'));
+    titleEl.addEventListener('mouseleave', () => {
+        if (document.activeElement !== titleEl) card.setAttribute('draggable', 'true');
+    });
+    titleEl.addEventListener('focus', () => card.setAttribute('draggable', 'false'));
     
     const submitRename = () => {
         const newName = titleEl.textContent.trim();
@@ -2263,12 +2350,24 @@ function initNavigation() {
     // Prevent browser scroll jumping during the history rewrite
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
-    // 1. Click Listeners
+    // Click Listeners
     document.querySelectorAll('.tab-button').forEach(btn => {
         btn.addEventListener('click', () => switchTab(btn.dataset.tab, true));
     });
 
-    // 2. Popstate Handler (The Rewrite Engine)
+    // Mouse Wheel Horizontal Scroll for Tabs
+    const tabsContainer = document.querySelector('.tabs');
+    if (tabsContainer) {
+        tabsContainer.addEventListener('wheel', (e) => {
+            // Check if there is vertical scrolling intent (most standard mouse wheels)
+            if (e.deltaY !== 0) {
+                e.preventDefault(); // Stop the whole page from scrolling down
+                tabsContainer.scrollLeft += e.deltaY; // Push the tabs left/right instead
+            }
+        }, { passive: false }); // Requires passive:false so we can preventDefault
+    }
+
+    // Popstate Handler (The Rewrite Engine)
     window.addEventListener('popstate', (e) => {
         if (isRewritingHistory && pendingNavigation) {
             // We have successfully stepped back to Depth 1.
@@ -2301,7 +2400,7 @@ function initNavigation() {
         }
     });
 
-    // 3. Initial Load State
+    // Initial Load State
     const hashTab = window.location.hash.replace('#', '');
     const savedTab = localStorage.getItem('podCube_activeTab');
     
@@ -2314,7 +2413,7 @@ function initNavigation() {
     history.replaceState({ tab: startTab, depth: 1 }, '', `#${startTab}`);
     performUISwitch(startTab);
 
-    // 4. Swipe Gestures
+    // Swipe Gestures
     let touchStartX = 0;
     let touchStartY = 0;
     document.addEventListener('touchstart', (e) => {
@@ -2344,59 +2443,56 @@ function getTabOrder() {
 function performUISwitch(targetId) {
     const btn = document.querySelector(`.tab-button[data-tab="${targetId}"]`);
     const content = document.getElementById(targetId);
-    // Select the header to use as our static reference point
     const header = document.querySelector('header');
     
     if (!btn || !content || !header) return;
 
-    // 1. Snapshot Scroll (only if leaving Archive)
     const currentTab = document.querySelector('.tab-content.active');
+    
+    // ==========================================
+    // READ PHASE (No DOM Modifications)
+    // ==========================================
+    
     if (currentTab && currentTab.id === 'archive' && targetId !== 'archive') {
         lastArchiveScroll = window.scrollY;
     }
 
+    // Calculate Scroll Target BEFORE modifying the DOM
+    let targetScroll = 0;
+    if (targetId === 'archive') {
+        targetScroll = lastArchiveScroll;
+    } else {
+        const headerStyle = window.getComputedStyle(header);
+        const headerMarginBottom = parseInt(headerStyle.marginBottom);
+        const stickyPoint = header.offsetTop + header.offsetHeight + headerMarginBottom;
+        targetScroll = (window.scrollY > stickyPoint) ? stickyPoint : 0;
+    }
+
+    // ==========================================
+    // 2. WRITE PHASE (DOM Mutations)
+    // ==========================================
+
     // Destroy interactive when leaving
-    if (Interactive && currentTab &&
-        currentTab.id === 'interactive' &&
-        targetId !== 'interactive'){
+    if (Interactive && currentTab && currentTab.id === 'interactive' && targetId !== 'interactive'){
         Interactive.destroy();
     }
 
     // Init interactive when arriving
-    if (Interactive && currentTab &&
-        currentTab.id !== 'interactive' &&
-        targetId === 'interactive'
-    ){ Interactive.init() }
+    if (Interactive && currentTab && currentTab.id !== 'interactive' && targetId === 'interactive'){ 
+        Interactive.init(); 
+    }
 
-    // 2. Update Classes
+    // Update Classes (This invalidates the layout)
     document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     
     btn.classList.add('active');
     content.classList.add('active');
 
-    // 3. INTELLIGENT SCROLL CALCULATION
-    if (targetId === 'archive') {
-        window.scrollTo({ top: lastArchiveScroll, behavior: 'instant' });
-    } else {
-        // Calculate the exact pixel where the tabs *should* stick.
-        // This is the Header's offset + Header's height + Header's bottom margin (20px).
-        // We use computed style to be precise about the 20px margin defined in CSS.
-        const headerStyle = window.getComputedStyle(header);
-        const headerMarginBottom = parseInt(headerStyle.marginBottom);
-        
-        // This value represents the exact scroll Y position where the header 
-        // has completely scrolled out of view and the tabs hit the top.
-        const stickyPoint = header.offsetTop + header.offsetHeight + headerMarginBottom;
+    // Apply scroll immediately using our pre-calculated values
+    window.scrollTo({ top: targetScroll, behavior: 'instant' });
 
-        // If we are scrolled DEEPER than the sticky point, snap back to it.
-        // If we are seeing the header (scrollY < stickyPoint), scroll to top (0).
-        const targetScroll = (window.scrollY > stickyPoint) ? stickyPoint : 0;
-        
-        window.scrollTo({ top: targetScroll, behavior: 'instant' });
-    }
-
-    // 4. Persist preference
+    // Persist preference
     localStorage.setItem('podCube_activeTab', targetId);
 }
 
@@ -2767,7 +2863,25 @@ async function scanPastedImage(imageBlob) {
 }
 
 function handlePastedCode(data) {
-    handleIncomingPlaylistCode(data);
+    if (!data) return;
+    
+    // Check if it's a Memory Card URL
+    if (data.includes('memory=')) {
+        if (window.PodUser) {
+            window.PodUser.importCode(data).then(ok => {
+                if (ok) {
+                    alert("Memory Card successfully restored!");
+                    switchTab('profile', true);
+                } else {
+                    alert("Invalid or corrupt Memory Card data.");
+                }
+            });
+        }
+    } 
+    // Otherwise, assume it's a Punchcard
+    else {
+        handleIncomingPlaylistCode(data);
+    }
 }
 
 

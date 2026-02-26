@@ -460,14 +460,15 @@ window.Interactive = (() => {
         _sx: 0, _sy: 0 // Internal variables for touch-swipe detection
     };
 
-    // Keyboard Mapping (Hardware Key -> Logical Action)
-    const KEY_MAP = { 
-        'ArrowUp':'UP', 'w':'UP', 'W':'UP', 
-        'ArrowDown':'DOWN', 's':'DOWN', 'S':'DOWN', 
-        'ArrowLeft':'LEFT', 'a':'LEFT', 'A':'LEFT', 
-        'ArrowRight':'RIGHT', 'd':'RIGHT', 'D':'RIGHT', 
-        ' ':'ACTION', 'Enter':'ACTION', 
-        'Escape':'CANCEL', 'p':'PAUSE' 
+    // Maps hardware keys to logical actions read by games via input.pressed.X / input.held.X.
+    const KEY_MAP = {
+        'ArrowUp':'UP',     'w':'UP',    'W':'UP',
+        'ArrowDown':'DOWN', 's':'DOWN',  'S':'DOWN',
+        'ArrowLeft':'LEFT', 'a':'LEFT',  'A':'LEFT',
+        'ArrowRight':'RIGHT','d':'RIGHT','D':'RIGHT',
+        'q':'Q', 'Q':'Q',   // Left action button
+        'e':'E', 'E':'E',   // Right action button
+        'Escape':'CANCEL', 'p':'PAUSE',
     };
 
     // ── GFX Module ───────────────────────────────────────────────────────────
@@ -586,22 +587,29 @@ window.Interactive = (() => {
             if (el) el.style[styleProp] = value;
         },
         
-        /**
+       /**
          * Internal Factory: Converts a JSON UI definition into a DOM Element.
-         * This function is the heart of the declarative UI system.
+         * This function is the heart of the declarative UI system, allowing cartridges 
+         * to build complex menus without touching raw HTML.
          * * @param {object} def - The component definition object.
-         * @param {string} def.type - Component type: 'button', 'text', 'title', 'spacer', 'grid', 'progress', 'custom', 'input'.
-         * @param {string} [def.id] - HTML ID to assign (useful for UI.get()).
-         * @param {string} [def.text] - Text content for buttons, titles, and body text.
-         * @param {string} [def.html] - Raw HTML content (use carefully).
-         * @param {object} [def.style] - Inline CSS styles object (e.g. { color: 'red' }).
-         * @param {function} [def.onClick] - Click handler for buttons.
-         * @param {boolean} [def.primary] - If true, applies the 'primary' button style.
-         * @param {number} [def.value] - Progress bar value (0.0 to 1.0).
-         * @param {number} [def.cols] - Number of columns for grid layouts.
-         * @param {number} [def.gap] - Gap size in pixels for grids.
-         * @param {Array} [def.children] - Nested component definitions for grids.
-         * @returns {HTMLElement} The constructed DOM element.
+         * @param {string} def.type - Component type ('button', 'text', 'title', 'spacer', 'grid', 'progress', 'custom', 'input', 'div').
+         * @param {string} [def.tag] - Explicit HTML tag to generate (e.g., 'span'). Defaults to 'div' (or 'button'/'input' based on type).
+         * @param {string} [def.id] - HTML ID to assign (useful for dynamic updates via UI.get()).
+         * @param {string} [def.className] - Custom CSS class. Merges safely with base classes.
+         * @param {string} [def.text] - Safe text content (uses textContent).
+         * @param {string} [def.html] - Raw HTML content (uses innerHTML).
+         * @param {object} [def.style] - Inline CSS styles object (e.g., { color: 'red', marginTop: '10px' }).
+         * @param {function} [def.onClick] - Click event handler (primarily for buttons).
+         * @param {boolean} [def.primary] - If true, applies the 'primary' highlighted style to buttons.
+         * @param {number} [def.value] - Progress bar fill value (float between 0.0 and 1.0).
+         * @param {string} [def.color] - Custom CSS color for progress bar fills.
+         * @param {number} [def.size] - Height in pixels for 'spacer' elements.
+         * @param {number} [def.width] - Width in pixels for 'spacer' elements.
+         * @param {number} [def.cols] - Number of columns for 'grid' elements. Injects inline style.
+         * @param {number} [def.gap] - Gap size in pixels for 'grid' elements. Injects inline style.
+         * @param {Array<object>} [def.children] - Nested component definitions for containers like grids.
+         * @param {HTMLElement} [def.el] - A pre-built DOM node to inject directly (requires type: 'custom').
+         * @returns {HTMLElement} The constructed, styled, and bound DOM element.
          */
         _make(def) {
             // 1. HANDLE SPECIAL TYPES
@@ -609,80 +617,73 @@ window.Interactive = (() => {
             if (def.type === 'spacer') { 
                 const d = document.createElement('div'); 
                 d.style.height = (def.size || 10) + 'px'; 
+                if (def.width) d.style.width = def.width + 'px';
                 return d; 
             }
             
-            // 'custom': Allows games to pass raw DOM nodes (e.g., a pre-made canvas or complex div).
+            // 'custom': Allows games to pass raw DOM nodes
             if (def.type === 'custom') return def.el;
             
             // 2. CREATE BASE ELEMENT
-            // Determine tag name based on type. Defaults to 'div'.
-            const tag = (def.type === 'button') ? 'button' :
+            // Allow explicit tag overrides via def.tag, otherwise infer from type.
+            const tag = def.tag ? def.tag :
+                        (def.type === 'button') ? 'button' :
                         (def.type === 'input')  ? 'input'  : 'div';
             
             const el = document.createElement(tag);
             
-            // Assign ID if provided (crucial for updating elements later via UI.get())
             if (def.id) el.id = def.id;
             
-            // 3. APPLY CSS CLASSES BASED ON TYPE
-            // Maps abstract types to specific CSS classes defined in interactive.css
-            if (def.type === 'title') el.className = 'pc-text-title';
-            if (def.type === 'text')  el.className = 'pc-text-body';
+            // 3. APPLY CSS CLASSES & BEHAVIORS BASED ON TYPE
+            let baseClass = '';
+            if (def.type === 'title') baseClass = 'pc-text-title';
+            if (def.type === 'text')  baseClass = 'pc-text-body';
             
-            // 4. HANDLE BUTTONS
+            // BUTTONS
             if (def.type === 'button') {
-                // Apply base class + optional 'primary' variant
-                el.className = `pc-btn ${def.primary ? 'primary' : ''}`;
-                
-                // Attach Click Listener
+                baseClass = `pc-btn ${def.primary ? 'primary' : ''}`.trim();
                 el.onclick = (e) => { 
-                    // Prevent clicks if input is currently locked (e.g. during transitions)
                     if (!_inputLocked && def.onClick) def.onClick(e); 
-                    
-                    // Stop event from bubbling up to the game board (prevents accidental movement)
                     e.stopPropagation(); 
                 };
             }
             
-            // 5. HANDLE PROGRESS BARS
-            // Uses CSS class 'pc-progress' for the container and 'pc-progress-fill' for the bar.
+            // PROGRESS BARS
             if (def.type === 'progress') {
-                el.className = 'pc-progress'; 
-                
+                baseClass = 'pc-progress'; 
                 const bar = document.createElement('div');
-                // ID suffix allows easy access: UI.get('my-timer-bar')
                 bar.id = def.id ? def.id + '-bar' : null;
                 bar.className = 'pc-progress-fill';
-                
-                // Dynamic styles: width based on value (0..1) and optional color override
                 bar.style.width = `${(def.value || 0) * 100}%`;
                 if (def.color) bar.style.backgroundColor = def.color;
-                
                 el.appendChild(bar);
-                return el; // Return early since structure is complete
             }
             
-            // 6. HANDLE GRIDS (Recursive)
-            // Uses CSS class 'pc-grid' for layout foundation.
+            // GRIDS
             if (def.type === 'grid') {
-                el.className = 'pc-grid'; 
+                baseClass = 'pc-grid'; 
                 
-                // Dynamic styles: Set column count and gap size
-                el.style.gridTemplateColumns = `repeat(${def.cols || 2}, 1fr)`;
-                el.style.gap = (def.gap || 8) + 'px';
+                // FIX: ONLY apply inline styles if the cartridge explicitly asks for them!
+                // Otherwise, we let the cartridge's custom CSS handle the layout.
+                if (def.cols) el.style.gridTemplateColumns = `repeat(${def.cols}, 1fr)`;
+                if (def.gap)  el.style.gap = `${def.gap}px`;
                 
-                // Recursively build children and append them to this grid
                 (def.children || []).forEach(childDef => {
                     const childEl = UI._make(childDef);
                     if (childEl) el.appendChild(childEl);
                 });
-                
-                return el; // Return early
             }
 
-            // 7. APPLY COMMON PROPERTIES
-            // Content
+            // 4. MERGE CLASSES SAFELY
+            if (baseClass && def.className) {
+                el.className = `${baseClass} ${def.className}`;
+            } else if (baseClass) {
+                el.className = baseClass;
+            } else if (def.className) {
+                el.className = def.className;
+            }
+
+            // 5. APPLY COMMON PROPERTIES
             if (def.text) el.textContent = def.text;
             if (def.html) el.innerHTML = def.html;
             
@@ -750,6 +751,28 @@ window.Interactive = (() => {
             
             // Instantiate fresh game
             _activeGame = new _registry[_activeId](API.gameOps);
+
+            // Inject CSS from active game (if exists)
+            const GameClass = _registry[_activeId];
+            if (GameClass && GameClass.css) {
+                let styleTag = document.getElementById('pc-cartridge-css');
+                if (!styleTag) {
+                    styleTag = document.createElement('style');
+                    styleTag.id = 'pc-cartridge-css';
+                    document.head.appendChild(styleTag);
+                }
+                styleTag.textContent = GameClass.css;
+            }
+
+            // FULL INPUT WIPE: Kills ghost inputs from scrolling or menu nav
+            input.pressed = {}; 
+            input.held = {}; 
+            input.mouse.down = false; 
+            input.mouse.clicked = false;
+            _inputPending = { pressed: {}, clicked: false, sx: 0, sy: 0 }; 
+            
+            _inputLocked = true;
+            setTimeout(() => _inputLocked = false, 200);
             
             // Reset Input State
             input.pressed = {}; 
@@ -780,7 +803,13 @@ window.Interactive = (() => {
          */
         eject() {
             cancelAnimationFrame(_loopId);
+            API._hideOverlay();
             _loopId = null;
+            
+            // Remove injected game CSS (if exists)
+            const styleTag = document.getElementById('pc-cartridge-css');
+            if (styleTag) styleTag.remove();
+
             if (_activeId) {
                 // Read the latest score from storage
                 const best = parseInt(localStorage.getItem(`pc_hi_${_activeId}`) || '0');
@@ -867,10 +896,10 @@ window.Interactive = (() => {
             },
 
             // Set _loopId to null so the loop knows to stop
-            gameOver(msg) {
+            gameOver(title, msg) {
                 cancelAnimationFrame(_loopId);
                 _loopId = null;
-                API._overlay(msg, 'Module Aborted', 'RESET', () => API.start());
+                API._overlay(title, msg, 'RESET', () => API.start());
             },
 
             newStage(title, desc, btnText, callback) {
@@ -895,13 +924,20 @@ window.Interactive = (() => {
             win(msg) {
                 cancelAnimationFrame(_loopId);
                 _loopId = null;
-                API._overlay(msg, 'Module Completed Successfully', 'RESET', () => API.start());
+                API._overlay(title, msg, 'RESET', () => API.start());
             }
         },
 
         // Internal: Shows the modal overlay (Pause, Game Over, Ready)
         _overlay(t, d, b, fn) {
-            document.getElementById('pc-overlay').classList.remove('hidden');
+            const overlay = document.getElementById('pc-overlay');
+            overlay.classList.remove('hidden');
+            overlay.removeAttribute('inert'); // Enable overlay interactions
+
+            // HTML5 ISOLATION: Lock out the game UI while overlay is active
+            document.getElementById('pc-dom-layer')?.setAttribute('inert', '');
+            document.getElementById('pc-controls')?.setAttribute('inert', '');
+
             document.getElementById('pc-overlay-msg').textContent = t;
             document.getElementById('pc-overlay-desc').textContent = d;
             const btn = document.getElementById('pc-overlay-btn');
@@ -909,23 +945,33 @@ window.Interactive = (() => {
             btn.onclick = fn;
 
             // Keyboard Shortcut (Enter / Space) ===
-            // Safety check: remove old listener if it somehow stuck around
             if (_handlers.overlayKey) window.removeEventListener('keydown', _handlers.overlayKey);
 
-            // Define the temporary handler
             _handlers.overlayKey = (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
+                const isTyping = ['INPUT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable;
+                if (isTyping) return;
+
+                if (e.key === 'Enter' || e.key === 'q' || e.key === 'e') {
                     e.preventDefault();
-                    fn(); // Trigger the button's action (e.g., API.start())
+                    fn(); 
                 }
             };
 
-            // Bind it
             window.addEventListener('keydown', _handlers.overlayKey);
         },
 
         _hideOverlay() {
-            document.getElementById('pc-overlay').classList.add('hidden');
+            const overlay = document.getElementById('pc-overlay');
+            overlay.classList.add('hidden');
+            overlay.setAttribute('inert', ''); // HTML5 ISOLATION: Instantly kill focusability
+
+            // Unlock the game UI layers for gameplay
+            document.getElementById('pc-dom-layer')?.removeAttribute('inert');
+            document.getElementById('pc-controls')?.removeAttribute('inert');
+
+            const btn = document.getElementById('pc-overlay-btn');
+            if (btn) btn.blur(); // Instantly rip focus so Spacebar doesn't double-fire
+
             if (_handlers.overlayKey) {
                 window.removeEventListener('keydown', _handlers.overlayKey);
                 _handlers.overlayKey = null;
@@ -995,16 +1041,24 @@ window.Interactive = (() => {
     function _bind() {
         // Define handlers (so we can remove them later)
         _handlers.keydown = e => {
-            if (KEY_MAP[e.key] && !_inputLocked) {
-                e.preventDefault();
-                // Write to pending, not live input
-                _inputPending.pressed[KEY_MAP[e.key]] = true;
-                input.held[KEY_MAP[e.key]] = true;
-            }
+            const action = KEY_MAP[e.key];
+            const isTyping = ['INPUT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable;
+            if (isTyping) return;
+            if (!action || _inputLocked || !_activeGame) return;
+            e.preventDefault();
+            _inputPending.pressed[action] = true;
+            input.held[action] = true;
+            // Mirror the keypress on the matching on-screen button.
+            document.querySelector(`[data-action="${action}"]`)?.classList.add('pc-active');
         };
 
-        _handlers.keyup = e => { 
-            if(KEY_MAP[e.key]) input.held[KEY_MAP[e.key]] = false; 
+        _handlers.keyup = e => {
+            const action = KEY_MAP[e.key];
+            const isTyping = ['INPUT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable;
+            if (isTyping) return;
+            if (!action || !_activeGame) return;
+            input.held[action] = false;
+            document.querySelector(`[data-action="${action}"]`)?.classList.remove('pc-active');
         };
 
         // Bind to Window
@@ -1025,7 +1079,7 @@ window.Interactive = (() => {
         // Define Pointer Handlers
         _handlers.ptrDown = e => { 
             if(e.target.closest('.pc-overlay') || e.target.closest('button')) return; 
-            if(_inputLocked) return; 
+            if(_inputLocked || !_activeGame) return; 
             b.setPointerCapture(e.pointerId); 
             input.mouse.down = true; 
             input._sx = e.clientX; 
@@ -1039,37 +1093,75 @@ window.Interactive = (() => {
         };
 
         _handlers.ptrUp = e => {
-            if (_inputLocked) return;
+            if (_inputLocked || !_activeGame) return;
             input.mouse.down = false;
-
-            // Store in pending
             _inputPending.clicked = true;
 
+            // A swipe on the canvas fires a directional input.
+            // Short taps fire nothing — use Q/E for actions.
             const dx = e.clientX - input._sx;
             const dy = e.clientY - input._sy;
             if (Math.abs(dx) > 30 || Math.abs(dy) > 30) {
-                _inputPending.pressed[Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'RIGHT' : 'LEFT') : (dy > 0 ? 'DOWN' : 'UP')] = true;
-            } else {
-                _inputPending.pressed['ACTION'] = true;
+                const dir = Math.abs(dx) > Math.abs(dy)
+                    ? (dx > 0 ? 'RIGHT' : 'LEFT')
+                    : (dy > 0 ? 'DOWN'  : 'UP');
+                _inputPending.pressed[dir] = true;
             }
         };
 
-        // 4. Bind Pointer Events
+        // Bind pointer events on the canvas board
         b.addEventListener('pointerdown', _handlers.ptrDown);
         b.addEventListener('pointermove', _handlers.ptrMove);
-        b.addEventListener('pointerup', _handlers.ptrUp);
+        b.addEventListener('pointerup',   _handlers.ptrUp);
+
+        // Bind all on-screen control buttons via [data-action] attribute.
+        // Storing the handler refs in _handlers.ctrlBtns lets _unbind() clean them up.
+        _handlers.ctrlBtns = [];
+        document.querySelectorAll('[data-action]').forEach(btn => {
+            const action = btn.dataset.action;
+
+            const onDown = e => {
+                if (_inputLocked || !_activeGame) return;
+                e.preventDefault();
+                _inputPending.pressed[action] = true;
+                input.held[action] = true;
+                btn.classList.add('pc-active');
+            };
+            const onRelease = () => {
+                input.held[action] = false;
+                btn.classList.remove('pc-active');
+            };
+
+            btn.addEventListener('pointerdown',  onDown);
+            btn.addEventListener('pointerup',    onRelease);
+            btn.addEventListener('pointerleave', onRelease);
+            btn.addEventListener('pointercancel',onRelease);
+
+            _handlers.ctrlBtns.push({ btn, onDown, onRelease });
+        });
     }
 
-    // Cleanup Function
     function _unbind() {
         if (_handlers.keydown) window.removeEventListener('keydown', _handlers.keydown);
-        if (_handlers.keyup) window.removeEventListener('keyup', _handlers.keyup);
-        
+        if (_handlers.keyup)   window.removeEventListener('keyup',   _handlers.keyup);
+        if (_handlers.overlayKey) window.removeEventListener('keydown', _handlers.overlayKey);
+
         if (_boundBoard) {
-            if (_handlers.ptrDown) _boundBoard.removeEventListener('pointerdown', _handlers.ptrDown);
-            if (_handlers.ptrMove) _boundBoard.removeEventListener('pointermove', _handlers.ptrMove);
-            if (_handlers.ptrUp) _boundBoard.removeEventListener('pointerup', _handlers.ptrUp);
+            _boundBoard.removeEventListener('pointerdown', _handlers.ptrDown);
+            _boundBoard.removeEventListener('pointermove', _handlers.ptrMove);
+            _boundBoard.removeEventListener('pointerup',   _handlers.ptrUp);
         }
+
+        if (_handlers.ctrlBtns) {
+            _handlers.ctrlBtns.forEach(({ btn, onDown, onRelease }) => {
+                btn.removeEventListener('pointerdown',  onDown);
+                btn.removeEventListener('pointerup',    onRelease);
+                btn.removeEventListener('pointerleave', onRelease);
+                btn.removeEventListener('pointercancel',onRelease);
+                btn.classList.remove('pc-active');
+            });
+        }
+
         _handlers = {};
         _boundBoard = null;
     }
@@ -1143,12 +1235,14 @@ window.Interactive = (() => {
         }, 500);
     }
 
-    return { init, 
-        register: API.register, 
-        eject: API.eject, 
-        gameOps: API.gameOps, 
-        destroy: () => {
-            API.eject(); // Stop any running game
-            _unbind();   // Clean up global listeners
-        } };
+    return {
+        init,
+        register: API.register,
+        eject:    API.eject,
+        gameOps:  API.gameOps,
+        destroy() {
+            API.eject();
+            _unbind();
+        },
+    };
 })();

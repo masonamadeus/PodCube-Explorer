@@ -605,7 +605,7 @@
                 this.api.saveData('level', 1);
                 this.api.saveData('score', 0);
                 this.api.saveData('lives', 100);
-                this.api.gameOver(`DATA CORRUPTED.\nFinal Score: ${this.score}\nSectors: ${this.level - 1}`);
+                this.api.gameOver(`DATA CORRUPTED.`,`Final Score: ${this.score}\nSectors: ${this.level - 1}`);
             } else {
                 setTimeout(() => { if (this.lives > 0) this.respawnPlayer(); }, 1000);
             }

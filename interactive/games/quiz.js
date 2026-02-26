@@ -11,6 +11,50 @@ class QuizGame extends Game {
         instructions: "Select the correct answer before time runs out.\nThe test will end when you have selected an incorrect response.\nEach test is randomized."
     };
 
+    static css = `
+        .quiz-title { 
+            font-size: 22px; font-weight: 700; color: var(--primary); 
+            margin-bottom: 10px; font-family: 'Libertinus Math', serif; 
+        }
+        .quiz-question { 
+            font-size: 15px; font-weight: bold; color: #1a1a1a; 
+            margin-bottom: 25px; line-height: 1.4; font-family: 'Fustat', sans-serif;
+            padding: 0 10px;
+        }
+        .quiz-grid { 
+            display: grid; grid-template-columns: 1fr; gap: 10px; 
+            width: 100%; max-width: 320px; margin: 0 auto;
+        }
+        .quiz-btn { 
+            padding: 12px; font-size: 13px; font-weight: 700; font-family: 'Fustat', sans-serif;
+            border: 2px solid var(--primary); background: #fff; color: var(--primary); 
+            cursor: pointer; transition: all 0.1s; white-space: normal; line-height: 1.2;
+            border-radius: 4px; width: 100%;
+        }
+        @media(hover:hover) { .quiz-btn:hover { background: var(--primary-dim); } }
+        
+        /* --- NEW: Keyboard Selection State --- */
+        .quiz-btn.selected {
+            border-color: var(--orange);
+            background: #fffaf0;
+            box-shadow: 0 0 0 2px var(--orange);
+            color: var(--orange);
+        }
+
+        /* Result States */
+        .quiz-btn.correct { background: #22c55e !important; color: #fff !important; border-color: #15803d !important; box-shadow: none !important;}
+        .quiz-btn.wrong { background: #ef4444 !important; color: #fff !important; border-color: #b91c1c !important; box-shadow: none !important; }
+        
+        .quiz-timer-wrap { 
+            width: 100%; max-width: 320px; height: 8px; 
+            background: #e1e8f3; margin: 0 auto 20px auto; border-radius: 4px; overflow: hidden; 
+        }
+        .quiz-timer-bar { 
+            height: 100%; background: #22c55e; width: 100%; 
+            transition: width 0.1s linear, background-color 0.2s; 
+        }
+    `;
+
     constructor(api) {
         super(api);
 
@@ -113,7 +157,7 @@ class QuizGame extends Game {
             { q: "What happened to the technicians when they fixed the isworm loop?", a: ["They were fired", "They became smaller", "They turned into alligators"], c: 1 },
             { q: "What are the core ingredients used in the creation of 'diarrhea poison'?", a: ["Cadmium, mercury, and Red 40", "Diamonds, emeralds, and rare crystals", "Corn syrup, lemon, and ink"], c: 1 },
             { q: "According to the heist crew, what does Zuckerberg's baby mouth smell like?", a: ["Money wrapped in meat", "Sweet Hawaiian barbecue sauce", "Lavender paper"], c: 1 },
-            { q: "What was the name of Crummy13's human boyfriend whom he broke up with in 5086?", a: ["Martin", "Regis", "Jeffrey"], c: 0 },
+            { q: "What was the name of Crummy13's human boyfriend whom they broke up with in 5086?", a: ["Martin", "Regis", "Jeffrey"], c: 0 },
             { q: "What is the main event of 'Circle Day' in the year 4220?", a: ["A time travel demo", "Watching Ryan eat his poop", "A chanting ritual"], c: 1 },
             { q: "How are Dave's throat subwoofers powered?", a: ["AAAA Batteries", "Brain activity", "Blood flow"], c: 2 },
             { q: "What does the 'p' in 'pSEC' stand for?", a: ["Private", "Pseudolinear", "PodCube"], c: 1 },
@@ -139,108 +183,148 @@ class QuizGame extends Game {
     onInit() {
         this.score = 0;
         this.qIndex = 0;
-        
         this.questions = [...this.allQuestions].sort(()=> Math.random() - 0.5);
-
         this.api.setScore(0);
         this.api.setStatus('ACTIVE');
         this.showQuestion();
     }
 
-    showQuestion() {
-        // Grab a question
-        const q = this.questions[this.qIndex];
+    // Helper to visually update the keyboard cursor
+    setSelection(newIndex) {
+        this.keyboardActive = true; // Flag that the user is actively using physical inputs
+        
+        const oldBtn = document.getElementById('ans-' + this.selectedIndex);
+        if (oldBtn) oldBtn.classList.remove('selected');
+        
+        // Wrap around logic
+        if (newIndex < 0) newIndex = this.currentAnswers.length - 1;
+        if (newIndex >= this.currentAnswers.length) newIndex = 0;
+        
+        this.selectedIndex = newIndex;
+        
+        const newBtn = document.getElementById('ans-' + this.selectedIndex);
+        if (newBtn) newBtn.classList.add('selected');
+    }
 
-        // Reset Timer
+   showQuestion() {
+        const q = this.questions[this.qIndex];
         this.timeLeft = this.QUESTION_TIME;
 
-        // Shuffle answer positions
+        // Shuffle answer positions and store them so the keyboard handler knows what to submit
         const indices = q.a.map((_, i) => i).sort(() => Math.random() - 0.5);
-
+        this.currentAnswers = indices;
+        
+        this.selectedIndex = 0; // Default logical position
+        this.keyboardActive = false; // Start hidden!
 
         this.api.UI.build([
-            { type: 'title', text: `Question ${this.qIndex + 1}` },
-            // Timer Bar
-            { type: 'progress', id: 'timer', value: 1, color: '#22c55e' },
-            { type: 'spacer', size: 10 },
-            { type: 'text', text: q.q, style: { fontSize: '14px', fontWeight: 'bold' } },
-            { type: 'spacer', size: 20 },
+            { type: 'title', className: 'quiz-title', text: `Question ${this.qIndex + 1}` },
+            
+            { type: 'div', className: 'quiz-timer-wrap', html: '<div id="timer-bar" class="quiz-timer-bar" style="width:100%"></div>' },
+            
+            { type: 'text', className: 'quiz-question', text: q.q },
+            
             {
-                type: 'grid', cols: 1, gap: 10,
-                // Map over the SHUFFLED indices to generate buttons
-                children: indices.map((originalIndex) => ({
+                type: 'grid', className: 'quiz-grid',
+                children: indices.map((originalIndex, i) => ({
                     type: 'button',
+                    id: 'ans-' + i, 
+                    className: 'quiz-btn', // FIX: No longer visually selected by default
                     text: q.a[originalIndex],
-                    // We pass the event 'e' to the handler
-                    onClick: (e) => this.handleAnswer(e, originalIndex === q.c)
+                    onClick: (e) => {
+                        this.setSelection(i); // Give it a quick focus highlight when clicked
+                        this.handleAnswer(e, originalIndex === q.c);
+                    }
                 }))
             }
         ]);
     }
 
-    update(dt) {
-        // Decrease timer
+    update(dt, input) {
+        if (this.processing) return; // Freeze everything while grading the answer
+
+        // Route Engine Inputs (D-Pad and Action Buttons)
+        if (input.pressed.UP) {
+            // Start at the bottom if hidden, otherwise move up
+            this.setSelection(this.keyboardActive ? this.selectedIndex - 1 : this.currentAnswers.length - 1);
+        }
+        if (input.pressed.DOWN) {
+            // Start at the top if hidden, otherwise move down
+            this.setSelection(this.keyboardActive ? this.selectedIndex + 1 : 0);
+        }
+        if (input.pressed.Q || input.pressed.E) {
+            // If they hit action before moving, show the selection first so they know what they hit
+            if (!this.keyboardActive) {
+                this.setSelection(0);
+            }
+            
+            // Submit the currently selected answer
+            const selectedOriginalIndex = this.currentAnswers[this.selectedIndex];
+            const isCorrect = (selectedOriginalIndex === this.questions[this.qIndex].c);
+            
+            // Grab the button DOM element to pass into handleAnswer for the color flash
+            const btnEl = document.getElementById('ans-' + this.selectedIndex);
+            this.handleAnswer({ target: btnEl }, isCorrect);
+        }
+
+        // --- TIMER LOGIC ---
         if (this.timeLeft > 0) {
             this.timeLeft -= dt;
 
-            if (this.processing) { return; }
-
-            // Visual Update: Find the bar by ID and set width
             const bar = document.getElementById('timer-bar');
             if (bar) {
                 const pct = Math.max(0, this.timeLeft / this.QUESTION_TIME);
                 bar.style.width = `${pct * 100}%`;
-                // Turn red if low on time
                 if (pct < 0.3) bar.style.backgroundColor = '#ef4444';
             }
 
-            // Timeout Logic
             if (this.timeLeft <= 0) {
-                this.handleAnswer(false); // Count as wrong
+                this.handleAnswer(null, false); // Time out counts as failure
             }
         }
     }
 
     handleAnswer(e, isCorrect) {
-        // Prevent double clicks
         if (this.processing) return;
         this.processing = true;
 
-        // Visual Feedback
         if (e && e.target) {
             const btn = e.target;
-            // Immediate style change
-            btn.style.backgroundColor = isCorrect ? '#22c55e' : '#ef4444';
-            btn.style.borderColor = isCorrect ? '#15803d' : '#b91c1c';
-            btn.style.color = 'white';
+            btn.classList.add(isCorrect ? 'correct' : 'wrong');
         }
 
-        // Delay logic by 800ms
         setTimeout(() => {
             this.processing = false;
 
             if (isCorrect) {
-                // Correct: Add score and continue
                 const bonus = Math.floor(this.timeLeft * 100);
                 this.score += 1000 + bonus;
                 this.api.setScore(this.score);
                 
                 this.qIndex++;
                 if (this.qIndex >= this.questions.length) {
-                    this.api.win(`YOU MUST HAVE CHEATED. PERFECT RUN.\nFINAL SCORE: ${this.score}`);
+                    // Split into Title, Desc
+                    this.api.win("PERFECT RUN", `You must have cheated.\nFinal Score: ${this.score}`);
                 } else {
                     this.showQuestion();
                 }
-            } else {
-                // Incorrect: Sudden Death
+            } else if (e === null) {
+                // Out of time!
                 const best = this.api.getHighScore();
-                const msg = isCorrect ? "" : "INCORRECT ANSWER DETECTED.";
-                this.api.gameOver(`${msg}\nQuestions Answered: ${this.qIndex}\nFinal Score: ${this.score}\nBest Score: ${best}`);
+                // Split into Title, Desc
+                this.api.gameOver("OUT OF TIME", `Questions Answered: ${this.qIndex}\nFinal Score: ${this.score}\nBest Score: ${best}`);
+            } else {
+                // Incorrect answer!
+                const best = this.api.getHighScore();
+                // Split into Title, Desc
+                this.api.gameOver("INCORRECT ANSWER", `Questions Answered: ${this.qIndex}\nFinal Score: ${this.score}\nBest Score: ${best}`);
             }
         }, 800);
     }
 
-    draw(gfx) { gfx.clear('#f4f4f4'); }
+    draw(gfx) { 
+        gfx.clear('#fdfdfc'); 
+    }
 }
 
 Interactive.register(QuizGame);

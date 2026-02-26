@@ -31,21 +31,123 @@ function setAchFilter(filter) {
     _renderAchievements(PodUser.data);
 }
 
-/** Toggle login code visibility. Called by eyeball button. */
-function toggleLoginCode() {
-    _loginCodeVisible = !_loginCodeVisible;
-    _refreshLoginCode();
-    const btn = document.getElementById('prof-eyeball-btn');
-    if (btn) btn.textContent = _loginCodeVisible ? 'Hide' : 'Reveal';
+
+// --- NEW MEMORY CARD LOGIC ---
+
+function _refreshLoginCode() {
+    const container = document.getElementById('prof-qr-container');
+    if (!container) return;
+
+    // Generate the URL payload
+    const payload = PodUser.exportCode();
+    let baseUrl = (window.location.hostname === "bodgelab.com") 
+        ? "https://bodgelab.com/s/podcube/" 
+        : window.location.origin + window.location.pathname;
+
+    const url = new URL(baseUrl);
+    url.searchParams.set('memory', payload);
+
+    if (window.QRCode) {
+        try {
+            container.innerHTML = '';
+            new QRCode(container, {
+                text: url.toString(),
+                width: 134,
+                height: 134,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.L // L allows massive payloads (up to ~2900 bytes)
+            });
+        } catch (e) {
+            console.warn("Payload too large for QR Code. Falling back to text.", e);
+            container.innerHTML = `<textarea readonly style="width:100%; height:100%; font-size:8px; border:none; resize:none; font-family:monospace;" onclick="this.select(); document.execCommand('copy'); alert('Copied!');">${url.toString()}</textarea>`;
+        }
+    }
 }
 
-function copyLoginCode() {
-    if (!_loginCodeVisible) {
-        alert('Reveal the code first.');
-        return;
+window.handleMemoryCardUpload = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // We reuse the exact same image scanner from explorer.js
+    if (typeof scanPastedImage === 'function') {
+        scanPastedImage(file);
     }
-    copyToClipboard('prof-export-code');
-}
+    event.target.value = ''; // Reset input
+};
+
+window.downloadMemoryCard = async function() {
+    if (!window.html2canvas) { alert("Missing html2canvas library."); return; }
+    
+    // Build an off-screen, beautifully formatted card
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'absolute';
+    wrapper.style.left = '-9999px';
+    wrapper.style.width = '300px';
+    wrapper.style.background = '#fdfdfc';
+    wrapper.style.border = '4px double #1768da';
+    wrapper.style.fontFamily = '"Fustat", sans-serif';
+    wrapper.style.color = '#1a1a1a';
+    wrapper.style.textAlign = 'center';
+    
+    const qrUrl = new URL(window.location.origin + window.location.pathname);
+    qrUrl.searchParams.set('memory', PodUser.exportCode());
+    
+    wrapper.innerHTML = `
+        <h2 style="font-family:'Libertinus Math'; background-color:#1768da; color:#fff; padding: 10px; margin:0 0 5px 0;">PodCube™</h2>
+        <div style="font-weight:bold; font-size:12px; text-transform:uppercase; padding:15px; letter-spacing:0.05em;">Authorized Personnel Memory Card</div>
+        <div id="dl-qr-target" style="display:flex; justify-content:center; margin:auto; padding:10px; background:#fff; border:1px solid #1768da; max-width:fit-content"></div>
+        <div style="font-size:10px; color:#666; padding:10px;">USER: ${escapeHtml(PodUser.data.username)}</div>
+    `;
+    
+    document.body.appendChild(wrapper);
+    
+    if (window.QRCode) {
+        new QRCode(wrapper.querySelector('#dl-qr-target'), {
+            text: qrUrl.toString(),
+            width: 200, height: 200,
+            correctLevel: QRCode.CorrectLevel.L
+        });
+    }
+    
+    await new Promise(r => setTimeout(r, 150)); // Allow QR to render
+    
+    try {
+        const canvas = await html2canvas(wrapper, { scale: 2 });
+        const link = document.createElement('a');
+        link.download = `PodCube_MemoryCard_${PodUser.data.username.replace(/\s+/g, '_')}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+    } catch (e) {
+        console.error("Failed to download memory card", e);
+    } finally {
+        wrapper.remove();
+    }
+};
+
+// Initialize Drag & Drop for the new reader
+setTimeout(() => {
+    const reader = document.getElementById('memCardReader');
+    if (!reader) return;
+    
+    ['dragenter', 'dragover'].forEach(eventName => {
+        reader.addEventListener(eventName, e => { e.preventDefault(); reader.classList.add('drag-active'); });
+    });
+    
+    ['dragleave', 'dragend', 'drop'].forEach(eventName => {
+        reader.addEventListener(eventName, e => { e.preventDefault(); reader.classList.remove('drag-active'); });
+    });
+    
+    reader.addEventListener('drop', async e => {
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            if (typeof scanPastedImage === 'function') scanPastedImage(file);
+        } else {
+            const text = e.dataTransfer.getData('text');
+            if (text && text.includes('memory=')) handlePastedCode(text);
+        }
+    });
+}, 1000); // Small delay to ensure DOM is ready
 
 /** Open the Achievement Fullscreen Lightbox */
 window.openAchLightbox = function(type, url, caption) {
@@ -240,7 +342,7 @@ function _renderProfileStats(userData) {
         </div>
         <div class="stat-box">
             <label>Perks</label>
-            <div class="stat-num">${unlocked}<span style="font-size:0.45em;color:#aaa;"> /${total}</span></div>
+            <div class="stat-num">${unlocked}<span style="font-size:0.45em;color:var(--text-dim);"> /${total}</span></div>
         </div>
     `;
 }
@@ -260,7 +362,7 @@ function _renderAchievements(userData) {
     if (list.length === 0) {
         container.innerHTML = `
             <p style="text-align:center; padding:30px; font-family:'Fustat'; font-size:11px;
-                      text-transform:uppercase; color:#888; letter-spacing:0.05em;">
+                      text-transform:uppercase; color:var(--text-muted); letter-spacing:0.05em;">
                 ${_achFilter === 'locked'
                     ? 'All Perks unlocked. Remarkable.'
                     : 'No Perks registered.'}
@@ -317,7 +419,7 @@ function _renderNotifications(userData) {
     if (!container) return;
 
     if (!userData.notifications.length) {
-        container.innerHTML = `<p style="text-align:center; padding:20px; font-family:'Fustat'; font-size:11px; text-transform:uppercase; color:#888;">No alerts at this time.</p>`;
+        container.innerHTML = `<p style="text-align:center; padding:20px; font-family:'Fustat'; font-size:11px; text-transform:uppercase; color:var(--text-dim)">No alerts at this time.</p>`;
         _lastNotifCount = 0;
         return;
     }
@@ -341,13 +443,13 @@ function _renderNotifications(userData) {
         return `
         <div class="notification-card ${isRead ? 'read' : 'unread'}"
              ${clickable ? `onclick="handleNotificationClick('${n.id}')" style="cursor:pointer;" title="${hasPayload ? 'View Record' : 'Click to dismiss'}"` : ''}>
-            <div style="font-size:10px; color:#888; font-family:'Fustat'; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:4px;">
+            <div style="font-size:10px; color:var(--text-dim); font-family:'Fustat'; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:4px;">
                 ${new Date(n.timestamp).toLocaleString()}${isRead ? ' · READ' : ''}
             </div>
             <strong style="display:block; margin-bottom:4px; font-family:'Libertinus Math'; font-size:16px;">
                 ${escapeHtml(n.title)}
             </strong>
-            <p style="font-size:12px; color:#444; margin:0; line-height:1.5; font-family:'Fustat';">
+            <p style="font-size:12px; color:var(--text-muted); margin:0; line-height:1.5; font-family:'Fustat';">
                 ${escapeHtml(n.body)}
             </p>
         </div>
@@ -421,7 +523,7 @@ function _buildRewardHtml(ach) {
                     <video src="${escapeForAttribute(ach.reward.url)}" 
                            style="width: 100%; height: 100%; object-fit: cover;" muted playsinline></video>
                     <div class="ach-video-overlay">
-                        <svg viewBox="0 0 24 24" width="40" height="40" fill="#fff" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+                        <svg viewBox="0 0 24 24" width="40" height="40" fill="var(--bg-panel)" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
                             <path d="M8 5v14l11-7z"/>
                         </svg>
                     </div>
@@ -435,10 +537,10 @@ function _buildRewardHtml(ach) {
                     <span class="hero-btn-icon" style="font-size: 1.2em;">▶</span>
                     <span class="hero-btn-text">
                         <strong style="font-size: 12px; font-family: 'Libertinus Math';">${escapeHtml(ach.reward.meta?.title || 'Encrypted')}</strong>
-                        <span style="font-size: 9px; color: #666; text-transform: uppercase; font-family: 'Fustat';">Supplementary Audio File</span>
+                        <span style="font-size: 9px; text-transform: uppercase; font-family: 'Fustat';">Supplementary Audio File</span>
                     </span>
                 </button>
-                `, false, '', 'background: repeating-linear-gradient(45deg, var(--primary-dim), var(--primary-dim) 10px, #fff 10px, #fff 20px);')}
+                `, false, '', 'background: repeating-linear-gradient(45deg, var(--primary-dim), var(--primary-dim) 10px, var(--bg-panel) 10px, var(--bg-panel) 20px);')}
             `;
         case 'game':
             return sectionLabel + `
@@ -448,30 +550,23 @@ function _buildRewardHtml(ach) {
                     <span class="hero-btn-icon" style="font-size: 1.2em; color: var(--orange);">🎮</span>
                     <span class="hero-btn-text">
                         <strong style="font-size: 12px; font-family: 'Libertinus Math';">${escapeHtml(ach.reward.buttonText || 'Launch Module')}</strong>
-                        <span style="font-size: 9px; color: #666; text-transform: uppercase; font-family: 'Fustat';">Productivity Task</span>
+                        <span style="font-size: 9px; color: var(--text-muted); text-transform: uppercase; font-family: 'Fustat';">Productivity Task</span>
                     </span>
                 </button>
-                `, false, '', 'background: #1a1a1a;')}
+                `, false, '', '')}
             `;
         case 'text':
             return sectionLabel + `
-            <div style="position: relative; background: #f9f9f9; border: 1px solid var(--primary-dim); border-radius: 4px; padding: 16px; margin-top: 8px; height: 140px; display: flex; flex-direction: column;">
-                <div style="white-space:pre-wrap; flex: 1; overflow-y: auto; font-size: 11px; font-family: monospace; color: #333;">${escapeHtml(ach.reward.content)}</div>
+            <div style="position: relative; background: var(--bg-panel); border: 1px solid var(--primary-dim); border-radius: 4px; padding: 16px; margin-top: 8px; height: 140px; display: flex; flex-direction: column;">
+                <div style="white-space:pre-wrap; flex: 1; overflow-y: auto; font-size: 11px; font-family: monospace; color: var(--text);">${escapeHtml(ach.reward.content)}</div>
                 <button onclick="navigator.clipboard.writeText('${escapeForAttribute(ach.reward.content)}'); this.textContent='COPIED!'; setTimeout(()=>this.textContent='COPY TEXT', 1500);" 
-                        style="position: absolute; top: 6px; right: 6px; font-size: 8px; font-weight: bold; font-family: 'Fustat'; padding: 4px 8px; background: var(--primary); color: #fff; border: none; border-radius: 2px; cursor: pointer; text-transform: uppercase; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        style="position: absolute; top: 6px; right: 6px; font-size: 8px; font-weight: bold; font-family: 'Fustat'; padding: 4px 8px; background: var(--primary); color: var(--bg-body); border: none; border-radius: 2px; cursor: pointer; text-transform: uppercase; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     COPY TEXT
                 </button>
             </div>`;
         default:
             return '';
     }
-}
-
-function _refreshLoginCode() {
-    const el = document.getElementById('prof-export-code');
-    if (!el) return;
-    el.textContent = PodUser.exportCode();
-    el.className   = _loginCodeVisible ? 'login-code-visible' : 'login-code-hidden';
 }
 
 

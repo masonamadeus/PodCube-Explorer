@@ -164,7 +164,7 @@ class SnakeGame extends Game {
         // If we just beat the high score, show the new score as the best
         const best = Math.max(this.score, highScore);
 
-        this.api.gameOver(`SCORE: ${this.score}  |  BEST: ${best}`);
+        this.api.gameOver('DATA CORRUPTED', `SCORE: ${this.score}  |  BEST: ${best}`);
     }
 }
 

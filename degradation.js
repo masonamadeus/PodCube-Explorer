@@ -114,12 +114,12 @@ function applyTemporalMetrics(visits) {
     const severity = Math.max(0, Math.min((visits - 10) / (maxVisits - 10), 1)); 
 
     // 1. Static Grain & Sepia Overlay
-    root.style.setProperty('--deg-noise', (severity * 0.075).toFixed(3));
-    root.style.setProperty('--deg-sepia', (severity * 0.15).toFixed(3)); 
+    root.style.setProperty('--deg-noise', (severity * 0.2).toFixed(3));
+    root.style.setProperty('--deg-sepia', (severity * 0.1).toFixed(3)); 
 
     // 2. Brand Decay
     const newHue = 215 - (severity * 10.0);
-    const newSat = 82 - (severity * 33);
+    const newSat = 82 - (severity * 43);
     
     root.style.setProperty('--deg-hue', newHue.toFixed(0));
     root.style.setProperty('--deg-sat', `${newSat.toFixed(0)}%`);
@@ -147,24 +147,23 @@ function startTemporalTextGlitches(visits) {
         window._temporalGlitchInterval = null;
     }
 
-    // Bumped the starting threshold to 50
     if (visits < 50) return;
 
-    // Severity now scales from 0 to 1 between visits 50 and 100
-    const severity = Math.min((visits - 50) / 50, 1); 
-    
-    // INVERSE CUBIC CURVE:
-    // This creates a smooth but aggressive ramp-up.
-    // v=50 -> 8000ms | v=65 -> ~2700ms | v=100 -> 50ms
+    // --- NEW: Global Epoch Tracking ---
+    // This allows us to instantly invalidate all hanging timeouts when De-Gauss fires.
+    window._glitchEpoch = (window._glitchEpoch || 0) + 1;
+    const currentEpoch = window._glitchEpoch;
+
+    const severity = Math.min((visits - 50) / 50, 2); 
     const intervalTime = 50 + 7950 * Math.pow(1 - severity, 3); 
 
     const glitchChars = ['‡', '¥', '§', '▓', '░', 'µ', '¢', 'ø', 'Ä', '¶', '¿', '✖', '█', '▄', '■', '▼'];
 
     window._temporalGlitchInterval = setInterval(() => {
-        const allElements = document.querySelectorAll('h1, h2, h3, h4, .et-text, .transport-title, .ach-title, .stat-num, .ep-duration');
+        const allElements = document.querySelectorAll('h1, h2, h3, h4, .et-text, .transport-title, .ach-title, .stat-num, .ep-duration, span');
         
         const validTargets = Array.from(allElements).filter(el => {
-            if (el.childElementCount > 0 || el.matches(':hover')) return false;
+            if (el.childElementCount > 0) return false;
             if (el.closest('.pc-share-card-container')) return false;
             const txt = el.textContent;
             if (!txt || txt.trim().length < 3) return false;
@@ -180,12 +179,18 @@ function startTemporalTextGlitches(visits) {
 
         if (validTargets.length === 0) return;
         
-        // MULTIPLE TARGETS: At max severity, glitch up to 4 elements at the exact same time
-        // Note: I swapped 'curve' for 'severity' here so the multi-targeting scales linearly 
         const simultaneousGlitches = Math.floor(1 + (severity * 3)); 
 
         for (let i = 0; i < Math.min(simultaneousGlitches, validTargets.length); i++) {
             const target = validTargets[Math.floor(Math.random() * validTargets.length)];
+            
+            // --- NEW: Backup pristine text securely ---
+            // Only captures the text the very first time the node is targeted
+            if (!target.hasAttribute('data-true-text')) {
+                target.setAttribute('data-true-text', target.textContent);
+            }
+
+            // Capture whatever the CURRENT text is (allowing glitches to stack and permanently corrupt!)
             const originalText = target.textContent;
             
             let charIdx;
@@ -195,7 +200,6 @@ function startTemporalTextGlitches(visits) {
                 attempts++;
             } while (originalText[charIdx] === ' ' && attempts < 10);
 
-            // MULTI-CHAR CORRUPTION: At high severity, replace chunks of text instead of just 1 character
             const glitchLength = Math.floor(1 + (Math.random() * severity * 3));
             let weirdStr = '';
             for(let g = 0; g < glitchLength; g++) {
@@ -204,11 +208,13 @@ function startTemporalTextGlitches(visits) {
 
             target.textContent = originalText.substring(0, charIdx) + weirdStr + originalText.substring(charIdx + glitchLength);
 
-            // CHAOTIC DURATIONS: Hold the glitch for a random amount of time (50ms to 450ms)
             const holdDuration = 50 + Math.random() * 400;
             
             setTimeout(() => {
-                // Failsafe to ensure it snaps back correctly even if another glitch hit it
+                // --- NEW: The Kill Switch ---
+                // If a De-Gauss advanced the epoch while we were waiting, abort!
+                if (window._glitchEpoch !== currentEpoch) return;
+
                 if (target.textContent !== originalText) {
                     target.textContent = originalText;
                 }
@@ -247,6 +253,17 @@ window.repairTerminal = async function() {
 
     // 5. Wait a fraction of a second at peak brightness, then reset data and fade out
     setTimeout(async () => {
+
+        
+        // Advance the global epoch to neutralize all pending text glitch timeouts.
+        window._glitchEpoch = (window._glitchEpoch || 0) + 1;
+
+        // Safely sweep the live DOM and restore pristine text
+        document.querySelectorAll('[data-true-text]').forEach(el => {
+            el.textContent = el.getAttribute('data-true-text');
+            el.removeAttribute('data-true-text');
+        });
+
         // Reset the data behind the blinding flash
         PodUser.data.degradation = 0;
         await PodUser.save();
@@ -263,5 +280,5 @@ window.repairTerminal = async function() {
             }
         }, 1500); 
         
-    }, 150); 
+    }, 150);
 };

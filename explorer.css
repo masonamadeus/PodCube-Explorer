@@ -2,11 +2,13 @@
 :root {
     --primary: #1768da;
     --primary-dim: #e1e8f3;
+    --primary-subtle: #f1f2f5;
     --primary-dark: #0d4da1;
-    --bg-body: #fdfdfc;
-    --bg-panel: #ffffff;
+    --bg-body: #fFfFfF;
+    --bg-panel: #fafafa;
     --text-main: #1a1a1a;
     --text-muted: #555555;
+    --text-dim: #777777;
     --border: #1768da;
     --success: #1768da;
     --warning: #1768da;
@@ -18,11 +20,12 @@
     --monitor-height: 40px;
     --transport-height: 80px;
 
-    border-radius: 0px!important;
     touch-action: manipulation;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; 
+    border-top-left-radius: 2px;
+    border-top-right-radius: 2px;
 
     scrollbar-color: var(--primary-dark) var(--primary-dim);
     scrollbar-width: thin;
@@ -95,7 +98,6 @@ header {
     height: 70px;
     object-fit: contain;
     margin-right: 15px;
-    background: #fff;
 }
 
 h1 { 
@@ -161,7 +163,7 @@ h1 {
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
-    color: #888;
+    color: var(--text-muted);
     transition: all 0.15s ease;
 }
 
@@ -174,11 +176,11 @@ h1 {
 
 .tab-button.active {
     color: var(--primary);
-    background: #fff;
+    background: var(--bg-body);
     border-color: var(--primary);
     
     /* Solid white bottom border to mask the container line */
-    border-bottom: 1px solid #fff;
+    border-bottom: 1px solid var(--bg-panel);
     
     /* CHANGE top: 1px TO margin-bottom */
     margin-bottom: -1px; 
@@ -234,7 +236,7 @@ h1 {
 }
 
 .registry-sidebar {
-    background: #f8f8f8;
+    background: var(--primary-subtle);
     border: 1px solid var(--primary);
     padding: 15px;
     overflow-y: auto;
@@ -252,14 +254,14 @@ h1 {
 /* --- EPISODE CARDS --- */
 .ep-card {
     display: flex;
-    background: #fff;
+    background: var(--bg-body);
     border: 1px solid var(--primary);
     margin-bottom: 10px;
     transition: all 0.15s ease;
     position: relative;
     overflow: hidden;
     cursor: pointer;
-    align-items:center;
+    align-items:stretch;
 }
 
 @media (hover: hover){
@@ -322,7 +324,7 @@ h1 {
     font-family: "Fustat", sans-serif; 
     font-size: 10px; 
     font-weight: bold;
-    color: #888; 
+    color: var(--text-muted); 
     white-space: nowrap; 
 }
 
@@ -335,7 +337,7 @@ h1 {
     display: flex; 
     gap: 10px; 
     font-size: 11px; 
-    color: #555; 
+    color: var(--text-muted); 
     margin-bottom: 4px; 
     align-items: center;
     
@@ -344,7 +346,7 @@ h1 {
 .ep-tag { 
     background: #eee; 
     padding: 2px 6px; 
-     
+    
     font-size: 10px; 
     font-family: "Fustat";
     text-transform: uppercase;
@@ -353,7 +355,7 @@ h1 {
 
 .ep-location {
     font-size: 11px;
-    color: #888;
+    color: var(--text-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -384,10 +386,10 @@ h1 {
 }
 
 .integrity-text {
-    font-size: 9px;
+    font-size: 10px;
     font-family: "Fustat";
     font-weight: 700;
-    color: #888;
+    color: var(--text-muted);
     min-width: 30px;
     flex-shrink: 0;
 }
@@ -396,9 +398,9 @@ h1 {
 .integrity-wrapper .ep-duration {
     margin-left: auto; /* Pushes the duration to the far right */
     font-family: "Fustat";
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 700;
-    color: #888;
+    color: var(--text-muted);
     text-transform: uppercase;
 }
 
@@ -420,14 +422,15 @@ h1 {
     flex-direction: column;
     justify-content: center;
     padding: 10px;
-    border-left: 1px solid #f0f0f0;
+    border-left: 1px solid var(--primary-dim);
     gap: 5px;
-    background: #fafafa;
+    background: var(--primary-subtle);
 }
 
 .icon-btn {
     border: 1px solid var(--primary);
-    background: #fff;
+    background: var(--bg-panel);
+    color:var(--text);
     cursor: pointer;
     padding: 5px 10px;
     font-size: 10px;
@@ -467,7 +470,7 @@ h1 {
 
 /* New Inspector Header Card */
 .inspector-header-card {
-    background: #fff;
+    background: var(--bg-panel);
     border: 3px double var(--primary);
     padding: 15px;
     margin-bottom: 20px;
@@ -480,7 +483,7 @@ h1 {
     position: absolute;
     top: -10px;
     left: 15px;
-    background: var(--bg-body);
+    background: var(--bg-panel);
     padding: 0 10px;
     font-family: "Fustat", sans-serif;
     font-size: 10px;
@@ -492,7 +495,7 @@ h1 {
 .inspector-empty-state {
     text-align: center;
     padding: 20px;
-    color: #888;
+    color: var(--text-muted);
 }
 
 .inspector-empty-state h3 {
@@ -565,7 +568,7 @@ h1 {
 
 .inspector-header-label {
     font-family: "Fustat", sans-serif;
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
     color: #999;
@@ -606,7 +609,7 @@ h1 {
     text-transform: uppercase;
     font-weight: 700;
     color: #999;
-    font-size: 9px;
+    font-size: 10px;
     letter-spacing: 0.05em;
 }
 
@@ -622,7 +625,7 @@ h1 {
 
 .inspector-action-btn {
     border: 1px solid var(--primary);
-    background: #fff;
+    background: var(--bg-panel);
     color: var(--primary);
     padding: 8px 16px;
     font-family: "Fustat";
@@ -637,7 +640,7 @@ h1 {
 @media (hover: hover) {
     .inspector-action-btn:hover {
         background: var(--primary);
-        color: #fff;
+        color: var(--bg-panel);
     }
 
     .inspector-action-btn.primary:hover {
@@ -648,7 +651,7 @@ h1 {
 
 .inspector-action-btn.primary {
     background: var(--primary);
-    color: #fff;
+    color: var(--bg-panel);
 }
 /* Report Body */
 .inspector-report-body {
@@ -733,7 +736,8 @@ h1 {
     font-size: 11px;
     text-transform: uppercase;
     font-weight: 700;
-    color: #888;
+    color: var(--text-muted);
+    text-align: right;
 }
 
 .inspector-data-grid .data-value {
@@ -769,7 +773,7 @@ h1 {
 @media (hover: hover){
 .inspector-tag-pill:hover {
     background: var(--primary);
-    color: #fff;
+    color: var(--bg-panel);
 }}
 
 /* Related Episodes - Compact List */
@@ -826,7 +830,7 @@ h1 {
     padding: 0;
     font-size: 14px;
     line-height: 1.7;
-    color: #555;
+    color: var(--text-muted);
     max-height: 400px;
     overflow-y: auto;
     margin: 15px 0;
@@ -856,7 +860,7 @@ h1 {
     top: -8px; /* Offset to sit on the border */
     left: 10px;
     
-    background: #fff; /* Masks the border behind the text */
+    background: var(--bg-panel); /* Masks the border behind the text */
     padding: 0 6px;
     
     /* Typography matches your Hero style */
@@ -917,12 +921,12 @@ h1 {
 }
 
 .inspector-description {
-    background: #fff;
+    background: var(--bg-panel);
     border: 1px solid var(--primary);
     padding: 15px;
     font-size: 13px;
     line-height: 1.6;
-    color: #555;
+    color: var(--text-muted);
     
     max-height: 300px;
     overflow-y: auto;
@@ -955,27 +959,27 @@ h1 {
 .data-tab-btn {
     padding: 8px 16px;
     background: transparent;
-    border: 1px solid var(--primary);
+    border: 1px solid var(--primary-dim);
     border-bottom: none;
     cursor: pointer;
     font-size: 11px;
     font-weight: 600;
     font-family: "Fustat";
-    color: #888;
+    color: var(--text-muted);
     transition: all 0.15s ease;
 }
 
 @media (hover: hover){
 .data-tab-btn:hover {
     color: var(--primary);
-    background: #f5f5f5;
+    background: var(--bg-panel);
 }}
 
 .data-tab-btn.active {
     color: var(--primary);
-    background: #fff;
-    border-color: #ddd;
-    border-bottom-color: #fff;
+    background: var(--bg-body);
+    border-color: var(--primary);
+    border-bottom-color: var(--bg-panel);
     margin-bottom: -1px;
 }
 
@@ -990,7 +994,7 @@ h1 {
 
 /* Now Playing Card (keeps double border) */
 .player-now-playing-card {
-    background: #fff;
+    background: var(--bg-panel);
     border: 3px double var(--primary);
     padding: 25px;
     margin-bottom: 20px;
@@ -1003,7 +1007,7 @@ h1 {
     position: absolute;
     top: -10px;
     left: 15px;
-    background: var(--bg-body);
+    background: var(--bg-panel);
     padding: 0 10px;
     font-family: "Fustat", sans-serif;
     font-size: 10px;
@@ -1086,7 +1090,7 @@ h1 {
     width: 50px;
     height: 50px;
     border: 1px solid var(--primary);
-    background: #fff;
+    background: var(--bg-panel);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -1097,7 +1101,7 @@ h1 {
 @media (hover: hover){
 .player-transport-btn:hover {
     background: var(--primary);
-    color: #fff;
+    color: var(--bg-panel);
     transform: scale(1.05);
 }
 .player-transport-btn-play:hover {
@@ -1107,7 +1111,7 @@ h1 {
 .player-transport-btn-play {
     width: 60px;
     background: var(--primary);
-    color: #fff;
+    color: var(--bg-panel);
 }
 
 
@@ -1159,7 +1163,7 @@ h1 {
     font-size: 11px;
     text-transform: uppercase;
     font-weight: 700;
-    color: #888;
+    color: var(--text-muted);
     min-width: 50px;
     margin-bottom: 0;
 }
@@ -1181,7 +1185,7 @@ h1 {
     font-family: "Fustat";
     font-size: 11px;
     border: 1px solid #ddd;
-    background: #fff;
+    background: var(--bg-panel);
     margin-bottom: 0;
 }
 
@@ -1208,7 +1212,7 @@ h1 {
 
 .player-queue-btn {
     border: 1px solid var(--primary);
-    background: #fff;
+    background: var(--bg-panel);
     color: var(--primary);
     padding: 6px 14px;
     font-family: "Fustat";
@@ -1222,7 +1226,7 @@ h1 {
 @media (hover: hover){
 .player-queue-btn:hover {
     background: var(--primary);
-    color: #fff;
+    color: var(--bg-panel);
 }}
 
 .player-queue-stats-bar {
@@ -1248,7 +1252,7 @@ h1 {
     max-height: 400px;
     overflow-y: auto;
     margin-bottom: 15px;
-    background: #fff;
+    background: var(--bg-panel);
 }
 
 .player-queue-list:empty::before {
@@ -1364,7 +1368,7 @@ h1 {
     font-size: 10px;
     text-transform: uppercase;
     font-weight: 700;
-    color: #888;
+    color: var(--text-muted);
 }
 
 .player-diagnostic-value {
@@ -1379,14 +1383,14 @@ h1 {
     font-size: 11px;
     text-transform: uppercase;
     font-weight: 700;
-    color: #888;
+    color: var(--text-muted);
     margin-bottom: 10px;
     margin-top: 20px;
 }
 
 /* Legacy Playback Control Panel (keep for compatibility) */
 .playback-control-panel {
-    background: #fff;
+    background: var(--bg-panel);
     border: 3px double var(--primary);
     padding: 25px;
     margin-top: 10px;
@@ -1400,7 +1404,7 @@ h1 {
     position: absolute;
     top: -8px;
     left: 15px;
-    background: var(--bg-body);
+    background: var(--bg-panel);
     padding: 0 8px;
     font-family: "Fustat", sans-serif;
     font-size: 10px;
@@ -1428,7 +1432,7 @@ h1 {
     width: 60px;
     height: 60px;
     border: 2px solid var(--primary);
-    background: #fff;
+    background: var(--bg-panel);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -1454,7 +1458,7 @@ h1 {
     height: 90px;
     border: 3px solid var(--primary);
     background: var(--primary);
-    color: #fff;
+    color: var(--bg-panel);
     font-size: 32px;
 }
 
@@ -1578,7 +1582,7 @@ h1 {
     text-transform: uppercase;
     letter-spacing: 0.03em;
     border: 1px solid var(--primary);
-    background: #fff;
+    background: var(--bg-panel);
     color: var(--primary);
 }
 
@@ -1595,7 +1599,7 @@ h1 {
     max-height: 400px;
     overflow-y: auto;
     margin-left: 15px;
-    background: #fff;
+    background: var(--bg-panel);
 }
 
 .queue-item {
@@ -1604,7 +1608,7 @@ h1 {
     align-items: center;
     padding: 10px 12px;
     border-bottom: 1px solid #f0f0f0;
-    background: #fff;
+    background: var(--bg-panel);
     transition: all 0.15s ease;
     gap: 12px;
 }
@@ -1649,7 +1653,7 @@ h1 {
 
 .queue-item-meta {
     font-size: 10px;
-    color: #888;
+    color: var(--text-muted);
     font-family: "Fustat";
 }
 
@@ -1678,7 +1682,7 @@ h1 {
 @media (hover: hover){
 .queue-item-actions button:hover {
     background: var(--primary);
-    color: #fff;
+    color: var(--bg-panel);
 }
 }
 
@@ -1721,7 +1725,7 @@ h1 {
 
 .playlist-card {
     border: 3px double var(--primary);
-    background: #fff;
+    background: var(--bg-panel);
     padding: 12px;
     display: flex;
     flex-direction: column;
@@ -1739,7 +1743,7 @@ h1 {
 .mini-qr-container {
     width: 100px;
     height: 100px;
-    background: #fff;
+    background: var(--bg-panel);
     border: 1px solid var(--primary);
     margin: 8px 0;
     display: flex;
@@ -1790,7 +1794,7 @@ h1 {
 
 .playlist-import-row input {
     margin-bottom: 0;
-    background: #fff;
+    background: var(--bg-panel);
     font-family: monospace;
     font-size: 11px;
 }
@@ -1807,7 +1811,7 @@ h1 {
 
 /* Drag & Drop Hover State */
 .punchcard-reader-wrapper.drag-active {
-    background: #fff;
+    background: var(--bg-panel);
     box-shadow: 0 0 15px var(--primary);
     border-color: var(--primary-dark);
 }
@@ -1817,7 +1821,7 @@ h1 {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(23, 104, 218, 0.9);
-    color: #fff;
+    color: var(--bg-panel);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1853,7 +1857,7 @@ h1 {
     flex: 1; 
     font-family: monospace; 
     border: 1px solid var(--primary);
-    background: #fff;
+    background: var(--bg-panel);
 }
 
 .punchcard-btn {
@@ -1877,14 +1881,14 @@ h1 {
 }
 .punchcard-issue-btn {
     /* Styles for the "Issue" button specifically if needed, inheriting from above */
-    background: #fff;
+    background: var(--bg-panel);
     color: var(--primary);
 }
 
 @media (hover: hover){
 .punchcard-issue-btn:hover {
     background: var(--primary);
-    color: #fff;
+    color: var(--bg-panel);
 }}
 
 /* Responsive adjustments */
@@ -1916,7 +1920,7 @@ h1 {
 .stat-box {
     border: 1px solid var(--primary);
     padding: 15px;
-    background: #fff;
+    background: var(--bg-panel);
     transition: all 0.15s ease;
     display: flex;
     flex-direction: column;
@@ -1954,7 +1958,7 @@ h1 {
     top: 8px;
     right: 12px;
     color: #ff4444;
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 700;
     font-family: "Fustat";
     z-index: 10;
@@ -2029,7 +2033,7 @@ h1 {
     align-items: center;
     justify-content: space-between;
     padding: 10px;
-    background: #fff;
+    background: var(--bg-panel);
     border: 1px solid var(--primary);
     margin-bottom: 8px;
     
@@ -2078,9 +2082,10 @@ input, select {
     padding: 7px;
     margin-bottom: 12px;
     border: 1px solid var(--primary-dark);
-    font-family: "Libertinus Math", serif;
+    font-family: "Fustat", sans-serif;
     font-size: 12px;
-    
+    background: var(--bg-panel);
+    color: var(--text);
     transition: border-color 0.15s ease;
 }
 
@@ -2121,7 +2126,7 @@ label {
     left: 0; 
     right: 0;
     height: var(--transport-height);
-    background: #fff;
+    background: var(--bg-panel);
     border-top: 3px double var(--primary);
     border-left: 1px solid var(--primary-dim);
     border-right: 1px solid var(--primary-dim);
@@ -2142,7 +2147,7 @@ label {
     transform: translateX(-50%);
     width: 30px;
     height: 15px;
-    background: #fff;
+    background: var(--bg-panel);
     border: 1px solid var(--primary);
     border-bottom: none;
     cursor: pointer;
@@ -2225,7 +2230,7 @@ label {
     width: 45px; 
     height: 30px;
     border: 1px solid var(--primary);
-    background: #fff;
+    background: var(--bg-panel);
     cursor: pointer;
     font-size: 16px;
     display: flex; 
@@ -2238,14 +2243,14 @@ label {
 
 .control-btn.control-btn-play {
     background: var(--primary);
-    color: #fff;
+    color: var(--bg-panel);
     border-color: var(--primary);
 }
 
 @media (hover: hover){
 .control-btn:hover { 
     background: var(--primary); 
-    color: #fff; 
+    color: var(--bg-panel); 
     border-color: var(--primary); 
     transform: scale(1.05);
 }
@@ -2262,7 +2267,7 @@ label {
 .scrubber { 
     flex: 1; 
     height: 6px; 
-    background: #e0e0e0; 
+    background: var(--primary-dim); 
     cursor: pointer; 
     position: relative; 
     overflow: hidden;
@@ -2304,11 +2309,31 @@ label {
     color: var(--orange);
 }
 
-.monitor-text {
+.monitor-text-wrapper {
     flex: 1;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
+    
+    /* Adds a subtle fade to the right edge so it doesn't hard-cut */
+    -webkit-mask-image: linear-gradient(to right, black 95%, transparent 100%);
+    mask-image: linear-gradient(to right, black 95%, transparent 100%);
+}
+
+.monitor-text {
+    display: inline-block;
+    white-space: nowrap;
+    /* Removed text-overflow: ellipsis so the full text renders for the slide */
+}
+
+/* Dynamically added by JS when text is too long */
+.monitor-text.marquee-active {
+    animation: monitorMarquee var(--marquee-dur) linear infinite alternate;
+}
+
+/* Pauses at 0%->15% so you can read the start, then slides, then pauses at the end */
+@keyframes monitorMarquee {
+    0%, 15% { transform: translateX(0); }
+    85%, 100% { transform: translateX(var(--marquee-dist)); }
 }
 
 .monitor-timestamp {
@@ -2330,7 +2355,7 @@ label {
 .stat-box { 
     border: 1px solid var(--primary); 
     padding: 15px; 
-    background: #fff; 
+    background: var(--bg-panel); 
     
     transition: all 0.15s ease;
     display: flex;
@@ -2385,10 +2410,10 @@ label {
 /* --- HIERARCHY COLUMNS --- */
 .hierarchy-col {
     flex: 1;
-    padding: 0; 
+    padding: 0 10px; 
     height: 320px;
     overflow-y: auto;
-    background: #fff;
+    background: var(--bg-panel);
     display: flex;
     flex-direction: column;
     scrollbar-width: none;
@@ -2406,7 +2431,7 @@ label {
     font-size: 14px;
     position: sticky;
     top: 0;
-    background-color: #fff;
+    background-color: var(--bg-panel);
     z-index: 10;
 }
 
@@ -2516,7 +2541,7 @@ label {
     align-items: center;
     padding: 10px;
     border-bottom: 1px solid #eee;
-    background: #fff;
+    background: var(--bg-panel);
     transition: background 0.15s ease;
     cursor: grab;
 }
@@ -2559,7 +2584,7 @@ label {
 
 .queue-item-meta {
     font-size: 10px;
-    color: #888;
+    color: var(--text-muted);
     font-family: "Fustat";
 }
 
@@ -2591,7 +2616,7 @@ label {
     align-items: center;
     padding: 12px;
     border: 1px solid #ddd;
-    background: #fff;
+    background: var(--bg-panel);
     transition: all 0.15s ease;
 }
 @media (hover: hover){
@@ -2614,7 +2639,7 @@ label {
 
 .playlist-meta {
     font-size: 10px;
-    color: #888;
+    color: var(--text-muted);
     font-family: "Fustat";
 }
 
@@ -2628,7 +2653,7 @@ label {
 .badge {
     display: inline-block;
     padding: 3px 8px;
-    font-size: 9px;
+    font-size: 10px;
     font-family: "Fustat";
     font-weight: 700;
     text-transform: uppercase;
@@ -2642,7 +2667,7 @@ label {
 }
 
 .badge-warning {
-    background: #fff3cd;
+    background: var(--bg-panel)3cd;
     color: #856404;
 }
 
@@ -2771,7 +2796,7 @@ label {
     z-index: 99999;
     pointer-events: none; /* Allows code to see what is underneath the ghost */
     opacity: 0.95;
-    background: #fff;
+    background: var(--bg-panel);
     box-shadow: 0 5px 20px rgba(0,0,0,0.3);
     border: 1px solid var(--primary);
     list-style: none;
@@ -2899,7 +2924,7 @@ label {
     }
 
     .filter-toggle-btn {
-        background: #fff;
+        background: var(--bg-panel);
         border: 1px solid var(--primary);
         color: var(--primary);
         padding: 4px 12px;
@@ -3105,7 +3130,7 @@ label {
     align-items: center;
     gap: 20px;
     padding: 2.5%;
-    background: #fff;
+    background: var(--bg-panel);
     border: 3px double var(--primary); /* Official double border */
     margin-bottom: 30px;
     position: relative;
@@ -3118,7 +3143,7 @@ label {
     position: absolute;
     top: -10px;
     left: 10px;
-    background: var(--bg-body);
+    background: var(--bg-panel);
     padding: 0 10px;
     font-family: "Fustat", sans-serif;
     font-size: 10px;
@@ -3140,7 +3165,6 @@ label {
     max-height: 230px;
     width: auto;
     object-fit: contain;
-    background: var(--bg-body);
     padding: 5px;
 }
 
@@ -3150,12 +3174,11 @@ label {
     align-items: center;
     gap: 12px;
     padding: 12px 18px;
-    background: #fff;
+    background: var(--bg-panel);
     border: 1px solid var(--primary);
     cursor: pointer;
     text-align: left;
     width: 100%;
-    border-radius: 0px !important; /* Document requirement: No round corners */
     transition: background 0.1s steps(2);
 }
 
@@ -3167,12 +3190,13 @@ label {
 @media (hover: hover) {
     .hero-btn:hover {
         background: var(--primary);
+        color: var(--bg-panel);
     }
 
 
     .hero-btn:hover .hero-btn-text strong,
     .hero-btn:hover .hero-btn-text span {
-        color: #fff;
+        color: var(--bg-panel);
     }
 }
 
@@ -3186,7 +3210,7 @@ label {
 
 .hero-btn-text span {
     font-family: "Fustat", sans-serif;
-    font-size: 9px;
+    font-size: 10px;
     color: #666;
     text-transform: uppercase;
 }
@@ -3310,8 +3334,8 @@ label {
 .pc-share-card-container {
     font-family: "Fustat", sans-serif;
     width:400px;
-    color: #fff;
-    background: var(--bg-body);
+    color: #fafafa;
+    background: #fff;
     border: 4px double #1768da;
     position: relative;
     display: flex;
@@ -3370,13 +3394,13 @@ label {
 
 .pc-share-header {
     background: #1768da;
-    color: #fff;
+    color: #fafafa;
     font-family: "Libertinus Math";
     padding: 5px;
     font-weight: 800;
     font-size: 28px;
     z-index: 1;
-    border-bottom: 2px solid #fff;
+    border-bottom: 2px solid #fafafa;
 }
 
 .pc-share-body {
@@ -3402,13 +3426,13 @@ label {
 
 .pc-share-meta {
     font-size: 12px;
-    color: #888;
+    color: #555555;
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
 
 .pc-share-qr-frame {
-    background: #fff;
+    background: #fafafa;
     padding: 10px;
     border: 2px solid #1768da;
     margin-bottom: 25px;
@@ -3417,7 +3441,7 @@ label {
 
 .pc-share-footer {
     background: #1768da;
-    color: #fff;
+    color: #fafafa;
     padding: 15px;
     width: 100%;
     box-sizing: border-box;
@@ -3426,9 +3450,9 @@ label {
 }
 
 .pc-share-code-box {
-    color: #fff;
+    color: #fafafa;
     font-family: "Fustat";
-    font-size: 8px;
+    font-size: 10px;
     word-break: break-all;
     margin-top: 10px;
 }
@@ -3445,8 +3469,8 @@ label {
 
 /* The Action Bar (Replaces the Import Code footer) */
 .pc-share-actions {
-    background: var(--primary-dim);
-    border-top: 2px solid var(--primary);
+    background: #e1e8f3;
+    border-top: 2px solid #1768da;
     padding: 8px;
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -3456,21 +3480,31 @@ label {
 .pc-share-actions .icon-btn {
     width: 100%;
     justify-content: center;
-    background: #fff;
-    font-size: 9px;
+    background: #fafafa;
+    font-size: 10px;
     padding: 6px 0;
     margin: 0;
 }
 
 .pc-share-actions .btn-load {
-    background: var(--primary);
-    color: #fff;
+    background: #1768da;
+    color: #fafafa;
+}
+
+.pc-share-actions .btn-export{
+    background: #fafafa;
+    color: #555555;
 }
 
 @media (hover: hover) {
     .pc-share-actions .icon-btn:hover {
-        background: var(--primary);
-        color: #fff;
+        background: #1768da;
+        color: #fafafa;
+    }
+
+    .pc-share-actions .btn-load:hover{
+        background: #fafafa;
+        color: #1768da;
     }
 
     /* Hover effect only for the interactive on-screen ones */
@@ -3488,8 +3522,8 @@ label {
 
 /* mini cards used in UI */
 .playlist-mini-card {
-    border: 3px double var(--primary);
-    background: #fff;
+    border: 3px double #1768da;
+    background: #fafafa;
     padding: 10px;
     display: flex;
     flex-direction: column;
@@ -3502,7 +3536,7 @@ label {
     width: 80px;
     height: 80px;
     background: #f5f5f5;
-    border: 1px solid var(--primary-dim);
+    border: 1px solid #e1e8f3;
 }
 
 /* Responsive */
@@ -3526,7 +3560,7 @@ label {
 }
 
 .pc-queue-preview {
-    background: #fff;
+    background: var(--bg-panel);
     border: 1px dashed var(--primary);
     padding: 10px;
     margin-bottom: 15px;
@@ -3536,10 +3570,10 @@ label {
 }
 
 .pc-preview-header {
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
-    color: #888;
+    color: var(--text-muted);
     margin-bottom: 5px;
     border-bottom: 1px solid #eee;
     padding-bottom: 2px;
@@ -3575,7 +3609,7 @@ label {
 }
 
 .pc-preview-meta {
-    color: #888;
+    color: var(--text-muted);
     font-family: monospace;
 }
 
@@ -3624,7 +3658,7 @@ label {
 /* Status text that appears over the card */
 .pc-export-status-text {
     background: var(--primary);
-    color: #fff;
+    color: var(--bg-panel);
     font-family: "Fustat", sans-serif;
     font-size: 14px;
     font-weight: 700;
@@ -3778,7 +3812,6 @@ label {
 /* --- USER PROFILE STYLES --- */
 .user-badge {
     cursor: pointer;
-    background: var(--primary-dim);
     padding: 4px 8px;
     border: 1px solid var(--primary);
     display: flex;
@@ -3788,7 +3821,7 @@ label {
 }
 
 @media (hover: hover){
-    .user-badge:hover { background: #fff; transform: translateY(-1px); }
+    .user-badge:hover { background: var(--bg-panel); }
 }
 
 .status-login-row{
@@ -3808,15 +3841,15 @@ label {
 
 .notif-dot {
     background: var(--danger);
-    color: #fff;
+    color: var(--bg-panel);
     font-family: "Fustat";
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 700;
     padding: 2px 5px;
     border-radius: 50%;
 }
 .notification-card {
-    background: #fff;
+    background: var(--bg-panel);
     border-left: 3px solid var(--primary);
     padding: 12px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
@@ -3833,7 +3866,7 @@ label {
         justify-content: space-between;
         gap: 20px;
         padding: 20px;
-        background: #fff;
+        background: var(--bg-panel);
         border: 3px double var(--primary);
         margin-bottom: 30px;
         position: relative;
@@ -3849,6 +3882,7 @@ label {
         font-family: "Fustat", sans-serif;
         font-size: 10px; font-weight: 700;
         color: var(--primary);
+        background: var(--bg-panel);
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
@@ -3865,7 +3899,7 @@ label {
     .profile-role {
         font-family: "Fustat", sans-serif;
         font-size: 10px;
-        color: #888;
+        color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: 0.08em;
     }
@@ -3879,11 +3913,11 @@ label {
         letter-spacing: 0.06em;
         padding: 4px 12px;
         border: 1px solid var(--primary);
-        background: #fff;
+        background: var(--bg-panel);
         color: var(--primary);
         cursor: pointer;
     }
-    .ach-filter-btn.active { background: var(--primary); color: #fff; }
+    .ach-filter-btn.active { background: var(--primary); color: var(--bg-panel); }
     @media (hover: hover) {
         .ach-filter-btn:hover:not(.active) { background: var(--primary-dim); }
     }
@@ -3900,14 +3934,14 @@ label {
         
         /* Visual styling to make it look like a distinct terminal pane */
         padding: 12px;
-        background: #f8f9fa; /* Slightly darker than the page background */
+        background: var(--bg-panel);
         border: 1px solid var(--primary-dim);
         box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.03);
     }
     @media (max-width: 768px) { .achievement-gallery { grid-template-columns: 1fr; max-height:50vh; } }
 
     .ach-card {
-        background: #fff;
+        background: var(--bg-panel);
         border: 1px solid var(--primary-dim);
         padding: 14px;
         display: flex;
@@ -3958,14 +3992,14 @@ label {
 
     .ach-status-badge {
         font-family: "Fustat", sans-serif;
-        font-size: 9px; font-weight: 700;
+        font-size: 10px; font-weight: 700;
         text-transform: uppercase;
         padding: 3px 7px;
         position: absolute; top: 10px; right: 10px;
         letter-spacing: 0.05em;
         display: none;
     }
-    .ach-status-badge.is-unlocked { background: var(--primary); color: #fff; }
+    .ach-status-badge.is-unlocked { background: var(--primary); color: var(--bg-panel); }
     .ach-status-badge.is-locked   { background: var(--primary-dim); color: var(--primary); }
 
     .ach-reward {
@@ -3982,7 +4016,7 @@ label {
         align-items: center;
         justify-content: center;
         overflow: hidden;
-        border-radius: 4px;
+        border-radius: 5px;
         position: relative;
         margin-bottom: 8px;
         transition: opacity 0.2s ease;
@@ -4010,7 +4044,7 @@ label {
 
     .ach-reward-caption {
         font-family: "Fustat", sans-serif;
-        font-size: 9px; text-transform: uppercase;
+        font-size: 10px; text-transform: uppercase;
         color: var(--primary); margin-top: 5px; letter-spacing: 0.04em;
     }
 
@@ -4030,7 +4064,7 @@ label {
         align-items: center;
         justify-content: center;
         gap: 8px;
-        border-radius: 4px;
+        border-radius: 5px;
         margin-bottom: 8px;
         border: 1px dashed #c8d8f0;
         position: relative;
@@ -4051,7 +4085,7 @@ label {
     }
     .ach-reward-lock-label {
         font-family: 'Fustat', sans-serif;
-        font-size: 9px;
+        font-size: 10px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.12em;
@@ -4059,7 +4093,7 @@ label {
     }
     .ach-reward-lock-sublabel {
         font-family: 'Fustat', sans-serif;
-        font-size: 8px;
+        font-size: 10px;
         text-transform: uppercase;
         letter-spacing: 0.07em;
         color: #969ba3ff;
@@ -4069,7 +4103,7 @@ label {
     /* ── REWARD SECTION HEADER ────────────────────── */
     .ach-reward-section-label {
         font-family: 'Fustat', sans-serif;
-        font-size: 8px;
+        font-size: 10px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.1em;
@@ -4113,7 +4147,7 @@ label {
         transform: scale(1);
     }
     .ach-lightbox-caption {
-        color: #fff;
+        color: var(--bg-panel);
         font-family: "Fustat", sans-serif;
         margin-top: 15px;
         font-size: 14px;
@@ -4124,7 +4158,7 @@ label {
     .ach-lightbox-close {
         position: absolute;
         top: 20px; right: 30px;
-        color: #fff;
+        color: var(--bg-panel);
         font-size: 40px;
         cursor: pointer;
         background: none;
@@ -4147,7 +4181,7 @@ label {
     .notification-card.read {
         opacity: 0.5;
         border-left-color: var(--primary-dim);
-        background: #fff;
+        background: var(--bg-panel);
         cursor: default !important;
     }
     .notification-card.read:hover { opacity: 0.7; }
@@ -4175,3 +4209,82 @@ label {
         filter: none; user-select: all;
         transition: filter 0.25s ease;
     }
+
+
+    /* =========================================
+   DARK MODE OVERRIDES
+   ========================================= */
+
+html.dark-theme {
+    /* ── CORE SURFACES ── */
+    /* Lifted from near-black to a deep slate navy for better legibility */
+    --bg-body: #1a1f2e; 
+    /* Slightly lighter navy for cards and panels to create depth */
+    --bg-panel: #242b3d; 
+    
+    /* ── TYPOGRAPHY ── */
+    /* A soft, off-white with a hint of blue to reduce eye strain */
+    --text-main: #e2e8f0; 
+    /* Muted blue-grey for secondary labels and metadata */
+    --text-muted: #94a3b8; 
+    /* Darker slate for less prominent UI elements */
+    --text-dim: #64748b; 
+    
+    /* ── PRIMARY ACCENTS ── */
+    /* A vibrant, electric blue that remains clear against the slate background */
+    --primary: #6ba5fc; 
+    /* A deep navy accent for active states and subtle containers */
+    --primary-dim: #2d3a5a; 
+    /* The darkest blue tint, used for deep backgrounds behind text */
+    --primary-subtle: #1e263a; 
+    /* A slightly brighter blue for hover effects and emphasis */
+    --primary-dark: #7ab1ff; 
+    
+    /* ── FUNCTIONAL ── */
+    /* Derived from primary-dim to keep borders subtle but visible */
+    --border: #2d3a5a;
+    /* Matches the primary blue exactly to maintain the Terminal identity */
+    --code-bg: #569aff;
+    --code-text: #ffffff;
+    /* High-visibility orange for warnings and progress markers */
+    --orange: #ffb142;
+    
+    /* Maintaining semantic consistency with the light mode rules */
+    --success: var(--primary);
+    --warning: var(--primary);
+    --danger: #ff5c5c;
+}
+/* ── Patch Block for Hardcoded Grays ── */
+
+html.dark-theme .ep-tag,
+html.dark-theme .inspector-field-value,
+html.dark-theme .inspector-prose .code-inline,
+html.dark-theme .mini-qr-preview,
+html.dark-theme .playlist-empty-state,
+html.dark-theme .sharing-qr-section {
+    background: var(--primary-subtle);
+    color: var(--text-main);
+    border-color: var(--primary-dim);
+}
+
+html.dark-theme .queue-item,
+html.dark-theme .playlist-item,
+html.dark-theme .inspector-related-item,
+html.dark-theme .player-transport-row,
+html.dark-theme .player-transport-controls,
+html.dark-theme .sidebar-content,
+html.dark-theme .pc-preview-item {
+    border-color: var(--primary-dim);
+}
+
+html.dark-theme .playlist-controls,
+html.dark-theme .inspector-related-item:hover,
+html.dark-theme .queue-item:hover {
+    background: var(--primary-subtle);
+}
+
+/* Fix the Interactive Game Cards (from interactive.css) */
+html.dark-theme .game-card,
+html.dark-theme .game-card-score {
+    background: var(--bg-panel);
+}

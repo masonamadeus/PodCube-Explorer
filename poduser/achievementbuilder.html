@@ -587,6 +587,10 @@ body.drop-active::after {
                 <label>Display Order <span class="hint">— e.g., 999 for bottom</span></label>
                 <input type="number" id="f-order" placeholder="0" oninput="generate()">
             </div>
+            <div class="field">
+                <label>UID <span class="hint">— (DO NOT EDIT)</span></label>
+                <input type="number" id="f-uid" readonly style="background: #f0f0f0; color: #888;">
+            </div>
         </div>
         <div class="toggle-field">
             <input type="checkbox" id="f-hidden" onchange="generate()">
@@ -1324,6 +1328,7 @@ function loadIntoForm(item) {
     _nextCondId = 1;
 
     document.getElementById('f-id').value = ach.id;
+    document.getElementById('f-uid').value = ach.uid !== undefined ? ach.uid : (ach.order || 0);
     document.getElementById('f-title').value = ach.title || '';
     document.getElementById('f-desc').value = ach.desc || '';
     document.getElementById('f-icon').value = ach.icon || '';
@@ -1382,6 +1387,14 @@ function createNew() {
     
     addCondition('listen_count'); 
     
+    // CALCULATE NEXT AVAILABLE UID
+    const maxUid = _virtualLibrary.reduce((max, item) => {
+        const itemUid = item.obj.uid !== undefined ? item.obj.uid : (item.obj.order || 0);
+        return Math.max(max, itemUid);
+    }, -1);
+    
+    document.getElementById('f-uid').value = maxUid + 1;
+    
     const tempId = 'new_ach_' + Math.floor(Math.random() * 10000);
     document.getElementById('f-id').value = tempId;
     document.getElementById('f-title').value = 'New Achievement';
@@ -1414,12 +1427,23 @@ function saveToLibrary(silent = false) {
     }
     
     const jsCode = document.getElementById('codeOutput').value;
+
+    let safeUid = parseInt(document.getElementById('f-uid').value);
+    if (isNaN(safeUid)) {
+        const maxUid = _virtualLibrary.reduce((max, item) => {
+            const itemUid = item.obj.uid !== undefined ? item.obj.uid : (item.obj.order || 0);
+            return Math.max(max, itemUid);
+        }, -1);
+        safeUid = maxUid + 1;
+        document.getElementById('f-uid').value = safeUid; // Update UI so user sees it
+    }
     
     const obj = {
         id, title,
         desc: document.getElementById('f-desc').value,
         icon: document.getElementById('f-icon').value,
         hiddenGoal: document.getElementById('f-hidden').checked,
+        uid: safeUid,
         order: parseInt(document.getElementById('f-order').value) || 0,
         reward: getRewardObj()
     };
@@ -1504,7 +1528,8 @@ function stringifyAchievement(ach) {
     lines.push(`        desc: ${jss(ach.desc)},`);
     if (ach.icon) lines.push(`        icon: ${jss(ach.icon)},`);
     if (ach.hiddenGoal) lines.push(`        hiddenGoal: true,`);
-    if (ach.order) lines.push(`        order: ${ach.order},`);
+    if (ach.uid !== undefined) lines.push(`        uid: ${ach.uid},`);
+    if (ach.order !== undefined) lines.push(`        order: ${ach.order},`);
     
     let condStr = ach.condition.toString();
     condStr = condStr.replace(/^function\s*(?:anonymous)?\s*\(data\)\s*\{/, '(data) => {');

@@ -182,12 +182,12 @@
             // 5. Check Win Condition
             const goal = game.collide(this, Goal);
             if (goal) {
-                game.api.win("SECTOR CLEAR!");
+                game.api.win("SECTOR CLEAR!", "Task completed successfully.");
             }
             
             // 6. Check Death (Fell off screen)
             if (this.y > ROWS * TILE) {
-                game.api.gameOver("You fell into the abyss. Try again.");
+                game.api.gameOver("MODULE FAILED", "You fell into the abyss. Try again.");
             }
         }
 
