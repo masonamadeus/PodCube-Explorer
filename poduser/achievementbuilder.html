@@ -1287,6 +1287,9 @@ function parseExpression(expr) {
     if ((m = expr.match(/^\(data\.games\['(.*)'\]\s*\|\|\s*0\)\s*>=\s*(\d+)$/))) {
         return { type: 'game_score', params: { gameId: m[1].replace(/\\'/g, "'"), score: m[2] } };
     }
+    if ((m = expr.match(/^\(data\.gamePlays\s*&&\s*data\.gamePlays\['(.*)'\]\s*\|\|\s*0\)\s*>=\s*(\d+)$/))) {
+        return { type: 'game_launches', params: { gameId: m[1].replace(/\\'/g, "'"), n: m[2] } };
+    }
     if ((m = expr.match(/^new Date\(\)\.getHours\(\)\s*===\s*(\d+)$/))) {
         return { type: 'time_of_day', params: { from: m[1], to: parseInt(m[1])+1 } };
     }
@@ -1678,6 +1681,15 @@ const COND_TYPES = {
             { key: 'score',  label: 'Minimum score', placeholder: '50', type: 'number' }
         ],
         generate: (p) => `(data.games[${jss(p.gameId || 'game-id')}] || 0) >= ${parseInt(p.score) || 1}`
+    },
+    game_launches: {
+        label: 'Game launch count',
+        tip: 'Counts how many times a specific game module has been initialized.',
+        fields: [
+            { key: 'gameId', label: 'Game ID', placeholder: 'freaky-frogger', type: 'text' },
+            { key: 'n',  label: 'Minimum launches', placeholder: '5', type: 'number' }
+        ],
+        generate: (p) => `(data.gamePlays && data.gamePlays[${jss(p.gameId || 'game-id')}] || 0) >= ${parseInt(p.n) || 1}`
     },
     time_of_day: {
         label: 'Time of day (hour range)',

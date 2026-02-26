@@ -2,23 +2,49 @@
 <html lang="en">
 
 <head>
+    <!--METADATA-->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, viewport-fit=cover">
     <title>PodCube™ Explorer</title>
-    <link rel="stylesheet" href="./explorer.css">
-    <link rel="stylesheet" href="./interactive/interactive.css">
-    <link href="https://fonts.googleapis.com/css2?family=Fustat:wght@400;600;700&family=Libertinus+Math&display=swap"
-        rel="stylesheet">
+    <meta name="description" content="The Future, is Yesterday™. Listen to audio transmissions from anywhere in space, or time, or place. With high-definition 4-D adiabatic q-bit streaming audio, PodCube™ is the Universal Leader in Time-Agnostic Podcasting™">
+    <meta name="theme-color" content="#1768da">
+    
     <link rel="icon" type="image/png" href="./favicon.png">
     <link rel="manifest" href="./manifest.json">
-    <meta name="theme-color" content="#1768da">
-    <link rel="apple-touch-icon" href="./PODCUBE.png">
+    
+    <!-- APPLE SPECIFIC BULLSHIT -->
+    <link rel="apple-touch-icon" href="./CLEAN-LOGO.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="./CLEAN-LOGO.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="./CLEAN-LOGO.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./CLEAN-LOGO.png">
+
+    <!-- OPENGRAPH BULLSHIT -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="PodCube™ Explorer">
+    <meta property="og:description" content="The Future, is Yesterday™. Listen to audio transmissions from anywhere in space, or time, or place. With high-definition 4-D adiabatic q-bit streaming audio, PodCube™ is the Universal Leader in Time-Agnostic Podcasting™">
+    <meta property="og:image" content="https://poweredbypodcube.com/podcubeogimg.jpg"> 
+    <meta property="og:url" content="https://poweredbypodcube.com/">
+
+    <!-- TWITTER CARDS (the last remaining piece of twitter's legacy lol)-->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="PodCube™ Explorer">
+    <meta name="twitter:description" content="The Future, is Yesterday™. Listen to audio transmissions from anywhere in space, or time, or place. With high-definition 4-D adiabatic q-bit streaming audio, PodCube™ is the Universal Leader in Time-Agnostic Podcasting™">
+    <meta name="twitter:image" content="https://poweredbypodcube.com/podcubeogimg.jpg">
+
+    <!-- STYLESHEETS -->
+    <link rel="stylesheet" href="./explorer.css">
+    <link rel="stylesheet" href="./interactive/interactive.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fustat:wght@400;600;700&family=Libertinus+Math&display=swap">
+
+    <!-- OTHER PEOPLES' CODE -->
     <script src="./libraries/qrcode.min.js"></script><!-- QR CODE GENERATOR FOR SHARING PLAYLISTS -->
     <script src="./libraries/html2canvas.min.js"></script><!-- HTML2CANVAS FOR TURNING PAGE INTO IMAGE -->
     <script src="./libraries/jsQR.min.js"></script><!-- QR CODE READER -->
 
+    <!--PODCUBE API-->
     <script src="./PodCube.js" type="module"></script>
-    
+
+    <!-- EXPLORER FEATURE SCRIPTS-->
     <script src="./degradation.js"></script>
     <script src="./poduser/poduser.js"></script>
     <script src="./poduser/profile-ui.js"></script>
@@ -28,36 +54,46 @@
     <script src="./interactive/interactive.js"></script>
 
 </head>
-
 <body>
 
-    <!-- SPLASH SCREEN -->
-<div id="startup-splash" style="position: fixed; inset: 0; z-index: 9999999; background: #fdfdfc; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s ease;">
-        <img src="./PODCUBE.png" alt="PodCube Logo" style="width: 100px; height: 100px; margin-bottom: 20px; animation: pulse 2s infinite;">
-        <h1 style="color: #1768da; margin-bottom: 10px; font-family: 'Libertinus Math', serif; font-size: 2.5em; letter-spacing: -0.02em;">PodCube™ <i>Explorer</i></h1>
-        
-        <div style="font-family: 'Fustat', sans-serif; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.1em; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+<!-- SPLASH SCREEN -->
+    <div id="startup-splash"
+        style="position: fixed; inset: 0; z-index: 9999999; background: #fdfdfc; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s ease;">
+        <img src="./PODCUBE.png" alt="PodCube™ Logo"
+            style="width: 100px; height: 100px; margin-bottom: 20px; animation: pulse 2s infinite;">
+        <h1
+            style="color: #1768da; margin-bottom: 10px; font-family: 'Libertinus Math', serif; font-size: 2.5em; letter-spacing: -0.02em;">
+            PodCube™ <i>Explorer</i></h1>
+
+        <div
+            style="font-family: 'Fustat', sans-serif; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.1em; display: flex; flex-direction: column; align-items: center; gap: 12px;">
             <span id="splash-status" style="font-weight: 700;">Establishing secure connection...</span>
-            
-            <div id="splash-loading-bar" style="width: 200px; height: 2px; background: #e1e8f3; overflow: hidden; position: relative;">
-                <div style="position: absolute; top: 0; left: 0; height: 100%; width: 40%; background: #1768da; animation: splashLoad 1s infinite linear;"></div>
+
+            <div id="splash-loading-bar"
+                style="width: 200px; height: 2px; background: #e1e8f3; overflow: hidden; position: relative;">
+                <div
+                    style="position: absolute; top: 0; left: 0; height: 100%; width: 40%; background: #1768da; animation: splashLoad 1s infinite linear;">
+                </div>
             </div>
         </div>
-
         <style>
             @keyframes splashLoad {
-                0% { left: -40%; }
-                100% { left: 100%; }
+                0% {
+                    left: -40%;
+                }
+
+                100% {
+                    left: 100%;
+                }
             }
         </style>
     </div>
-
 
 <!-- NAV BAR AND HEADER -->
     <div class="sticky-top">
         <header>
             <div style="display:flex; align-items:center;">
-                <img id="headerLogo" class="header-logo" src="./PODCUBE.png" alt="PodCube Logo">
+                <img id="headerLogo" class="header-logo" src="./PODCUBE.png" alt="PodCube™ Logo">
                 <div>
                     <h1>PodCube™ <i>Explorer</i></h1>
                     <div class="subtitle">The Future, is Yesterday™</div>
@@ -73,27 +109,34 @@
                 </div>
             </div>
         </header>
-        <nav class="tabs">
-            <button class="tab-button active" data-tab="overview">Brigistics</button>
-            <button class="tab-button" data-tab="player">Queue</button>
-            <button class="tab-button" data-tab="punchcards">Cards</button>
-            <button class="tab-button" data-tab="archive">Transmissions</button>
-            <button class="tab-button" data-tab="inspector">Inspector</button>
-            <button class="tab-button" data-tab="about">About™</button>
-            <button class="tab-button" data-tab="interactive">Interactive</button>
-            <button class="tab-button" data-tab="api">API</button>
-            <button class="tab-button" data-tab="profile" style="display:none">My Profile</button>
-        </nav>
+        <div class="tabs-wrapper">
+            <nav class="tabs">
+                <button class="tab-button" data-tab="about">About™</button>
+                <button class="tab-button active" data-tab="overview">Brigistics</button>
+                <button class="tab-button" data-tab="archive">Transmissions</button>
+                <button class="tab-button" data-tab="inspector">Inspector</button>
+                <button class="tab-button" data-tab="player">Queue</button>
+                <button class="tab-button" data-tab="punchcards">Cards</button>
+                <button class="tab-button" data-tab="interactive">Interactive</button>
+                <button class="tab-button" data-tab="api">API</button>
+                <button class="tab-button" data-tab="profile" style="display:none">My Profile</button>
+            </nav>
+        </div>
     </div>
-    <!-- OVERVIEW TAB -->
+
+<!-- OVERVIEW TAB -->
     <div id="overview" class="tab-content active">
+        <div class="section">
+            <h3>Welcome to the PodCube Explorer. </h3>
+            <p class="meta mb-10 text-muted">Use this interface to intercept, review, and catalog 4D audio transmissions from across spacetime.</p>
+        </div>
         <div class="section brigistics-hero">
             <div class="hero-actions">
                 <button class="hero-btn"
                     onclick="run('PodCube.play(PodCube.getNearestToToday()[0]); toggleAutoplayMode(true);'); logCommand('PodCube.play(PodCube.getNearestToToday()[0])');">
                     <span class="hero-btn-icon">◆</span>
                     <span class="hero-btn-text">
-                        <strong style="">Nearest to Today</strong>
+                        <strong>Nearest to Today</strong>
                         <span>Closest to
                             <b>Now™.</b>
                         </span>
@@ -104,7 +147,7 @@
                     onclick="run('PodCube.play(PodCube.latest); toggleAutoplayMode(true);'); logCommand('PodCube.play(PodCube.latest)');">
                     <span class="hero-btn-icon">◆</span>
                     <span class="hero-btn-text">
-                        <strong style="">Latest Transmission</strong>
+                        <strong>Latest Transmission</strong>
                         <span>Most Recently Published.</span>
                     </span>
                 </button>
@@ -113,12 +156,12 @@
                     onclick="run('PodCube.play(PodCube.random); toggleAutoplayMode(true);'); logCommand('PodCube.play(PodCube.random)');">
                     <span class="hero-btn-icon">◆</span>
                     <span class="hero-btn-text">
-                        <strong style="">Random Transmission</strong>
+                        <strong>Random Transmission</strong>
                         <span>The Feed Exploration Experience Journey!</span>
                     </span>
                 </button>
             </div>
-            <img src="./CLEAN-LOGO.png" class="hero-logo" alt="PodCube Logo">
+            <img src="./CLEAN-LOGO.png" class="hero-logo" alt="PodCube™ Logo">
         </div>
         <div class="section">
             <h3>Brigistics Overview</h3>
@@ -141,7 +184,8 @@
         </div>
         <button class="icon-btn" onclick="showDistributionAnalysis()">Refresh Distribution Statistics</button>
     </div>
-    <!-- BROWSE & SEARCH TAB -->
+
+<!-- BROWSE & SEARCH TAB -->
     <div id="archive" class="tab-content">
         <div class="registry-container">
             <div class="registry-sidebar">
@@ -259,7 +303,7 @@
         </div>
     </div>
 
-    <!-- EPISODE INSPECTOR TAB -->
+<!-- EPISODE INSPECTOR TAB -->
     <div id="inspector" class="tab-content">
         <!-- Header Card -->
         <div class="section">
@@ -291,7 +335,7 @@
         </div>
     </div>
 
-    <!-- PLAYBACK CONTROL TAB -->
+<!-- PLAYBACK CONTROL TAB -->
     <div id="player" class="tab-content">
         <div class="section">
             <div class="player-now-playing-card">
@@ -384,10 +428,9 @@
             </div>
             <div id="playerQueueList" class="player-queue-list"></div>
         </div>
-
-
     </div>
 
+<!-- PUNCHCARDS TAB -->
     <div id="punchcards" class="tab-content">
 
         <div class="section">
@@ -434,9 +477,8 @@
         </div>
     </div>
 
-    <!-- ABOUT TAB (we should get jordan to record words from this so we can make them clickable and hear it-->
+<!-- ABOUT TAB (we should get jordan to record words from this so we can make them clickable and hear it-->
     <div id="about" class="tab-content">
-        <!-- ABOUT HERO -->
         <div class="section doubleborder about-hero" data-label="About PodCube™">
             <div class="hero-actions" style="max-width: 100%;">
                 <div style="margin-bottom: 20px;">
@@ -454,18 +496,18 @@
                         Never miss a transmission. Subscribe to PodCube™ through your preferred platform:
                     </p>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <a href="https://pinecast.com/feed/pc" target="_blank" class="hero-btn"
-                            style="text-decoration: none; flex: 1; min-width: 200px;">
+                        <button onclick="promptPWAInstall()" class="hero-btn"
+                            style="flex: 1; min-width: 200px; font:inherit;">
                             <span class="hero-btn-text">
-                                <strong>RSS Feed</strong>
-                                <span>Direct XML Feed Access</span>
+                                <strong>Install App</strong>
+                                <span>Download the PodCube™ Explorer</span>
                             </span>
-                        </a>
+                        </button>
                         <a href="https://pnc.st/s/pc" target="_blank" class="hero-btn"
                             style="text-decoration: none; flex: 1; min-width: 200px;">
                             <span class="hero-btn-text">
-                                <strong>Podcast App Links</strong>
-                                <span>Official Distribution Portal</span>
+                                <strong>Podcast Links</strong>
+                                <span>Secondary Distribution Portal</span>
                             </span>
                         </a>
                     </div>
@@ -473,12 +515,13 @@
             </div>
             <img src="./CLEAN-LOGO.png" class="hero-logo" alt="PodCube™ Logo">
         </div>
-
+    
         <div class="section">
             <h3>Our Visionary Beginnings</h3>
             <p class="mb-10">
                 The origins of PodCube™ lie in the joint discovery of the Blakely-Huffman Spheroid (BHS), a
-                revolutionary eleven-dimensional model of spacetime first presented in 2027 by founders Dick Blakely and Jimley
+                revolutionary eleven-dimensional model of spacetime first presented in 2027 by founders Dick Blakely and
+                Jimley
                 Huffman at their eigth grade science fair. They won no awards that year, but their shared realization that
                 "if time were real, it would be a sphere" would change the world in 2048.
             </p>
@@ -487,7 +530,35 @@
                 and actively preventing others from doing so.
             </p>
         </div>
-
+    
+        <div class="section">
+            <h3>State-of-the-Art Technology</h3>
+            <p class="mb-10">
+                To order a PodCube, a customer first selects a specialized model (frequently disguised as a common
+                object to ensure it remains unintrusive during recording). The customer then specifies a target
+                coordinate in space and time for the PodCube™ to be delivered. Once the order is confirmed, the Galileo
+                Department dispatches one of our whisper-quiet, twelve-ton, spherical Galileo Delivery Drones to
+                transport the unit across spacetime, navigating via the Blakeley-Huffman Spheroid. Once the Galileo
+                Drone reaches its destination, it gently deposits the PodCube™ device and departs, leaving the
+                surrounding area completely undisturbed.
+            </p>
+            <p class="mb-10">
+                The PodCube™ then begins capturing high-definition 4-D spatial audio, and transmitting it back to the
+                Brigistics Department at the PodCube™ Research and Innovation Campus using our patented Adiabatic Q-Bit
+                Streaming Technology™.
+                The Brigistics team then reconstructs the transmission from 8 Qbits into 16 normal bits and routes the
+                audio directly to the correct customer, functioning like a "digital picture frame" for captured moments
+                from any point in the universe.
+            </p>
+            <p class="mb-10">
+                Per the terms of service, all PodCube™ Customers™ agree to unlimited distribution of audio captured by
+                their PodCube™ device(s). Our Brigistics Department processes every transmission, meticulously
+                categorizing, tagging, and organizing them. They curate their favorite moments into a public RSS "Feed
+                Exporation Experience Journey" which you can access here, or your via podcast application of choice.
+            </p>
+        </div>
+    
+    
         <div class="section">
             <h3>The P.R.I.C. Headquarters</h3>
             <p class="mb-10">
@@ -502,34 +573,71 @@
                 names as the gators they supervise.
             </p>
         </div>
-
+    
         <div class="section">
-            <h3>State-of-the-Art Technology</h3>
+            <h3>Campus Departments</h3>
+    
+            <h4 style="margin-top: 15px; margin-bottom: 5px;">Brigistics</h4>
             <p class="mb-10">
-                To order a PodCube, a customer first selects a specialized model (frequently disguised as a common
-                object to ensure it remains unintrusive during recording). The customer then specifies a target
-                coordinate in space and time for the PodCube™ to be delivered. Once the order is confirmed, our Galileo
-                Department dispatches one of our whisper-quiet, twelve-ton, spherical Galileo Delivery Drones to
-                transport the unit across spacetime, navigating via the Blakeley-Huffman Spheroid. Once the Galileo
-                Drone reaches its destination, it gently deposits the PodCube™ device and departs, leaving the
-                surrounding area completely undisturbed.
+                The Brigistics Department is the analytical heart of our operation, responsible for monitoring and tracking
+                every single deployed PodCube™ across the multiverse. Our specialists receive and process incoming
+                transmissions using 4D Adiabatic q-Bit Streaming Technology, which allows us to pass data across time at a
+                highly compressed bit depth of 8 q-Bits.
             </p>
+    
+            <h4 style="margin-top: 15px; margin-bottom: 5px;">Galileo Drone Deployment</h4>
             <p class="mb-10">
-                The PodCube™ then begins capturing high-definition 4-D spatial audio, and transmitting it back to the
-                Brigistics Department at the PodCube Research and Innovation Campus using our patented Adiabatic Q-Bit
-                Streaming Technology™.
-                The Brigistics team then reconstructs the transmission from 8 Qbits into 16 normal bits and routes the
-                audio directly to the correct customer, functioning like a "digital picture frame" for captured moments
-                from any point in the universe.
+                This department manages our fleet of Galileo Delivery Drones, the spherical workhorses that transport units
+                to their target coordinates in space-time. Our marketing materials describe these twelve-ton drones as
+                "quiet" and "unintrusive". They are constructed out of rugged metal polymers capable of withstanding up to 2
+                quattuordecillion years of travel. With our proprietary onboard CoreN-Core fuel cells, they are capable of
+                enough sustained power output to utilize the wormhole method for past retrieval and the pinch method for
+                future delivery, cocooning themselves in a "completely ethical" regenerative maintenance shell for the
+                duration of the journey.
             </p>
+    
+            <h4 style="margin-top: 15px; margin-bottom: 5px;">Alignment</h4>
             <p class="mb-10">
-                Per the terms of service, all PodCube™ Customers™ agree to unlimited distribution of audio captured by
-                their PodCube™ device(s). Our Brigistics Department processes every transmission, meticulously
-                categorizing, tagging, and organizing them. They curate their favorite moments into a public RSS "Feed
-                Exporation Experience Journey" which you can access here, or your via podcast application of choice.
+                Currently staffed exclusively by Lead Astral Guide Dandelion Whoelf Ouedes, the Alignment Department ensures
+                the PRIC remains in sync with the universe's natural vibrations. This department focuses on daily
+                affirmations and the discovery of dualiscopes, our proprietary weekend-specific horoscopes. The office is
+                optimized for spiritual intake with a high density of pillows, incense, and tapestries.
+            </p>
+    
+            <h4 style="margin-top: 15px; margin-bottom: 5px;">pSEC</h4>
+            <p class="mb-10">
+                The Pseudolinear Electronic Cryptography (pSEC) department is led by Dr. Rickelodeon Velveetus and handles
+                all aspects of PodCube™ security. Protecting the campus’s most dangerous secrets and hardware, the
+                department is secured behind a massive door requiring three separate keycards—a protocol known as the
+                "buddy-buddy-buddy system". For maximum security, Director Velveetus maintains a master record of every
+                campus login password on a single napkin kept in his desk drawer.
+            </p>
+    
+            <h4 style="margin-top: 15px; margin-bottom: 5px;">F.L.U.R.C.H.</h4>
+            <p class="mb-10">
+                Standing for Finite Linearity Under Research Conditions Heuristics, the F.L.U.R.C.H. department is
+                responsible for PodCube’s inter-timeline expansion. By architecting actualization anomalies, this team sends
+                drones to the past in every timeline where our founders exist, allowing the company to move forward through
+                time down entirely different paths of existence (ISWORMS).
+            </p>
+    
+            <h4 style="margin-top: 15px; margin-bottom: 5px;">R&D&R&P</h4>
+            <p class="mb-10">
+                Our R&D&R&P team is the source of our most cutting-edge and experimental innovations. Beyond the standard
+                PodCube™ technology, this department is responsible for the HORUS Pineal Implant, a line of teleporters that
+                "don't quite work," and the specialized laser gun required to neutralize campus-level threats.
+            </p>
+    
+            <h4 style="margin-top: 15px; margin-bottom: 5px;">PodCube™ Passengers</h4>
+            <p class="mb-10">
+                The PodCube™ Passenger Program is a specialized training and developmental track within the PRIC. While most
+                participants graduate the program within six months, dedicated individuals (such as our former colleague
+                Dongle) have been known to remain in the program for up to four years. The program is vital for the training
+                and orientation of our staff, and transmissions are frequently recorded to assist in passenger education.
             </p>
         </div>
-
+    
+    
         <div class="section">
             <h3>Corporate Life and Culture</h3>
             <p class="mb-10">
@@ -542,7 +650,7 @@
                 55,000 vitamins and minerals.
             </p>
         </div>
-
+    
         <div class="section">
             <div class="doubleborder" data-label="ARCHIVAL RECORDING" style="padding: 20px;">
                 <p class="mb-10 text-muted">
@@ -558,7 +666,7 @@
                 </button>
             </div>
         </div>
-
+    
         <div class="section">
             <p class="text-muted" style="text-align: center;">
                 Whether you are listening through a PodCube™ Pocket Pal, the PodCube™ Explorer Web-Application, or our
@@ -570,65 +678,54 @@
             </p>
         </div>
     </div>
+
 <!-- INTERACTIVE TAB -->
-    <!--
-
- SIMPLE EXPERIENCES LIKE SNAKE, BRICK BREAKER, FLAPPY BIRD
- OR EVEN NON-INTERACTIVE LIKE DVD BOUNCING SCREEN
- OR IDLE CLICKER (LIKE PAPERCLIP) GAMES. ANYTHING TO "DO" WHILE LISTENING THAT DOESN'T TAKE TOO MUCH ATTENTION
-
- RUBBER BAND HORNET LAUNCHING SIMULATOR // OFFICE STYLE GAMES
-
- FRAME IT LIKE ANYTHING YOU'RE DOING IS ACTUALLY TECHNICALLY "WORKING" FOR PODCUBE
-
--->
-
     <div id="interactive" class="tab-content">
-
+    
         <div id="pc-menu-view" class="section">
             <h3>Productivity Modules</h3>
             <p class="text-muted mb-20">Select a task. Performance is monitored.</p>
             <div id="pc-cartridge-slot" class="game-menu-grid"></div>
             <!-- <div id="pc-loading" class="meta text-muted" style="text-align:center;">INITIALIZING...</div>-->
         </div>
-
+    
         <div id="pc-machine-view" class="game-stage" style="display:none;">
-
+    
             <div class="game-navbar">
                 <button class="icon-btn pc-btn danger" onclick="Interactive.eject()">EJECT MODULE</button>
             </div>
-
+    
             <div class="pc-game-container">
                 <div class="pc-game-hud pc-hud">
                     <div class="pc-hud-cell">
                         <span class="pc-hud-label">STATUS</span>
                         <span class="pc-hud-val" id="pc-hud-status">READY</span>
                     </div>
-
+    
                     <div class="pc-hud-cell"
                         style="flex:1; align-items:center; justify-content:flex-end; padding-bottom:4px;">
                         <span id="pc-hud-aux"
                             style="font-family:'Fustat'; font-weight:700; font-size:12px; color:var(--primary); text-transform:uppercase; letter-spacing:0.05em; display:none;"></span>
                     </div>
-
+    
                     <div class="pc-hud-cell">
                         <span class="pc-hud-label">DATA</span>
                         <span class="pc-hud-val" id="pc-hud-score">0</span>
                     </div>
                 </div>
-
+    
                 <div class="pc-game-board">
                     <canvas id="pc-canvas" width="400" height="300" class="pc-game-canvas"></canvas>
-
+    
                     <div id="pc-dom-layer" class="pc-layer-dom"></div>
-
+    
                     <div id="pc-overlay" class="pc-overlay hidden">
                         <div class="pc-text-title" id="pc-overlay-msg">READY</div>
                         <p class="pc-text-body" id="pc-overlay-desc">System Ready.</p>
                         <button class="pc-btn primary" id="pc-overlay-btn">INITIALIZE</button>
                     </div>
                 </div>
-
+    
                 <div class="pc-game-controls-help" id="pc-controls-help">
                     <p>MOVE: ARROWS / SWIPE / WASD </p>
                     <p>ACTION: SPACE / TAP</p>
@@ -638,127 +735,118 @@
     </div>
 
 <!-- USER PROFILE TAB -->
+    <div id="profile" class="tab-content">
     
-<div id="profile" class="tab-content">
-
-    <!-- ── HERO / HEADER ──────────────────────────────────────── -->
-    <div class="profile-hero">
-        <div>
-            <h2 id="prof-username" class="profile-username">Loading...</h2>
-            <p class="profile-role">PRIC Terminal — Authorized Personnel</p>
+        <!-- ── HERO / HEADER ──────────────────────────────────────── -->
+        <div class="profile-hero">
+            <div>
+                <h2 id="prof-username" class="profile-username">Loading...</h2>
+                <p class="profile-role">PRIC Terminal — Authorized Personnel</p>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                <button class="hero-btn" style="width:auto;" onclick="PodUser.requestOSNotifications().then(ok =>
+                        alert(ok ? 'OS NOTIFICATIONS ENABLED' : 'PERMISSION DENIED OR UNAVAILABLE'))">
+                    <span class="hero-btn-icon">🔔</span>
+                    <span class="hero-btn-text">
+                        <strong>Enable Alerts</strong>
+                        <span>Allow OS Notifications</span>
+                    </span>
+                </button>
+            </div>
         </div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-            <button class="hero-btn" style="width:auto;"
-                onclick="PodUser.requestOSNotifications().then(ok =>
-                    alert(ok ? 'OS NOTIFICATIONS ENABLED' : 'PERMISSION DENIED OR UNAVAILABLE'))">
-                <span class="hero-btn-icon">🔔</span>
-                <span class="hero-btn-text">
-                    <strong>Enable Alerts</strong>
-                    <span>Allow OS Notifications</span>
+    
+        <!-- ── SYSTEM ALERTS ──────────────────────────────────────── -->
+        <div class="section">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;">
+                <h3 style="margin:0;">System Alerts</h3>
+                <button class="icon-btn" onclick="PodUser.markAllNotificationsRead(); renderUserUI(PodUser.data);">
+                    Mark All Read
+                </button>
+            </div>
+            <div id="prof-notifications" class="notifications-scroll"></div>
+        </div>
+    
+    
+        <!-- ── STATS ──────────────────────────────────────────────── -->
+        <div class="section">
+            <h3>Terminal Statistics</h3>
+            <div class="stat-grid profile-stat-grid" id="prof-stats-grid"></div>
+        </div>
+    
+    
+        <!-- ── ACHIEVEMENTS ───────────────────────────────────────── -->
+        <div class="section">
+            <div
+                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                <h3 style="margin:0;">PodCube™ Online Observation Perks</h3>
+                <div class="ach-filter-bar" id="prof-ach-filter">
+                    <button class="ach-filter-btn active" data-filter="all" onclick="setAchFilter('all')">All</button>
+                    <button class="ach-filter-btn" data-filter="unlocked"
+                        onclick="setAchFilter('unlocked')">Unlocked</button>
+                    <button class="ach-filter-btn" data-filter="locked" onclick="setAchFilter('locked')">Locked</button>
+                </div>
+            </div>
+            <div id="prof-achievements"></div>
+        </div>
+    
+    
+    
+        <!-- MEMORY CARD (bottom, intentionally low-key)  -->
+        <div class="section">
+            <div class="memory-card-section">
+    
+                <p style="font-family:'Fustat'; font-size:11px; text-transform:uppercase;
+                          color:#888; line-height:1.6; margin-bottom:16px; letter-spacing:0.03em;">
+                    Your progress, scores, and unlocked content are stored locally. Use the code below
+                    to back up or restore your profile on another device.
+                </p>
+    
+                <!-- Export: hidden code + eyeball reveal -->
+                <div class="sharing-code-box" style="margin-bottom:10px; align-items:center;">
+                    <code id="prof-export-code" class="login-code-hidden"
+                        style="word-break:break-all; flex:1; font-size:11px;">
+                        Generating...
+                    </code>
+                    <button id="prof-eyeball-btn" class="icon-btn" onclick="toggleLoginCode()" style="white-space:nowrap;">
+                        Reveal
+                    </button>
+                    <button class="icon-btn" onclick="copyToClipboard('prof-export-code');" style="white-space:nowrap;">
+                        Copy
+                    </button>
+                </div>
+    
+                <!-- Import -->
+                <div class="playlist-controls" style="gap:8px;">
+                    <input type="text" id="prof-import-input" placeholder="PASTE BACKUP CODE TO RESTORE"
+                        style="font-family:monospace; font-size:11px; flex:1; margin:0;">
+                    <button class="icon-btn" style="white-space:nowrap;" onclick="PodUser.importCode(document.getElementById('prof-import-input').value)
+                            .then(ok => {
+                                if (ok) {
+                                    document.getElementById('prof-import-input').value = '';
+                                    renderUserUI(PodUser.data);
+                                } else {
+                                    alert('Invalid backup code. Please check and try again.');
+                                }
+                            })">
+                        Import
+                    </button>
+                </div>
+            </div>
+        </div>
+    
+        <div class="section">
+            <div style="display: flex; flex-direction: column; justify-content: space-between; align-items: center;">
+                <span style="font-family: 'Fustat'; font-size: 9px; color: var(--danger); text-transform: uppercase;">
+                    EMERGENCY MAINTENANCE
                 </span>
-            </button>
-        </div>
-    </div>
-
-    
-    
-
-    <!-- ── SYSTEM ALERTS ──────────────────────────────────────── -->
-    <div class="section">
-        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;">
-            <h3 style="margin:0;">System Alerts</h3>
-            <button class="icon-btn"
-                onclick="PodUser.markAllNotificationsRead(); renderUserUI(PodUser.data);">
-                Mark All Read
-            </button>
-        </div>
-        <div id="prof-notifications" class="notifications-scroll"></div>
-    </div>
-
-
-    <!-- ── STATS ──────────────────────────────────────────────── -->
-    <div class="section">
-        <h3>Terminal Statistics</h3>
-        <div class="stat-grid profile-stat-grid" id="prof-stats-grid"></div>
-    </div>
-
-
-    <!-- ── ACHIEVEMENTS ───────────────────────────────────────── -->
-    <div class="section">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
-            <h3 style="margin:0;">PodCube™ Online Observation Perks</h3>
-            <div class="ach-filter-bar" id="prof-ach-filter">
-                <button class="ach-filter-btn active" data-filter="all"      onclick="setAchFilter('all')">All</button>
-                <button class="ach-filter-btn"         data-filter="unlocked" onclick="setAchFilter('unlocked')">Unlocked</button>
-                <button class="ach-filter-btn"         data-filter="locked"   onclick="setAchFilter('locked')">Locked</button>
-            </div>
-        </div>
-        <div id="prof-achievements"></div>
-    </div>
-
-    
-
-    <!-- MEMORY CARD (bottom, intentionally low-key)  -->
-    <div class="section">
-        <div class="memory-card-section">
-            
-            <p style="font-family:'Fustat'; font-size:11px; text-transform:uppercase;
-                      color:#888; line-height:1.6; margin-bottom:16px; letter-spacing:0.03em;">
-                Your progress, scores, and unlocked content are stored locally. Use the code below
-                to back up or restore your profile on another device.
-            </p>
-
-            <!-- Export: hidden code + eyeball reveal -->
-            <div class="sharing-code-box" style="margin-bottom:10px; align-items:center;">
-                <code id="prof-export-code" class="login-code-hidden"
-                      style="word-break:break-all; flex:1; font-size:11px;">
-                    Generating...
-                </code>
-                <button id="prof-eyeball-btn" class="icon-btn" onclick="toggleLoginCode()"
-                        style="white-space:nowrap;">
-                    Reveal
-                </button>
-                <button class="icon-btn"
-                        onclick="copyToClipboard('prof-export-code');"
-                        style="white-space:nowrap;">
-                    Copy
-                </button>
-            </div>
-
-            <!-- Import -->
-            <div class="playlist-controls" style="gap:8px;">
-                <input type="text" id="prof-import-input"
-                       placeholder="PASTE BACKUP CODE TO RESTORE"
-                       style="font-family:monospace; font-size:11px; flex:1; margin:0;">
-                <button class="icon-btn" style="white-space:nowrap;"
-                    onclick="PodUser.importCode(document.getElementById('prof-import-input').value)
-                        .then(ok => {
-                            if (ok) {
-                                document.getElementById('prof-import-input').value = '';
-                                renderUserUI(PodUser.data);
-                            } else {
-                                alert('Invalid backup code. Please check and try again.');
-                            }
-                        })">
-                    Import
+                <button id="btn-degauss" class="icon-btn" style="color: var(--danger); border-color: var(--danger);"
+                    onclick="repairTerminal()">
+                    DE-GAUSS TERMINAL
                 </button>
             </div>
         </div>
+    
     </div>
-
-    <div class="section">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-family: 'Fustat'; font-size: 9px; color: var(--danger); text-transform: uppercase;">
-                EMERGENCY MAINTENANCE
-            </span>
-            <button id="btn-degauss" class="icon-btn" style="color: var(--danger); border-color: var(--danger);"
-                onclick="repairTerminal()">
-                DE-GAUSS TERMINAL
-            </button>
-        </div>
-    </div>
-
-</div>
 
 <!-- API REFERENCE TAB -->
     <div id="api" class="tab-content">
@@ -796,7 +884,7 @@
         <div class="section">
             <h3>Live API Console</h3>
             <p class="text-muted mb-10" style="font-size:12px;">
-                Execute PodCube API commands directly. Press Enter or click Execute.
+                Execute PodCube™ API commands directly. Press Enter or click Execute.
             </p>
             <div class="console-input-container">
                 <input type="text" id="consoleInput" placeholder="PodCube.all.length"
@@ -1025,11 +1113,11 @@
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.setVolume(level)</code>
-                        <p>Set volume (0.0 to 1.0). Values are clamped to valid range. Returns clamped value.</p>
+                        <p>Set volume (0 to 100). Values are clamped to valid range. Returns clamped value. (Internally normalizes to 0.0-1.0 for HTML Audio Element)</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.getVolume()</code>
-                        <p>Get current volume level (0.0 to 1.0)</p>
+                        <p>Get current volume level (0 to 100)</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.setPlaybackRate(rate)</code>
@@ -1435,7 +1523,7 @@
         </div>
     </div>
 
-    <!-- GLOBAL TRANSPORT -->
+<!-- GLOBAL TRANSPORT -->
     <div id="global-transport" class="global-transport">
         <button class="transport-toggle-btn" id="transportToggleBtn" onclick="toggleTransport()">
             <svg viewBox="0 0 24 24" class="icon-svg">
@@ -1483,17 +1571,20 @@
                 </div>
             </div>
         </div>
-        <div class="scrubber" id="scrubber" onclick="seek(event)" title="Click to seek">
+        <div class="scrubber" id="scrubber" title="Click to seek">
             <div class="scrubber-fill" id="scrubberFill"></div>
         </div>
     </div>
-    <!-- CODE MONITOR -->
+    
+<!-- CODE MONITOR -->
     <div class="code-monitor">
         <span class="monitor-prompt">>></span>
         <span class="monitor-text" id="monitorText">System Ready</span>
         <span class="monitor-timestamp" id="monitorTimestamp"></span>
     </div>
-    <!-- TEMPLATES -->
+
+
+<!-- ========  TEMPLATES  ========= -->
     <template id="tmpl-stat-box">
         <div class="stat-box">
             <div class="stat-num"></div>
@@ -1601,6 +1692,7 @@
         </div>
     </template>
 
+<!-- SERVICE WORKER -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -1610,6 +1702,24 @@
             });
         }
     </script>
+    <div id="install-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999999; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px);">
+    <div style="background: #fdfdfc; border: 2px solid var(--primary); padding: 24px; max-width: 400px; width: 100%; box-shadow: 0 10px 30px rgba(0,0,0,0.3); font-family: 'Fustat', sans-serif;">
+        <h3 style="margin-top: 0; color: var(--primary); border-bottom: 1px solid var(--primary-dim); padding-bottom: 10px;">Install PodCube™ Explorer</h3>
+        <p class="text-muted" style="margin-bottom: 16px; font-size: 14px; line-height: 1.5;">
+            To install this application on your device for offline access and a native experience, follow your OS instructions:
+        </p>
+        <ul style="margin-bottom: 24px; padding-left: 20px; line-height: 1.6; font-size: 14px; color: #333;">
+            <li style="margin-bottom: 10px;"><strong>iOS (Safari):</strong> Tap the <strong>Share</strong> icon (square with an up arrow) at the bottom, scroll down, and tap <strong>Add to Home Screen</strong>.</li>
+            <li style="margin-bottom: 10px;"><strong>Android:</strong> Tap the <strong>Menu</strong> (three dots) at the top right, then tap <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
+            <li><strong>Desktop:</strong> Look for the <strong>Install</strong> icon (a screen with a down arrow) in the right side of your browser's address bar.</li>
+        </ul>
+        <div style="text-align: right;">
+            <button onclick="document.getElementById('install-modal').style.display='none'" style="background: var(--primary); color: white; border: none; padding: 8px 16px; font-weight: bold; cursor: pointer; font-family: 'Fustat', sans-serif;">
+                ACKNOWLEDGED
+            </button>
+        </div>
+    </div>
+</div>
 </body>
 
 </html>

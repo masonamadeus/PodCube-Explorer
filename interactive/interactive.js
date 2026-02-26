@@ -761,6 +761,7 @@ window.Interactive = (() => {
             // Initialize Game
             try { 
                 if (_activeGame.onInit) {
+                    if (PodUser) { PodUser.logGamePlayed(_activeId)}
                     _activeGame.onInit();
                 } 
             } catch(e) { 

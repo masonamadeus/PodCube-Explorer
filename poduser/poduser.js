@@ -3,6 +3,11 @@
  * Manages IndexedDB "Memory Card", Notifications, and Progression.
  */
 
+/**
+ * PodCube User Tracking & Achievement Engine
+ * Manages IndexedDB "Memory Card", Notifications, and Progression.
+ */
+
 class PodUserEngine {
     constructor() {
         this.dbName    = 'PodCube_MemoryCard';
@@ -10,21 +15,31 @@ class PodUserEngine {
         this.db        = null;
         this._lastChimeTime = 0;
 
-        this.data = {
-            username:      this._generateUsername(),
-            visits:        0,
-            history:       [],   // episode IDs added on 'ended' event
-            games:         {},   // { gameId: highScore }
-            punchcards:    0,    // count of printed punchcards
-            punchcardExport: 0, // count of exported punchcards
-            punchcardImport: 0, // count of IMPORTED punchcards
-            achievements:  [],   // unlocked achievement IDs
-            notifications: [],    // { id, title, body, read, timestamp }
-            degradation: 0,
-        };
+        // Initialize with defaults
+        this.data = this._getDefaultData();
 
         this.achievements = [];
         this._listeners   = [];
+    }
+
+    /**
+     * One source of truth for the user data schema.
+     */
+    _getDefaultData() {
+        return {
+            username:      this._generateUsername(),
+            visits:        0,
+            history:       [],   
+            games:         {},   
+            gamePlays:     {}, 
+            punchcards:    0,    
+            punchcardExport: 0, 
+            punchcardImport: 0, 
+            achievements:  [],   
+            notifications: [],    
+            degradation:   0,
+            volume:        100, // default to max
+        };
     }
 
     async init() {
@@ -42,10 +57,10 @@ class PodUserEngine {
                 this.db = e.target.result;
                 await this._load();
 
-                // MIGRATE LONG IDS TO NANO ONES (probably just for me)
+                // Migrate IDs
                 let migrated = false;
                 this.data.history = this.data.history.map(id => {
-                    if (id.length > 10) { // It's an old UUID!
+                    if (id.length > 10) { 
                         migrated = true;
                         return window.PodCube.findEpisode(id)?.nanoId || id;
                     }
@@ -54,6 +69,7 @@ class PodUserEngine {
 
                 if (migrated) await this.save();
 
+                // Session Logging
                 if (!sessionStorage.getItem('podcube_session_logged')) {
                     this.data.visits += 1;
                     this.data.degradation = (this.data.degradation || 0) + 1;
@@ -62,13 +78,13 @@ class PodUserEngine {
                     if (this.data.visits === 1) {
                         this._pushNotification(
                             'System Initialization',
-                            `Welcome, ${this.data.username}. Your activity is now being monitored by Brigistics for quality assurance. Please begin reviewing the available transmissions.\nThere are silent activities available on the "Interactive" tab to keep your hands busy while you listen.\nYou have also been granted access to print and share PodCube™ PunchCards.\nClick or tap this Alert to clear it.`
+                            `Welcome, ${this.data.username}. Your activity is now being monitored by Brigistics...`
                         );
                     }
                 }
 
-                this._checkAchievements(); // Evaluate inline
-                await this.save();         // Single master save
+                this._checkAchievements();
+                await this.save();         
                 this._emitUpdate();
                 resolve();
             };
@@ -85,7 +101,9 @@ class PodUserEngine {
 
             req.onsuccess = () => {
                 if (req.result) {
-                    this.data = { ...this.data, ...req.result.data };
+                    // Smart Merge: Defaults + Loaded Data
+                    // This ensures new properties (like volume) exist even on old saves.
+                    this.data = { ...this._getDefaultData(), ...req.result.data };
                 }
                 resolve();
             };
@@ -95,6 +113,7 @@ class PodUserEngine {
 
     async save() {
         return new Promise((resolve) => {
+            if (!this.db) return resolve();
             const tx    = this.db.transaction('profile', 'readwrite');
             const store = tx.objectStore('profile');
             store.put({ id: 'main_user', data: this.data });
@@ -105,32 +124,28 @@ class PodUserEngine {
         });
     }
 
+
     // ─────────────────────────────────────────────────────────────
     // DATA PURGE
     // ─────────────────────────────────────────────────────────────
 
     async wipeData() {
-        // 1. Reset data to factory defaults
-        this.data = {
-            username:      this._generateUsername(),
-            visits:        0,
-            history:       [],
-            games:         {},
-            punchcards:    0,
-            punchcardExport: 0,
-            achievements:  [],
-            notifications: []
-        };
+        // Use central default generator
+        this.data = this._getDefaultData();
         sessionStorage.removeItem('podcube_session_logged');
-        
-        // 2. Clear related localStorage for the Interactive game modules
+
         Object.keys(localStorage).forEach(key => {
-            if (key.startsWith('pc_hi_') || key.startsWith('pc_data_')) {
+            if (key.startsWith('pc_hi_') ||
+                key.startsWith('pc_data_') ||
+                key.startsWith('podcube_playlist_')) {
                 localStorage.removeItem(key);
             }
         });
 
-        // 3. Purge the IndexedDB store
+        if (window.PodCube){
+            window.PodCube.clearQueue();
+        }
+
         return new Promise((resolve) => {
             if (!this.db) {
                 this._emitUpdate();
@@ -140,19 +155,15 @@ class PodUserEngine {
             
             const tx = this.db.transaction('profile', 'readwrite');
             const store = tx.objectStore('profile');
-            const req = store.clear(); // Wipes all records
+            const req = store.clear(); 
             
             req.onsuccess = async () => {
-                // Immediately save the fresh default state back into the DB
                 await this.save(); 
                 this._emitUpdate();
                 resolve(true);
             };
             
-            req.onerror = () => {
-                console.error("[PodUser] Failed to wipe memory card.");
-                resolve(false);
-            };
+            req.onerror = () => resolve(false);
         });
     }
 
@@ -160,6 +171,17 @@ class PodUserEngine {
     // ACTION HOOKS (Fixed Race Conditions)
     // ─────────────────────────────────────────────────────────────
 
+    /**
+     * Updates and persists user volume preference
+     */
+    async setVolume(val) {
+        this.data.volume = parseInt(val, 10);
+        await this.save();
+    }
+
+    /*
+     * Log a finished episode
+     */
     async logListen(nanoId) {
         if (!nanoId) return; // Prevent logging undefined DOM events
 
@@ -171,11 +193,24 @@ class PodUserEngine {
         }
     }
 
+    async logGamePlayed(gameId) {
+        // Ensure the object exists for older saves migrating to this version
+        if (!this.data.gamePlays) this.data.gamePlays = {};
+        
+        this.data.gamePlays[gameId] = (this.data.gamePlays[gameId] || 0) + 1;
+        
+        this.addTemporalExposure(1); 
+        
+        this._checkAchievements();
+        await this.save();
+    }
+
     async logGameScore(gameId, score) {
         const best = this.data.games[gameId] || 0;
-        this.addTemporalExposure(1);
         if (score > best) {
             this.data.games[gameId] = score;
+            
+            this.addTemporalExposure(1);
             this._checkAchievements();
             await this.save();
         }
@@ -202,6 +237,7 @@ class PodUserEngine {
         await this.save();
     }
 
+
     // ─────────────────────────────────────────────────────────────
     // ACHIEVEMENT ENGINE
     // ─────────────────────────────────────────────────────────────
@@ -211,6 +247,7 @@ class PodUserEngine {
     }
 
     _checkAchievements() {
+        if (!window.PodCube || !window.PodCube.isReady) return;
         // Create an evaluation context that includes our helper
         const evalContext = {
             ...this.data,
@@ -300,7 +337,7 @@ class PodUserEngine {
         if (now - this._lastChimeTime > 1000) {
             this._lastChimeTime = now;
             try {
-                const chime = new Audio('./poduser/bingbong_hilo-3.mp3');
+                const chime = new Audio('./poduser/Bonk-2.mp3');
                 chime.volume = 0.6; 
                 chime.play().catch(e => {
                     console.warn('[PodUser] Chime blocked by browser autoplay policy or missing file:', e.message);
@@ -349,13 +386,17 @@ class PodUserEngine {
 
         // If they JUST crossed the critical threshold mid-session, alert them!
         if (oldVal < 100 && this.data.degradation >= 100) {
-            this.addNotification(
-                'CRITICAL: TEMPORAL DESYNC',
-                'Terminal has exceeded maximum safe temporal exposure limits. Interface corruption is critical. Please navigate to your Personnel Record (My Profile) and initiate a DE-GAUSS sequence immediately.',
-                { type: 'maintenance', target: 'btn-degauss' }
-            );
+            const title = 'CRITICAL: TEMPORAL DESYNC';
+            const body = 'Terminal has exceeded maximum safe temporal exposure limits. Interface corruption is critical. Please navigate to your Personnel Record (My Profile) and initiate a DE-GAUSS sequence immediately.';
+            
+            // 1. Use the synchronous push so it gets safely bundled into the save below
+            this._pushNotification(title, body, { type: 'maintenance', target: 'btn-degauss' });
+            
+            // 2. Fire the OS-level notification so the user actually sees it happen
+            this._triggerOSNotification(title, body);
         }
 
+        // Single, safe database transaction
         await this.save();
 
         // Live-update the UI degradation without needing a page refresh!
@@ -382,10 +423,13 @@ class PodUserEngine {
             v: this.data.visits,
             h: this.data.history,
             g: this.data.games,
+            gp: this.data.gamePlays,
             p: this.data.punchcards,
             e: this.data.punchcardExport,
+            i: this.data.punchcardImport,
             a: this.data.achievements,
-            pl: playlists 
+            pl: playlists,
+            vl: this.data.volume, // Persist volume in export
         };
         return btoa(JSON.stringify(minified)).replace(/=/g, '');
     }
@@ -397,36 +441,40 @@ class PodUserEngine {
             const padded = clean + '='.repeat((4 - (clean.length % 4)) % 4);
             const parsed = JSON.parse(atob(padded));
 
-            this.data.username     = parsed.u || this.data.username;
-            this.data.visits       = parsed.v || 0;
-            this.data.history      = parsed.h || [];
-            this.data.games        = parsed.g || {};
-            this.data.punchcards   = parsed.p || 0;
-            this.data.punchcardExport = parsed.e || 0;
-            this.data.achievements = parsed.a || [];
+            // Merge parsed data over defaults to maintain object integrity
+            this.data = {
+                ...this._getDefaultData(),
+                username:      parsed.u  || this.data.username,
+                visits:        parsed.v  || 0,
+                history:       parsed.h  || [],
+                games:         parsed.g  || {},
+                gamePlays:     parsed.gp || {},
+                punchcards:    parsed.p  || 0,
+                punchcardExport: parsed.e || 0,
+                punchcardImport: parsed.i || 0,
+                achievements:  parsed.a  || [],
+                volume:        parsed.vl != null ? parsed.vl : 100,
+            };
 
-            if (parsed.pl && window.PodCube && typeof window.PodCube.importPlaylist === 'function') {
-                let importedAny = false;
+            // Handle Playlist Imports
+            if (parsed.pl && window.PodCube?.importPlaylist) {
                 parsed.pl.forEach(plCode => {
                     const res = window.PodCube.importPlaylist(plCode);
-                    if (res && res.episodes && res.episodes.length > 0) {
+                    if (res?.episodes?.length > 0) {
                         let finalName = res.name;
                         let counter = 1;
                         while (window.PodCube.loadPlaylist(finalName)) {
-                            finalName = `${res.name} (${counter})`;
-                            counter++;
+                            finalName = `${res.name} (${counter++})`;
                         }
                         window.PodCube.savePlaylist(finalName, res.episodes);
-                        importedAny = true;
                     }
                 });
-                if (importedAny && typeof window.updatePlaylistsUI === 'function') {
-                    window.updatePlaylistsUI();
-                }
+                if (typeof window.updatePlaylistsUI === 'function') window.updatePlaylistsUI();
             }
 
             this._checkAchievements();
             await this.save();
+            this._emitUpdate();
             
             this.addNotification('System Restore', 'External personnel data successfully grafted into local memory.');
             return true;
@@ -449,7 +497,7 @@ class PodUserEngine {
             "Bionic", "Luxurious", "Fermented", "Synthetic", "Hypersynthetic",
             "Stimulating", "Useless", "Upcycled", "Repurposed", "Robust",
             "Glossy", "Floral", "Euphoric", "Amber-colored", "Crinkly",
-            "Professional", "Condescending", "Thirsty", "Yummy", "Bare-minimum",
+            "Professional", "Condescending", "Thirsty", "Yummy", "Minimum",
             "Savory", "Stormy", "Picky", "Extravagant", "Discrete",
             "Iconic", "Authentic", "Shelf-stable", "Fossilized", "Silly",
             "Complex", "Refreshing", "Transparent", "Open", "Cozy",

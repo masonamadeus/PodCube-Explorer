@@ -5,7 +5,7 @@ const AppState = {
     commandHistory: [],
     filteredResults: [],
     liveDataInterval: null,
-    radioMode: false,
+    playbackTracking: { id: null, accumulated: 0, lastTime: 0, duration: 0, logged: false },
 };
 
 const QR_CACHE = new Map(); // Stores generated QR DOM nodes to prevent re-rendering
@@ -22,152 +22,261 @@ const ICONS = {
 };
 
 // --- INITIALIZATION ---
+
+// Phase 1: Boot both core engines. Everything else depends on this.
+async function initEngines() {
+    await PodCube.init();
+    await PodUser.init();
+}
+
+// Phase 2: Wire the PodUser update callback and do the very first UI render.
+// Kept separate from initEngines so the callback is registered in one clear place.
+function initUserCallbacks() {
+    PodUser.onUpdate((data) => {
+        renderUserUI(data);
+        syncArchiveUI();
+    });
+
+    renderUserUI(PodUser.data);
+    updateStatusIndicator(`Connected to ${PodCube.FEED_TYPE.toUpperCase()} Feed`);
+}
+
+// Phase 3: Register all PodCube event listeners.
+// MUST run before restoreSession() — events fired during session restore
+// need these handlers already in place to be caught correctly.
+function registerPlaybackListeners() {
+
+    // High Frequency: Drives the time display and accumulates verified listen time.
+    PodCube.on('timeupdate', (status) => {
+        renderTimeDisplays(status);
+        if (!status.playing || !status.episodeId) return;
+
+        const trackState = AppState.playbackTracking;
+
+        // Reset the accumulator whenever the track changes mid-stream.
+        if (trackState.id !== status.episodeId) {
+            trackState.id = status.episodeId;
+            trackState.accumulated = 0;
+            trackState.lastTime = status.time;
+            trackState.duration = 0;
+            trackState.logged = false;
+            return;
+        }
+
+        // Only count deltas that look like normal playback (0–1.5s).
+        // Anything outside that range is a scrub or seek — ignore it.
+        const delta = status.time - trackState.lastTime;
+        trackState.lastTime = status.time;
+        if (delta > 0 && delta < 1.5) {
+            trackState.accumulated += delta;
+        }
+
+        // Cache the real duration from the audio element on every tick.
+        // This is used by the ended handler instead of episode.duration (feed metadata),
+        // which can be null or wrong for episodes with malformed metadata.
+        if (status.duration > 0) {
+            trackState.duration = status.duration;
+        }
+    });
+
+    // Medium Frequency: Keep all transport controls in sync with play/pause/error state.
+    const updateTransport = () => renderTransportState(PodCube.status);
+    PodCube.on('play',  updateTransport);
+    PodCube.on('pause', updateTransport);
+    PodCube.on('error', updateTransport);
+
+    // Low Frequency: A new track loaded — update metadata, queue, archive, and inspector.
+    PodCube.on('track', (ep) => {
+        renderTrackMetadata(ep);
+        updateTransport();
+        updateQueueList();
+        syncArchiveUI();
+        if (ep) loadEpisodeInspector(ep);
+    });
+
+    // Batched to rAF so rapid queue mutations only trigger one repaint.
+    PodCube.on('queue:changed', () => {
+        requestAnimationFrame(() => {
+            updateQueueList();
+            updatePunchcardPreview();
+            syncArchiveUI();
+        });
+    });
+
+    // Log a completed listen only when the user has heard ≥50% of the episode
+    // (minus a 1s forgiveness buffer for float/metadata inaccuracies).
+    PodCube.on('ended', (episode) => {
+        if (!episode || !window.PodUser) return;
+        if (episode._excludeFromExport || episode._internal) return;
+
+        const trackState = AppState.playbackTracking;
+
+        // Use the real duration captured from the audio element during playback,
+        // not episode.duration from feed metadata, which can be null or inaccurate.
+        const actualDuration = trackState.duration || 0;
+        if (!actualDuration) return;
+
+        const requiredTime = (actualDuration / 2) - 1.0;
+
+        if (trackState.id === episode.id && trackState.accumulated >= requiredTime) {
+            if (!trackState.logged) {
+                trackState.logged = true;
+                PodUser.logListen(episode.nanoId).then(() => {
+                    syncArchiveUI();
+                    renderUserUI(PodUser.data);
+                });
+                logCommand(`// TRANSMISSION REVIEWED: Logged "${episode.title}" to Personnel Record.`);
+            }
+        } else {
+            logCommand(`// REVIEW INCOMPLETE: Insufficient continuous playback time for "${episode.title}".`);
+        }
+    });
+
+    // Keep the radio-mode checkbox in sync with engine state.
+    PodCube.on('radiomode:changed', (isEnabled) => {
+        const checkbox = document.getElementById('autoplayRandom');
+        if (checkbox) checkbox.checked = isEnabled;
+    });
+
+    // Filter the random pool so radio mode skips already-heard episodes.
+    PodCube.setRandomPoolFilter((episodes) => {
+        const history = PodUser.data.history;
+        if (!history || history.length === 0) return episodes;
+        // Build the Set once per call for O(1) lookups.
+        const playedSet = new Set(history);
+        return episodes.filter(ep => !playedSet.has(ep.nanoId));
+    });
+}
+
+// Phase 4: Restore persisted volume, then replay the saved session.
+// Listeners from Phase 3 must already be active before this runs.
+async function restoreSession() {
+
+    // Restore volume before session so the first track plays at the right level.
+    // Explicit null-check because 0 (muted) is falsy and must not be skipped.
+    const savedVol = PodUser.data.volume;
+    if (savedVol !== undefined && savedVol !== null) {
+        updatePlayerVolume(savedVol, true);
+    }
+
+    await PodCube.restoreSession();
+
+    // Boot visual degradation now that we know the visit count.
+    initDegradation(PodUser.data.degradation);
+
+    // Update status to reflect what was actually restored.
+    const queueSize = PodCube.queueItems?.length || 0;
+    if (queueSize > 0) {
+        updateStatusIndicator(`Session Restored • ${queueSize} item${queueSize === 1 ? '' : 's'} in queue`);
+    } else {
+        updateStatusIndicator(`${PodCube.FEED_TYPE.toUpperCase()} Feed • ${PodCube.episodes.length} transmissions available`);
+    }
+
+}
+
+// Phase 5: First synchronous render pass — paints everything that depends on
+// the restored session state (queue, transport, track metadata, etc.).
+function renderInitialUI() {
+    updateQueueList();
+    renderSystemInfo();
+    renderTimeDisplays(PodCube.status);
+    renderTransportState(PodCube.status);
+    renderTrackMetadata(PodCube.nowPlaying);
+    checkForNewTransmissions();
+}
+
+// Phase 6: Initialize all static UI controls and data panels.
+// These don't need session state, but we wait until after the first render
+// so the user sees the player immediately rather than after all the heavy setup.
+function initUIControls() {
+    initArchiveControls();
+    updateBrigistics();
+    updateGeoDistribution();
+    updateArchive();
+    showDistribution();
+    updatePlaylistsUI();
+    initQueueDragAndDrop();
+    enableScrubbing('scrubber');
+    enableScrubbing('playerScrubber');
+    refreshSessionInspector();
+    initPasteHandler();
+    initPunchcardDragDrop();
+    initNavigation(); // Handles tab nav, history, and preference restoration.
+    startPodChatMonitor();
+}
+
+// Phase 7: Handle URL-driven entry points now that everything is fully wired up.
+function handleDeepLinks() {
+    const importCode = PodCube.getImportCodeFromUrl();
+    if (importCode) handleIncomingPlaylistCode(importCode);
+
+    // Pre-load the inspector with something useful on first visit.
+    if (PodCube.nowPlaying) {
+        loadEpisodeInspector(PodCube.nowPlaying);
+    } else if (PodCube.latest) {
+        loadEpisodeInspector(PodCube.latest);
+    }
+}
+
+// Phase 8a: Fade out and remove the splash screen on a successful boot.
+function dismissSplash() {
+    const splash = document.getElementById('startup-splash');
+    if (!splash) return;
+
+    const statusText = document.getElementById('splash-status');
+    if (statusText) statusText.textContent = "Logging in...";
+
+    // Guarantee a minimum 600ms display time so a fast cache doesn't produce a flicker.
+    setTimeout(() => {
+        splash.style.opacity = '0';
+        splash.style.pointerEvents = 'none'; // Let clicks pass through during fade.
+        setTimeout(() => splash.remove(), 500); // Clean up after the CSS transition.
+    }, 600);
+}
+
+// Phase 8b: Put the splash into an error state so the user knows something went wrong.
+function failSplash(error) {
+    console.error("Initialization Failed:", error);
+
+    const ind = document.getElementById('statusIndicator');
+    if (ind) ind.textContent = `System Failure: ${error.message || 'Unknown error'}`;
+
+    const splash = document.getElementById('startup-splash');
+    if (!splash) return;
+
+    const statusText = document.getElementById('splash-status');
+    if (statusText) {
+        statusText.textContent = "CONNECTION FAILED";
+        statusText.style.color = "var(--danger)";
+    }
+
+    const loadBar = document.getElementById('splash-loading-bar');
+    if (loadBar) loadBar.style.display = 'none';
+
+    // Hold the error state briefly, then fade so the user can see the main UI's error.
+    setTimeout(() => {
+        splash.style.opacity = '0';
+        splash.style.pointerEvents = 'none';
+    }, 2500);
+}
+
+// --- BOOT SEQUENCE ---
 window.addEventListener('PodCube:Ready', async () => {
     try {
-        // 1. Initialize Engine (Must be first)
-        await PodCube.init();
-        await PodUser.init();
-
-        PodUser.onUpdate((data) => {
-            renderUserUI(data)
-            syncArchiveUI();
-            initDegradation(data.degradation);
-        });
-
-        renderUserUI(PodUser.data);
-        initDegradation(PodUser.data.degradation);
-
-        updateStatusIndicator(`Connected to ${PodCube.FEED_TYPE.toUpperCase()} Feed`);
-
-        // 2. REGISTER LISTENERS (Must be before restoring session!)
-        
-        // High Frequency: Time & Scrubber
-        PodCube.on('timeupdate', (status) => renderTimeDisplays(status));
-
-        // Medium Frequency: Transport State
-        const updateTransport = () => renderTransportState(PodCube.status);
-        PodCube.on('play', updateTransport);
-        PodCube.on('pause', updateTransport);
-        PodCube.on('error', updateTransport);
-
-        // Low Frequency: Track Changes
-        PodCube.on('track', (ep) => {
-            renderTrackMetadata(ep);
-            updateTransport();
-            updateQueueList();
-            syncArchiveUI();
-            if (ep) loadEpisodeInspector(ep);
-        });
-
-        // Batched Queue Updates
-        PodCube.on('queue:changed', () => {
-            requestAnimationFrame(() => {
-                updateQueueList(); 
-                updatePunchcardPreview();
-                syncArchiveUI();
-            });
-        });
-
-        PodCube.on('ended', (episode) => {
-            if (episode && window.PodUser) {
-                if (!episode._excludeFromExport && !episode._internal){
-                PodUser.logListen(episode.nanoId);
-                }
-            }
-        });
-
-        // SET RANDOM FILTER TO AVOID PLAYED EPISODES IN RADIO MODE
-        PodCube.setRandomPoolFilter((episodes) => {
-            const history = PodUser.data.history;
-            if (!history || history.length === 0) return episodes;
-
-            // Convert to Set once per random selection for blazing fast O(1) lookups
-            const playedSet = new Set(history);
-            return episodes.filter(ep => !playedSet.has(ep.nanoId));
-        });
-
-        // 3. Restore Session & Sync State
-        // Now that listeners are active, they will catch the events fired here
-        await PodCube.restoreSession();
-        
-        // Update status based on session restoration
-        const queueSize = PodCube.queue?.length || 0;
-        if (queueSize > 0) {
-            updateStatusIndicator(`Session Restored • ${queueSize} item${queueSize === 1 ? '' : 's'} in queue`);
-        } else {
-            updateStatusIndicator(`${PodCube.FEED_TYPE.toUpperCase()} Feed • ${PodCube.episodes.length} transmissions available`);
-        }
-
-        // 4. Static UI Setup & Initial Render
-        // Run these once to ensure UI is populated even if no events fired
-        updateQueueList(); 
-        renderSystemInfo(); 
-        renderTimeDisplays(PodCube.status);
-        renderTransportState(PodCube.status);
-        renderTrackMetadata(PodCube.nowPlaying);
-        
-        // Static Content
-        initArchiveControls();
-        updateBrigistics();
-        updateGeoDistribution();
-        updateArchive();
-        showDistribution();
-        updatePlaylistsUI();
-        initQueueDragAndDrop();
-        enableScrubbing('scrubber');
-        enableScrubbing('playerScrubber');
-        refreshSessionInspector();
-        initPasteHandler();
-        initPunchcardDragDrop();
-        initNavigation(); // This handles all tab navigation, history, and preference restoration
-
-        // 5. Check for Import Code (Punchcards)
-        const importCode = PodCube.getImportCodeFromUrl();
-        if (importCode) handleIncomingPlaylistCode(importCode);
-
-        // 6. Load Inspector if track exists
-        if (PodCube.nowPlaying) {
-             loadEpisodeInspector(PodCube.nowPlaying);
-        }
-
-        const splash = document.getElementById('startup-splash');
-        if (splash) {
-            const statusText = document.getElementById('splash-status');
-            if (statusText) statusText.textContent = "Logging in...";
-            
-            // Guarantee a minimum 600ms display time so it doesn't "flicker" if the cache is super fast
-            setTimeout(() => {
-                splash.style.opacity = '0';
-                splash.style.pointerEvents = 'none'; // Let clicks pass through instantly
-                
-                // Remove from DOM entirely after the 0.5s CSS transition finishes
-                setTimeout(() => splash.remove(), 500); 
-            }, 600);
-        }
-        
+        await initEngines();           // 1. PodCube + PodUser must be up before anything else.
+        initUserCallbacks();           // 2. Wire onUpdate callback and paint initial user UI.
+        registerPlaybackListeners();   // 3. All event listeners MUST be registered before session restore.
+        await restoreSession();        // 4. Restore volume + session; listeners will catch fired events.
+        renderInitialUI();             // 5. First synchronous paint using restored session state.
+        initUIControls();              // 6. Boot all static panels, controls, and interactive widgets.
+        handleDeepLinks();             // 7. Handle URL import codes and pre-load the inspector.
+        dismissSplash();               // 8. Everything is ready — fade out the splash screen.
     } catch (e) {
-        console.error("Initialization Failed:", e);
-        const ind = document.getElementById('statusIndicator');
-        if(ind) ind.textContent = `System Failure: ${e.message || 'Unknown error'}`;
-
-        const splash = document.getElementById('startup-splash');
-        if (splash) {
-            const statusText = document.getElementById('splash-status');
-            if (statusText) {
-                statusText.textContent = "CONNECTION FAILED";
-                statusText.style.color = "var(--danger)";
-            }
-            const loadBar = document.getElementById('splash-loading-bar');
-            if (loadBar) loadBar.style.display = 'none';
-            
-            // Let them see the error, then fade out so they can see the main UI's error state
-            setTimeout(() => {
-                splash.style.opacity = '0';
-                splash.style.pointerEvents = 'none';
-            }, 2500);
-        }
+        failSplash(e);
     }
 });
+
+
 
 // --- CORE UTILITIES ---
 function run(code, silent = false) {
@@ -215,6 +324,34 @@ function updateStatusIndicator(text) {
     if (indicator) indicator.textContent = text;
 }
 
+async function checkForNewTransmissions() {
+    const currentCount = PodCube.episodes.length;
+    const storedCount = parseInt(localStorage.getItem('podcube_known_count') || '0', 10);
+
+    // Only fire if we have a stored count (prevents firing on their very first visit ever)
+    if (storedCount > 0 && currentCount > storedCount) {
+        const diff = currentCount - storedCount;
+        const latestEp = PodCube.latest; 
+        
+        const title = diff === 1 ? 'New Transmission Detected' : 'New Transmissions Detected';
+        const body = diff === 1 
+            ? `Brigistics has intercepted a new audio file: "${latestEp.title}".` 
+            : `Brigistics has intercepted ${diff} new transmissions since your last login.`;
+
+        logCommand(`// ALERT: ${diff} new transmission(s) detected.`);
+
+        // 1. Add to in-app Profile Alerts (Plays chime, updates UI)
+        // We pass the latest episode's ID in the payload so we can make it clickable!
+        await PodUser.addNotification(title, body, { type: 'new_episode', id: latestEp.id });
+
+        // 2. Trigger native OS notification
+        PodUser._triggerOSNotification(title, body);
+    }
+
+    // Always update the stored count for the next session
+    localStorage.setItem('podcube_known_count', currentCount.toString());
+}
+
 // --- UI SUBRENDERERS ---
 function renderSystemInfo() {
     // Populate API Tab Statistics
@@ -259,38 +396,6 @@ function updateBrigistics() {
     }
 
     logCommand('PodCube.getStatistics()');
-}
-
-function showDistribution() {
-    const h = PodCube.getDistribution();
-    
-    const renderCol = (title, items, filterKey) => {
-        const sorted = items.sort((a, b) => b.count - a.count);
-        return `
-        <div style="flex:1; border:1px solid #ddd; padding:12px; height:320px; overflow-y:auto; background:#fff; border-radius:4px;">
-            <h4 style="border-bottom:2px solid var(--primary); padding-bottom:8px; margin-bottom:10px; font-size:14px;">${title}</h4>
-            ${sorted.map(i => `
-                <div class="hierarchy-item" onclick="applyHierarchyFilter('${filterKey}', '${escapeForAttribute(i.name)}')" 
-                     style="display:flex; justify-content:space-between; font-size:11px; padding:4px 6px; border-bottom:1px solid #f5f5f5; cursor:pointer; transition: background 0.15s ease;">
-                    <span style="font-family:'Fustat'">${escapeHtml(i.name)}</span>
-                    <span style="font-weight:700; color:var(--primary); font-family:'Fustat'">${i.count}</span>
-                </div>
-            `).join('')}
-        </div>`;
-    };
-    
-    const output = document.getElementById('loreOutput');
-    if (output) {
-        output.innerHTML = `
-            <div style="display:flex; gap:12px; width:100%;">
-                ${renderCol('Models', h.models, 'model')}
-                ${renderCol('Origins', h.origins, 'origin')}
-                ${renderCol('Tags', h.tags, 'tag')}
-            </div>
-        `;
-    }
-    
-    logCommand(`PodCube.getDistribution() // ${h.models.length} models, ${h.origins.length} origins, ${h.tags.length} tags`);
 }
 
 function renderDistributionGrid(containerId, columns, customClass = 'distribution-grid') {
@@ -901,69 +1006,6 @@ html += `</p></div></div>`;
     logCommand(`PodCube.all[${idx}] // Inspecting: ${ep.title}`);
 }
 
-function renderFields(containerId, fields) {
-    const container = document.getElementById(containerId);
-    const template = document.getElementById('tmpl-inspector-field');
-    if (!container || !template) return;
-    
-    container.textContent = ''; // Clear existing
-    const grid = document.createElement('div');
-    grid.className = 'inspector-grid';
-
-    fields.forEach(f => {
-        const clone = document.importNode(template.content, true);
-        const fieldContainer = clone.querySelector('.inspector-field');
-        const valueDisplay = clone.querySelector('.inspector-field-value');
-        
-        // This triggers the CSS label
-        fieldContainer.dataset.label = f.label; 
-        
-        // This populates the actual data
-        valueDisplay.textContent = f.value || '-'; 
-        
-        // Add styling for empty or code fields
-        if (!f.value) valueDisplay.classList.add('empty');
-        if (f.code) valueDisplay.classList.add('code');
-        
-        grid.appendChild(clone);
-    });
-
-    container.appendChild(grid);
-}
-
-function loadRelatedEpisodes(ep) {
-    const container = document.getElementById('inspectorRelated');
-    const template = document.getElementById('tmpl-related-ep');
-    if (!container || !template) return;
-    
-    const related = PodCube.findRelated(ep, 5);
-    container.textContent = '';
-    
-    if (related.length === 0) {
-        container.innerHTML = '<p class="text-muted" style="font-size:12px;">No related episodes found</p>';
-        return;
-    }
-    
-    related.forEach(relEp => {
-        const clone = document.importNode(template.content, true);
-        const card = clone.querySelector('.related-ep-card');
-        card.dataset.epId = relEp.id; // Sets ID to hook into syncArchiveUI
-
-        const titleEl = clone.querySelector('.et-text');
-        if (titleEl) {titleEl.textContent = relEp.title;}
-        else {clone.querySelector('.related-ep-title').textContent = relEp.title;}
-        clone.querySelector('.related-ep-meta').textContent = `${relEp.model || 'Unknown'} • ${relEp.origin || 'Unknown'}`;
-        clone.querySelector('.related-ep-card').addEventListener('click', () => {
-            loadEpisodeInspector(relEp);
-        });
-        container.appendChild(clone);
-    });
-
-    syncArchiveUI();
-    
-    logCommand(`PodCube.findRelated(PodCube.all[${PodCube.getEpisodeIndex(ep)}], 5) // ${related.length} found`);
-}
-
 function clearInspector() {
     // Reset Header
     const header = document.getElementById('inspectorHeader');
@@ -996,9 +1038,6 @@ function clearInspector() {
 
 function toggleAutoplayMode(enabled) {
     PodCube.setRadioMode(enabled);
-    // Sync UI
-    const checkbox = document.getElementById('autoplayRandom');
-    if (checkbox) checkbox.checked = enabled;
 }
 
 function playNextRandom() {
@@ -1009,37 +1048,21 @@ function playNextRandom() {
     }
 }
 
-function updatePlayerVolume(value) {
-    const vol = value / 100;
-    run(`PodCube.setVolume(${vol.toFixed(2)})`, true);
+function updatePlayerVolume(value, noSave = false) {
+    // Both engines now speak the same language (0-100)
+    PodCube.setVolume(value); 
 
+    if (window.PodUser && !noSave ) {
+        PodUser.setVolume(value); 
+    }
+    
+    const volValLabel = document.getElementById('transportVolumeValue');
+    if (volValLabel) volValLabel.textContent = `${value}%`;
 }
 
 function updatePlayerSpeed(value) {
     run(`PodCube.setPlaybackRate(${value})`, true);
 }
-
-// MAIN PLAYER SCREEN (THESE ARE REDUNDANT)
-function seekPlayer(e) {
-    const scrub = document.getElementById('playerScrubber');
-    const rect = scrub.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const pct = (clientX - rect.left) / rect.width;
-    const time = pct * PodCube.status.duration;
-    run(`PodCube.seek(${time.toFixed(1)})`);
-}
-
-// FOR THE SMALLER BOTTOM ONE
-function seek(e) {
-    const scrub = document.getElementById('scrubber');
-    const rect = scrub.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const pct = (clientX - rect.left) / rect.width;
-    const time = pct * PodCube.status.duration;
-    run(`PodCube.seek(${time.toFixed(1)})`);
-}
-
-
 
 function enableScrubbing(elementId) {
     const el = document.getElementById(elementId);
@@ -1530,40 +1553,40 @@ function animatePunchcardIssue(playlist) {
         return;
     }
 
-    // 1. Calculate Geometry
+    // 1. Calculate Geometry (Now factoring in page scroll!)
     const rect = input.getBoundingClientRect();
     const cardWidth = 300; 
-    const maskWidth = 320; // Extra room so card fits easily
-    const maskHeight = 480; // Enough height for card + drop shadow
+    const maskWidth = 320; 
+    const maskHeight = 480; 
     
-    // Center mask relative to input
-    const maskLeft = (rect.left + (rect.width / 2)) - (maskWidth / 2);
-    const maskTop = rect.bottom; 
+    // Center mask relative to input, anchored to the document
+    const maskLeft = (rect.left + (rect.width / 2)) - (maskWidth / 2) + window.scrollX;
+    const maskTop = rect.bottom + window.scrollY; 
 
     // 2. Create Mask (Start Closed)
     const mask = document.createElement('div');
     mask.className = 'pc-printer-mask';
+    mask.style.position = 'absolute'; // Force absolute positioning to document
     mask.style.left = `${maskLeft}px`;
     mask.style.top = `${maskTop}px`;
     mask.style.width = `${maskWidth}px`;
-    mask.style.height = '0px'; // Explicitly closed at start
+    mask.style.height = '0px'; 
     
     // 3. Create Card (Start Hidden)
     const card = renderPunchcardDOM(playlist, 'anim');
     
-    // FORCE INITIAL STATE IMMEDIATELY (Prevents "Shooting Up" glitch)
-    card.style.opacity = '0'; // Start invisible
+    // FORCE INITIAL STATE IMMEDIATELY
+    card.style.opacity = '0'; 
     card.style.position = 'absolute';
-    card.style.top = '-110%'; // Way up inside the machine
+    card.style.top = '-110%'; 
     card.style.left = '50%';
     card.style.transform = 'translateX(-50%)';
-    card.style.width = `${cardWidth}px`; // Force width now
+    card.style.width = `${cardWidth}px`; 
     
     // 4. Mount to DOM
     mask.appendChild(card);
     document.body.appendChild(mask);
     
-    // Force browser repaint so it registers the "Closed" and "Hidden" states
     void mask.offsetWidth; 
 
     // --- ANIMATION SEQUENCE ---
@@ -1572,42 +1595,39 @@ function animatePunchcardIssue(playlist) {
         mask.classList.add('open-slot');
     });
 
-    // Step 1: Open the Slot (Carve out the height)
+    // Step 1: Open the Slot
     setTimeout(() => {
         mask.style.height = `${maskHeight}px`;
-    }, 100); // Small delay after border appears
+    }, 100); 
 
     // Step 2: Print (Slide Out)
     setTimeout(() => {
         card.style.opacity = '1';
-        card.style.top = '20px'; // Card pushes down through the slot
+        card.style.top = '20px'; 
     }, 800);
 
-    // Step 3: Detach & Drop (The "Handoff")
-    // Wait for print slide (1.0s + buffer)
+    // Step 3: Detach & Drop
     setTimeout(() => {
-
         mask.classList.remove('open-slot');
         mask.classList.add('close-slot');
 
-        // Get exact onscreen coordinates before we touch anything
+        // Get exact onscreen coordinates, plus scroll offset
         const dropRect = card.getBoundingClientRect();
-        
         
         // Re-attach card to body in "Physics Mode"
         document.body.appendChild(card);
         
-        // Apply Fixed Coordinates (Seamless Match)
-        card.style.position = 'fixed';
-        card.style.left = `${dropRect.left}px`;
-        card.style.top = `${dropRect.top}px`;
+        // Apply Absolute Coordinates (Seamless Match to Document)
+        card.style.position = 'absolute';
+        card.style.left = `${dropRect.left + window.scrollX}px`;
+        card.style.top = `${dropRect.top + window.scrollY}px`;
         
-        // Re-apply width to prevent "narrow snap"
+        // Re-apply width
         card.style.width = `${cardWidth}px`; 
         card.style.minWidth = `${cardWidth}px`;
         
         card.style.margin = '0';
-        card.style.transform = 'none'; // Remove the centering transform
+        card.style.transform = 'none'; 
         
         // 5. Trigger Gravity
         requestAnimationFrame(() => {
@@ -1620,7 +1640,7 @@ function animatePunchcardIssue(playlist) {
             
             updatePlaylistsUI(playlist.name);
 
-            // 2. Kill the mask (Clean up DOM)
+            // Kill the mask
             if (mask.parentNode) mask.parentNode.removeChild(mask);
         }, 400); 
 
@@ -1643,6 +1663,21 @@ function renderPunchcardDOM(pl, indexSuffix) {
     
     const card = document.createElement('div');
     card.className = 'pc-share-card-container interactive'; 
+
+    card.setAttribute('draggable', 'true');
+    card.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('application/podcube-playlist', pl.name);
+        e.dataTransfer.setData('text/plain', exportData.url);
+        e.dataTransfer.dropEffect='link';
+
+        card.style.opacity = '0.5';
+        logCommand(`// Initializing transport for "${pl.name}"`);
+        
+    });
+
+    card.addEventListener('dragend', () => {
+        card.style.opacity = '1';
+    })
     
     // Note: We removed the inline onclick/onblur handlers here
     card.innerHTML = `
@@ -1658,7 +1693,7 @@ function renderPunchcardDOM(pl, indexSuffix) {
             <div class="pc-share-qr-frame"></div>
         </div>
         <div class="pc-share-actions">
-            <button class="icon-btn btn-load" title="Load into Queue">INSERT</button>
+            <button class="icon-btn btn-load" title="Load into Queue">LOAD QUEUE</button>
             <button class="icon-btn btn-export" title="Copy to Clipboard">EXPORT</button>
             <button class="icon-btn btn-delete" style="color:var(--danger); border-color:var(--danger);" title="Delete Forever">SHRED</button>
         </div>
@@ -1789,6 +1824,10 @@ function updatePlaylistsUI(highlightName = null) {
         if (highlightName && pl.name === highlightName) {
             card.classList.add('pop-in');
         }
+
+        setTimeout(() => {
+            if (card) card.classList.remove('pop-in');
+        }, 1000);
         
         // Add to top of list
         container.prepend(card);
@@ -1915,6 +1954,7 @@ async function deletePlaylist(name, cardElement) {
 
     // make the card transparent but hold its place in the grid temporarily
     cardElement.style.opacity = 0;
+
     // DELETION
     setTimeout(() => { 
         PodCube.deletePlaylist(name);
@@ -1987,7 +2027,7 @@ function renderTransportState(status) {
     // Volume / Speed (Only if changed)
     if (status.volume !== UI_CACHE.lastVolume) {
         if (document.activeElement.id !== 'transportVolume' && document.activeElement.id !== 'playerVolume') {
-            const volInt = Math.round(status.volume * 100);
+            const volInt = Math.round(status.volume);
             ['transportVolume', 'playerVolume'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = volInt;
@@ -2551,6 +2591,21 @@ function initPunchcardDragDrop() {
         reader.classList.remove('drag-active');
 
         const dt = e.dataTransfer;
+
+        // INTERNAL DRAG-TO-PLAY
+        const playlistName = dt.getData('application/podcube-playlist');
+        if (playlistName) {
+            logCommand(`PodCube.playPlaylist("${escapeForJs(playlistName)}")`);
+            PodCube.playPlaylist(playlistName);
+            
+            // Visual feedback on the reader
+            const input = document.getElementById('playlistImportInput');
+            input.value = `LOADED: ${playlistName.toUpperCase()}`;
+            setTimeout(() => { if(input.value.includes("LOADED")) input.value = ''; }, 2000);
+            return; // Exit early
+        }
+
+
         const text = dt.getData('text');
         const files = dt.files;
 
@@ -2697,14 +2752,142 @@ function playHistorySong() {
     logCommand('// Playing internal history song');
 }
 
-// --- CSS for Hierarchy Hover ---
-const style = document.createElement('style');
-style.textContent = `
-    .hierarchy-item:hover {
-        background: var(--primary-dim) !important;
+// PODCHAT EASTER EGGS
+const PRIC_CHAT_POOL = [
+    { s: "Jaspert", m: "Tanner! Did you bring any chicken with you today????? I brought a salad and I regret it." },
+    { s: "Jaspert", m: "Tanner…..chicken??? I neeeeeeeed itttttt please!!!" },
+    { s: "Jaspert", m: "Are you still mad about last week??" },
+    { s: "Jaspert", m: "We were joking!! I thought we were cool???" },
+    { s: "Jaspert", m: "It’s just a mustard stain, Tanner. It wasn’t a HUGE deal" },
+    { s: "Jaspert", m: "Tanner. r u ok? Chicken?" },
+    { s: "Jaspert", m: "……chicken?" },
+    { s: "Jaspert", m: "Are you even here???" },
+    { s: "Jaspert", m: "I’m texting you" },
+    { s: "Leslie", m: "Hey Tanner! Are you doing the vegan chili cookoff thing?" },
+    { s: "Leslie", m: "Grehg in pSEC just brags and brags and bragggssssssss about his 4 consecutive wins and it’s exhausting" },
+    { s: "Leslie", m: "Tanner? Chili?" },
+    { s: "Leslie", m: "I’ll message you later" },
+    { s: "Prabot", m: "Tanner! Hey! Can you stop by my idea pod sometime today? Stove and I want to ask you a few questions." },
+    { s: "Prabot", m: "You’re not in trouble! LOL!! We want to ask you about consumer data, etc. blah blah blah" },
+    { s: "Prabot", m: "….wait….it this NOT Tanner?" },
+    { s: "Stove", m: "Hey, Tanner! Did you watch Monochrome’s Analysis last night?? They’re getting so desperate for viewers haha" },
+    { s: "Stove", m: "Uh oh……did I spoilers?" },
+    { s: "Stove", m: "Sorry if I did a spoilers!!" },
+    { s: "Stove", m: "Are you coming to our idea pod?" },
+    { s: "Stove", m: "OOPS! HELLO NEW PERSON AND NOT TANNER!! SORRY!" },
+    { s: "D. Blakely", m: "Greetings, Tanner! How was your weekend? Are you doing the vegan chili thing? -Dick" },
+    { s: "D. Blakely", m: "Do you need jackfruit? Are you using tempeh? Just beans? -Dick" },
+    { s: "D. Blakely", m: "Let me know because I have to get rid of the beans I told you about. -Dick" },
+    { s: "D. Blakely", m: "600lbs of beans I need to get rid of can you use them for Vegan Chili? -Dick" },
+    { s: "D. Blakely", m: "URGENT! Tanner. Do you need my beans? I have 600lbs of them and I'm in hot water. -Dick" },
+    { s: "D. Blakely", m: "Tanner. Beans. -Dick" },
+    { s: "D. Blakely", m: "Tanner beans please do you need them are you here today -Dick" },
+    { s: "D. Blakely", m: "Earth to Tanner. I sincerely need your help. 500lbs of beans are yours for free. -Dick" },
+    { s: "HR", m: "Hello and welcome to the PodCube ThinkWing! We’re excited to have a new PodCube Passenger on our team!" },
+    { s: "HR", m: "Stop by our office during “PodCube Passenger Hours”: 3:30 - 3:45pm each Tuesday. Make an appointment!" },
+    { s: "HR", m: "Feeling tired? Take a 5 minute stretch and grab a complimentary Sprot. Yummm-o!" },
+    { s: "HR", m: "Interested in signing up for the PodCube 20th Annual Vegan Chili Cookoff? Stop by on Tuesdays!" },
+    { s: "PodBot", m: "Thanks" },
+    { s: "PodBot", m: "*** test…..{{{{...lol…PODCCCCCC ****" },
+    { s: "PodBot", m: "Hope you’re feeling good! I know I am! ROFL" },
+    { s: "PodBot", m: "Have some down time? Proactively e-enable scalable solutions until your next “big idea” strikes" },
+    { s: "PodBot", m: "Do you like listening to music? That’s awesome! ROFL" },
+    { s: "PodBot", m: "**** PODBUTLER STUCK IN 3rd floor visitor restroom ****" },
+    { s: "PodBot", m: "Have you been holistically redefining your department’s highly efficient 'outside the cube' thinking?" },
+    { s: "PodBot", m: "Our Galileo Drones effectively negotiate and navigate on-demand methods of delivery. Did you know that?" },
+    { s: "PodBot", m: "suh dude? ROFL. Remember that funny video?" },
+    { s: "PodBot", m: "SPROT!" },
+    { s: "PodBot", m: "**** bandwidthhhh4hh4h{{4hh4hh44hhhh44}} ****" },
+    { s: "PodBot", m: "What’s your favorite PodCube Transmission Era? I like 1848 in the hat store! ROFL" },
+    { s: "PodBot", m: "The Departments in the Brain Tower efficiently orchestrate vertical leadership skills. Isn’t that cool?" },
+    { s: "PodBot", m: "Do you ever watch livestreams on twitch when you’re not working? ROFL." },
+    { s: "PodBot", m: "**** PODBUTLER STUCK IN 1st floor visitor restroom ****" },
+    { s: "PodBot", m: "**** PODBUTLER STUCK IN PodCube gift store ****" },
+    { s: "PodBot", m: "**** PODBUTLER STUCK IN pSEC annex stairwell ****" },
+    { s: "PodBot", m: "**** PODBUTLER STUCK IN unauthorized ****" },
+    { s: "PodBot", m: "**** PODBUTLER STUCK IN on top of Lindsey’s desk galileo department ****" },
+    { s: "PodBot", m: "**** PODBUTLER STUCK IN beryllium dorsal drive sail ****" },
+    { s: "PodBot", m: "**** PODBUTLER STUCK IN caesium straighteners ****" },
+    { s: "PodBot", m: "**** PODBUTLER STUCK IN beryllium dorsal drive boron rubidium spore-housing ****" },
+    { s: "PodBot", m: "**** PODBUTLER STUCK IN mycellium annex ****" },
+    { s: "PodBot", m: "skateboarding!" },
+    { s: "PodBot", m: "backward-compatible outsourcing" },
+    { s: "PodBot", m: "unique results. ROFL" },
+    { s: "PodBot", m: "I’m PodBot. Isn’t that cool?" },
+    { s: "PodBot", m: "BRB = be right back or bring real butter?" },
+    { s: "PodBot", m: "There's an anomalous power signature in the rear Galileo hyper-sensitive FTL driver. ROFL" }
+];
+
+function startPodChatMonitor() {
+    let lastChatTime = 0;
+    
+    setInterval(() => {
+        const now = Date.now();
+        const idleTime = now - (AppState.lastCommandTime || now);
+        
+        // Threshold: 120,000ms (2 minutes)
+        if (idleTime > 60000) {
+            // Frequency: Only post a new chat every 20 seconds while idle
+            if (now - lastChatTime > 20000) {
+                const chat = PRIC_CHAT_POOL[Math.floor(Math.random() * PRIC_CHAT_POOL.length)];
+
+                const currentName = PodUser?.data?.username || "Passenger";
+                
+                // Replace all instances of "Tanner" (case-insensitive) with the current user's name
+                const personalizedMessage = chat.m.replace(/Tanner/gi, currentName);
+                
+                const formattedMessage = `// ${chat.s.toUpperCase()}: ${personalizedMessage}`;
+                
+                // Update the monitor text visually
+                const monitorText = document.getElementById('monitorText');
+                const timestampEl = document.getElementById('monitorTimestamp');
+                
+                if (monitorText) {
+                    monitorText.textContent = formattedMessage;
+                }
+                
+                if (timestampEl) timestampEl.textContent = new Date().toLocaleTimeString();
+                
+                lastChatTime = now;
+            }
+        }
+    }, 5000); // Check every 5 seconds
+}
+
+// --- PWA INSTALLATION LOGIC ---
+let deferredPrompt;
+
+// 1. Capture the native install prompt if the browser fires it (Chrome/Edge/Android)
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Prevent Chrome 67 and earlier from automatically showing the prompt
+    e.preventDefault();
+    // Stash the event so it can be triggered later.
+    deferredPrompt = e;
+    logCommand("// System ready for native PWA installation");
+});
+
+// 2. The function called by our new Install Button
+window.promptPWAInstall = async () => {
+    if (deferredPrompt) {
+        // Show the native install prompt
+        deferredPrompt.prompt();
+        
+        // Wait for the user to respond to the prompt
+        const { outcome } = await deferredPrompt.userChoice;
+        logCommand(`// Install prompt outcome: ${outcome}`);
+        
+        // We've used the prompt, and can't use it again, discard it
+        deferredPrompt = null;
+    } else {
+        // Fallback: The prompt isn't available (iOS, already installed, or unsupported)
+        // Show our manual instructions modal
+        const modal = document.getElementById('install-modal');
+        if (modal) {
+            modal.style.display = 'flex';
+            logCommand("// Displaying manual PWA installation directives");
+        }
     }
-`;
-document.head.appendChild(style);
+};
 
 window.pipeToConsole = function(msg, type = 'info') {
     const output = document.getElementById('consoleOutput');

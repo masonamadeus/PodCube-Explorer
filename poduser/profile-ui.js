@@ -1,363 +1,6 @@
 /**
  * profile-ui.js — Profile Tab Rendering
- *
- * Drop-in replacement for renderUserUI() in explorer.js.
  */
-
-// ─────────────────────────────────────────────────────────────────
-// CSS INJECTION (once, on load)
-// ─────────────────────────────────────────────────────────────────
-
-(function injectProfileStyles() {
-    if (document.getElementById('profile-ui-styles')) return;
-
-    const style = document.createElement('style');
-    style.id = 'profile-ui-styles';
-    style.textContent = `
-
-    /* ── PROFILE HERO ─────────────────────────────── */
-    .profile-hero {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 20px;
-        padding: 20px;
-        background: #fff;
-        border: 3px double var(--primary);
-        margin-bottom: 30px;
-        position: relative;
-        margin-top: 15px;
-        flex-wrap: wrap;
-    }
-    .profile-hero::before {
-        content: "Personnel Record";
-        position: absolute;
-        top: -10px; left: 10px;
-        background: var(--bg-body);
-        padding: 0 10px;
-        font-family: "Fustat", sans-serif;
-        font-size: 10px; font-weight: 700;
-        color: var(--primary);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    .profile-hero .hero-btn .hero-btn-icon {
-        color: transparent;
-        text-shadow: 0 0 var(--primary);
-    }
-    .profile-username {
-        font-size: 1.8em;
-        color: var(--primary);
-        margin: 0 0 4px;
-        line-height: 1;
-    }
-    .profile-role {
-        font-family: "Fustat", sans-serif;
-        font-size: 10px;
-        color: #888;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-    }
-
-    /* ── ACHIEVEMENT FILTER BAR ───────────────────── */
-    .ach-filter-bar { display: flex; gap: 4px; }
-    .ach-filter-btn {
-        font-family: "Fustat", sans-serif;
-        font-size: 10px; font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        padding: 4px 12px;
-        border: 1px solid var(--primary);
-        background: #fff;
-        color: var(--primary);
-        cursor: pointer;
-    }
-    .ach-filter-btn.active { background: var(--primary); color: #fff; }
-    @media (hover: hover) {
-        .ach-filter-btn:hover:not(.active) { background: var(--primary-dim); }
-    }
-
-    /* ── ACHIEVEMENT GALLERY ──────────────────────── */
-    .achievement-gallery {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(265px, 1fr));
-        grid-auto-rows: 1fr;
-        gap: 10px;
-    }
-    @media (max-width: 500px) { .achievement-gallery { grid-template-columns: 1fr; } }
-
-    .ach-card {
-        background: #fff;
-        border: 1px solid var(--primary-dim);
-        padding: 14px;
-        display: flex;
-        flex-direction: column;
-        position: relative;
-        height: 100%;
-        transition: box-shadow 0.15s ease, transform 0.15s ease;
-    }
-    .ach-card.unlocked { 
-        border-color: var(--primary);
-        border-top: 3px solid var(--primary);
-    }
-    .ach-card.hidden-goal.locked { opacity: 0.65; background: #f9f9f9; }
-    .ach-card.locked {
-        opacity: 0.75;
-        background: var(--primary-dim);
-    }
-    
-    .ach-card.locked .ach-icon {
-        color: transparent;
-        text-shadow: 0 0 #b0b8c8;
-    }
-
-    .ach-card-header {
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-        flex: 1; 
-    }
-    .ach-icon {
-        font-size: 1.6em; width: 32px;
-        text-align: center; flex-shrink: 0; line-height: 1.3;
-        color:transparent;
-        text-shadow: 0 0 var(--primary);
-    }
-    .ach-meta { flex: 1; }
-    .ach-title {
-        font-family: "Libertinus Math", serif;
-        font-size: 1em; font-weight: 700;
-        color: var(--primary); margin: 0 0 4px; line-height: 1.2;
-    }
-    .ach-desc {
-        font-family: "Fustat", sans-serif;
-        font-size: 10px; color: #666;
-        text-transform: uppercase;
-        line-height: 1.5; letter-spacing: 0.02em;
-    }
-
-    .ach-status-badge {
-        font-family: "Fustat", sans-serif;
-        font-size: 9px; font-weight: 700;
-        text-transform: uppercase;
-        padding: 3px 7px;
-        position: absolute; top: 10px; right: 10px;
-        letter-spacing: 0.05em;
-        display: none;
-    }
-    .ach-status-badge.is-unlocked { background: var(--primary); color: #fff; }
-    .ach-status-badge.is-locked   { background: var(--primary-dim); color: var(--primary); }
-
-    .ach-reward {
-        margin-top: 12px; padding-top: 12px;
-        border-top: 1px dashed var(--primary-dim);
-        flex-shrink: 0; 
-    }
-    
-    .ach-reward-media-wrapper {
-        height: 140px; 
-        width: 100%;
-        background: #f0f0f0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-        border-radius: 4px;
-        position: relative;
-        margin-bottom: 8px;
-        transition: opacity 0.2s ease;
-    }
-    .ach-reward-media-wrapper:hover {
-        opacity: 0.9;
-    }
-    
-    .ach-hover-overlay {
-        position: absolute; inset: 0; background: rgba(0,0,0,0.3); 
-        display: flex; align-items: center; justify-content: center; 
-        opacity: 0; transition: opacity 0.2s ease; pointer-events: none;
-    }
-    .ach-reward-media-wrapper:hover .ach-hover-overlay {
-        opacity: 1;
-    }
-    
-    .ach-video-overlay {
-        position: absolute;
-        pointer-events: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .ach-reward-caption {
-        font-family: "Fustat", sans-serif;
-        font-size: 9px; text-transform: uppercase;
-        color: var(--primary); margin-top: 5px; letter-spacing: 0.04em;
-    }
-
-    /* ── LOCKED REWARD PLACEHOLDER ────────────────── */
-    .ach-reward-locked-wrapper {
-        height: 140px;
-        width: 100%;
-        background: repeating-linear-gradient(
-            -45deg,
-            var(--primary-dim),
-            var(--primary-dim) 8px,
-            #f5f5f5 8px,
-            #f5f5f5 16px
-        );
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        border-radius: 4px;
-        margin-bottom: 8px;
-        border: 1px dashed #c8d8f0;
-        position: relative;
-        overflow: hidden;
-    }
-    .ach-reward-locked-wrapper::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(to bottom, transparent 40%, rgba(249,249,249,0.6) 100%);
-        pointer-events: none;
-    }
-    .ach-reward-lock-icon {
-        font-size: 2em;
-        color: transparent;
-        text-shadow: 0 0 #b0b8c8;
-        line-height: 1;
-    }
-    .ach-reward-lock-label {
-        font-family: 'Fustat', sans-serif;
-        font-size: 9px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        color: #9097a3ff;
-    }
-    .ach-reward-lock-sublabel {
-        font-family: 'Fustat', sans-serif;
-        font-size: 8px;
-        text-transform: uppercase;
-        letter-spacing: 0.07em;
-        color: #969ba3ff;
-        margin-top: -4px;
-    }
-
-    /* ── REWARD SECTION HEADER ────────────────────── */
-    .ach-reward-section-label {
-        font-family: 'Fustat', sans-serif;
-        font-size: 8px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        color: var(--primary);
-        opacity: 0.5;
-        margin-bottom: 8px;
-    }
-    .ach-card.locked .ach-reward-section-label {
-        color: #aaa;
-        opacity: 1;
-    }
-
-    /* ── FULLSCREEN LIGHTBOX ──────────────────────── */
-    .ach-lightbox-overlay {
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0, 0, 0, 0.9);
-        z-index: 999999;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.25s ease;
-    }
-    .ach-lightbox-overlay.active {
-        opacity: 1;
-        pointer-events: all;
-    }
-    .ach-lightbox-content {
-        max-width: 90vw;
-        max-height: 80vh;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-        border: 3px double var(--primary);
-        background: #000;
-        transform: scale(0.95);
-        transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-    .ach-lightbox-overlay.active .ach-lightbox-content {
-        transform: scale(1);
-    }
-    .ach-lightbox-caption {
-        color: #fff;
-        font-family: "Fustat", sans-serif;
-        margin-top: 15px;
-        font-size: 14px;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        text-align: center;
-    }
-    .ach-lightbox-close {
-        position: absolute;
-        top: 20px; right: 30px;
-        color: #fff;
-        font-size: 40px;
-        cursor: pointer;
-        background: none;
-        border: none;
-        line-height: 1;
-        padding: 10px;
-        opacity: 0.7;
-    }
-    .ach-lightbox-close:hover { opacity: 1; }
-
-    /* ── NOTIFICATION LIST ────────────────────────────── */
-    .notifications-scroll {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        max-height: 340px;
-        overflow-y: auto;
-        padding-right: 4px;
-    }
-    .notification-card.read {
-        opacity: 0.5;
-        border-left-color: var(--primary-dim);
-        background: #fff;
-        cursor: default !important;
-    }
-    .notification-card.read:hover { opacity: 0.7; }
-
-    /* ── MEMORY CARD (bottom) ─────────────────────── */
-    .memory-card-section {
-        border: 1px dashed var(--primary);
-        padding: 20px; position: relative;
-    }
-    .memory-card-section::before {
-        content: "Memory Card — Backup & Restore";
-        position: absolute; top: -9px; left: 10px;
-        background: var(--bg-body); padding: 0 8px;
-        font-family: "Fustat", sans-serif;
-        font-size: 10px; font-weight: 700;
-        color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em;
-    }
-
-    .login-code-hidden {
-        filter: blur(5px);
-        user-select: none; pointer-events: none;
-        transition: filter 0.25s ease;
-    }
-    .login-code-visible {
-        filter: none; user-select: all;
-        transition: filter 0.25s ease;
-    }
-    `;
-    document.head.appendChild(style);
-})();
 
 
 // ─────────────────────────────────────────────────────────────────
@@ -366,6 +9,7 @@
 
 let _achFilter = 'all';
 let _loginCodeVisible = false;
+let _lastNotifCount = 0;
 
 
 // ─────────────────────────────────────────────────────────────────
@@ -581,17 +225,18 @@ function _renderProfileStats(userData) {
             <label>Listens</label>
             <div class="stat-num">${userData.history.length}</div>
         </div>
+        
         <div class="stat-box">
-            <label>Time Logged</label>
-            <div class="stat-num" style="font-size: 1.3em;" title="${totalSeconds} seconds">${timeString}</div>
-        </div>
-        <div class="stat-box">
-            <label>Punchcards</label>
+            <label>Cards Printed</label>
             <div class="stat-num">${userData.punchcards}</div>
         </div>
         <div class="stat-box">
             <label>Cards Shared</label>
             <div class="stat-num">${userData.punchcardExport || 0}</div>
+        </div>
+        <div class="stat-box">
+            <label>Time Logged</label>
+            <div class="stat-num" style="font-size: 1.3em;" title="${totalSeconds} seconds">${timeString}</div>
         </div>
         <div class="stat-box">
             <label>Perks</label>
@@ -673,10 +318,21 @@ function _renderNotifications(userData) {
 
     if (!userData.notifications.length) {
         container.innerHTML = `<p style="text-align:center; padding:20px; font-family:'Fustat'; font-size:11px; text-transform:uppercase; color:#888;">No alerts at this time.</p>`;
+        _lastNotifCount = 0;
         return;
     }
 
-    container.innerHTML = userData.notifications.map(n => {
+    // Sort: Unread first, then chronological (newest first)
+    const sortedNotifs = [...userData.notifications].sort((a, b) => {
+        if (a.read === b.read) {
+            // If both are read or both are unread, sort by timestamp
+            return b.timestamp - a.timestamp;
+        }
+        // If 'a' is read and 'b' is unread, 'a' gets pushed down (1)
+        return a.read ? 1 : -1;
+    });
+
+    container.innerHTML = sortedNotifs.map(n => {
         const isRead     = !!n.read;
         const hasPayload = !!n.payload;
         // Read notifications with no payload are history — no click action needed
@@ -697,7 +353,21 @@ function _renderNotifications(userData) {
         </div>
         `;
     }).join('');
+
+   const newCount = userData.notifications.length;
+
+    // Only scroll if this isn't the initial load AND the count went up
+    if (_lastNotifCount > 0 && newCount > _lastNotifCount) {
+        // Give the browser 50ms to paint the new HTML before calculating the scroll
+        setTimeout(() => {
+            container.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 50);
+    }
+    
+    // Update the tracker for the next render
+    _lastNotifCount = newCount;
 }
+
 
 function _buildLockedRewardPlaceholder(ach) {
     // Determine the lock icon hint based on reward type, without revealing what it is
@@ -870,8 +540,22 @@ window.handleNotificationClick = function(id) {
                 }, 2000);
             }
         }, 100);
-    } 
-    // --- SCENARIO C: STANDARD ALERT ---
+    // --- SCENARIO C: NEW TRANSMISSION CLICK ---
+    } else if (payload && payload.type === 'new_episode') {
+        const ep = window.PodCube.findEpisode(payload.id);
+        if (ep) {
+            // Load the episode into the inspector
+            if (typeof loadEpisodeInspector !== 'undefined') {
+                loadEpisodeInspector(ep);
+            }
+            // Switch to the inspector tab
+            if (typeof switchTab !== 'undefined') {
+                switchTab('inspector', true);
+            }
+        }
+        renderUserUI(PodUser.data);
+    }
+    // --- SCENARIO D: STANDARD ALERT ---
     else {
         renderUserUI(PodUser.data);
     }

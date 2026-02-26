@@ -598,6 +598,8 @@ class PodCubeEngine {
         this.isReady = false;
         this.lastSave = 0;
 
+        this._hasSession = false;
+
         // Feed Cache
         this._lastFetchedUrl = null; 
         this._lastFetchTime = null; 
@@ -1125,11 +1127,18 @@ class PodCubeEngine {
                         }
                         // B. Special: Full-Text Search
                         else if (key === 'search') {
-                            const q = value.toLowerCase();
-                            // Use cleaned plaintext strings instead of the raw HTML
-                            const match = (e._plainTitle && e._plainTitle.includes(q)) ||
-                                          (e._plainDescription && e._plainDescription.includes(q)) ||
-                                          (e.tags && e.tags.some(t => t.toLowerCase().includes(q)));
+                            // Split query by spaces into individual lowercase words
+                            const terms = value.toLowerCase().split(/\s+/).filter(Boolean);
+                            
+                            // EVERY term the user typed must be found SOMEWHERE in the episode
+                            const match = terms.every(q => 
+                                (e._plainTitle && e._plainTitle.includes(q)) ||
+                                (e._plainDescription && e._plainDescription.includes(q)) ||
+                                (e.tags && e.tags.some(t => t.toLowerCase().includes(q))) ||
+                                (e.model && e.model.toLowerCase().includes(q)) ||
+                                (e.location && e.location.toLowerCase().includes(q)) ||
+                                (e.date && e.date.year && e.date.year.toString().includes(q))
+                            );
                             if (!match) return false;
                         }
                         // C. Special: Year Ranges (Array [min, max])
@@ -1200,24 +1209,30 @@ class PodCubeEngine {
     search(query) {
         try {
             if (!query) return [];
-            const q = query.toLowerCase();
+            
+            // Split query into terms
+            const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+            
             return this.episodes.filter(e => {
-                // Use cleaned plaintext strings here
-                const titleMatch = e._plainTitle && e._plainTitle.includes(q);
-                const descMatch = e._plainDescription && e._plainDescription.includes(q);
-                const tagMatch = e.tags && e.tags.some(t => t.toLowerCase().includes(q));
-                const modelMatch = e.model && e.model.toLowerCase().includes(q);
-                const originMatch = e.origin && e.origin.toLowerCase().includes(q);
-                const yearMatch = e.date && e.date.year && e.date.year.toString().includes(q);
-                const dateStringMatch = e.date && e.date.toString().toLowerCase().includes(q);
+                // Return true only if EVERY term matches at least one property
+                return terms.every(q => {
+                    const titleMatch = e._plainTitle && e._plainTitle.includes(q);
+                    const descMatch = e._plainDescription && e._plainDescription.includes(q);
+                    const tagMatch = e.tags && e.tags.some(t => t.toLowerCase().includes(q));
+                    const modelMatch = e.model && e.model.toLowerCase().includes(q);
+                    const locMatch = e.location && e.location.toLowerCase().includes(q); // <-- UPDATED HERE
+                    const yearMatch = e.date && e.date.year && e.date.year.toString().includes(q);
+                    const dateStringMatch = e.date && e.date.toString().toLowerCase().includes(q);
 
-                return titleMatch || descMatch || tagMatch || modelMatch || originMatch || yearMatch || dateStringMatch;
+                    return titleMatch || descMatch || tagMatch || modelMatch || locMatch || yearMatch || dateStringMatch;
+                });
             });
         } catch (e) {
             log.error("Search failed:", e);
             return [];
         }
     }
+
 
     get nowPlaying() {
         return this._queue.length > 0 && this._queueIndex >= 0 && this._queueIndex < this._queue.length
@@ -1240,7 +1255,7 @@ class PodCubeEngine {
             remaining: Math.max(0, (duration || 0) - this._audio.currentTime),
             percent: percent,
             playbackRate: this._audio.playbackRate || 1,
-            volume: this._volume,
+            volume: Math.round(this._volume * 100),
 
             // Current Track
             episode: this.nowPlaying,
@@ -1276,7 +1291,7 @@ class PodCubeEngine {
 
             // Statistics
             totalEpisodes: this.episodes.length,
-            hasSession: !!localStorage.getItem('podcube_session'),
+            hasSession: this._hasSession,
 
             // Timestamps
             timestamp: Date.now(),
@@ -1558,34 +1573,40 @@ class PodCubeEngine {
         log.info("Soft stop cancelled");
     }
 
-    setRadioMode(enabled) {
+    setRadioMode(enabled, silent = false) {
         this._radioMode = !!enabled;
         log.info(`Radio Mode set to: ${this._radioMode}`);
 
-        // Check if queue is empty or finished
+        // Check if queue is completely empty
         const isQueueEmpty = this._queue.length === 0;
-        const isQueueFinished = this._queueIndex >= this._queue.length - 1;
+        
+        // A queue is only TRULY finished if we are on the last track AND the audio has naturally ended
+        const isQueueFinished = (this._queue.length > 0) && 
+                                (this._queueIndex >= this._queue.length - 1) && 
+                                this._audio.ended;
 
-        if (this._radioMode && (isQueueEmpty || isQueueFinished)) {
+        if (!silent && this._radioMode && (isQueueEmpty || isQueueFinished)) {
             const nextTrack = this.random;
             
             if (nextTrack) {
-                // Add track to queue (this emits queue:changed with the OLD index)
                 this.addToQueue(nextTrack, false);
 
-                if (this._queueIndex === -1) {
+                if (isQueueEmpty) {
                     this._queueIndex = 0;
-                    
-                    // Passing 'false' prevents it from blasting audio immediately.
                     this._loadAndPlay(false); 
-                    
-                    // Sync the session immediately
-                    this._saveSession();
-                } 
-                // If we were just at the end of the list, we don't auto-load 
+                } else if (isQueueFinished) {
+                    // Advance pointer to the newly added track
+                    this._queueIndex++; 
+                    this._loadAndPlay(false);
+                }
+                
+                this._saveSession();
             }
         }
+        
+        this._emit('radiomode:changed', this._radioMode);
     }
+
     setPlaybackRate(rate) {
         try {
             if (rate < 0.02 || rate > 16) {
@@ -1605,19 +1626,19 @@ class PodCubeEngine {
         return this._audio.playbackRate || 1;
     }
 
-    setVolume(level) {
-        // Clamp between 0.0 and 1.0
-        const vol = Math.max(0, Math.min(1, parseFloat(level)));
-        this._volume = vol;
-
-        if (this._audio) {
-            this._audio.volume = vol;
+    setVolume(level) { // accept 0-100
+        // clamp it just in case
+        const inputVol = Math.max(0, Math.min(100, parseFloat(level)));
+        const normalizedVol = inputVol/100
+        this._volume = normalizedVol;
+        if (this._audio){
+            this._audio.volume = normalizedVol;
         }
-        return vol;
+        return normalizedVol;
     }
 
-    getVolume() {
-        return this._volume;
+    get volume() { // return 0 - 100
+        return Math.round(this._volume * 100)
     }
 
     // --- QUEUE MANAGEMENT ---
@@ -1686,14 +1707,28 @@ class PodCubeEngine {
             }
 
             // --- ROTATING BUFFER LOGIC ---
-            const MAX_QUEUE_SIZE = 400; //
+            const MAX_QUEUE_SIZE = 400; 
             if (this._queue.length > MAX_QUEUE_SIZE) {
-                const overflow = this._queue.length - MAX_QUEUE_SIZE;
-                // Remove from the start of the queue
-                this._queue.splice(0, overflow);
-                // Adjust current index so playback doesn't skip
-                this._queueIndex = Math.max(-1, this._queueIndex - overflow);
-                log.info(`Queue rotated: removed ${overflow} oldest tracks.`);
+                let overflow = this._queue.length - MAX_QUEUE_SIZE;
+                
+                // 1. Try to safely remove already-played tracks from the front first.
+                // We keep `this._queueIndex` intact so the current track is never deleted.
+                const safeToRemoveFromFront = Math.max(0, this._queueIndex); 
+                const removeFromFront = Math.min(overflow, safeToRemoveFromFront);
+                
+                if (removeFromFront > 0) {
+                    this._queue.splice(0, removeFromFront);
+                    this._queueIndex -= removeFromFront; // Shift pointer to match
+                    overflow -= removeFromFront;
+                }
+                
+                // 2. If there is STILL overflow (e.g., they added 500 unplayed tracks), 
+                // truncate from the end.
+                if (overflow > 0) {
+                    this._queue.length = this._queue.length - overflow;
+                }
+                
+                log.info(`Queue limit enforced. Buffer rotated.`);
             }
 
             this._emit('queue:changed', { queue: this._queue, index: this._queueIndex });
@@ -2115,70 +2150,109 @@ class PodCubeEngine {
         return sorted;
     }
 
+
     /**
-     * Find episodes related to a given episode by shared metadata (fuzzy)
+     * Find episodes related to a given episode using a structured points heuristic
      */
     findRelated(episode, limit = 10) {
         if (!episode) return [];
 
-        const targetTags = new Set(episode.tags || []);
-        const modelPrefix = episode.model ? episode.model.substring(0, 3).toLowerCase() : null;
-
-        // Minimum score required to be considered "related" (prevents broad/random matches)
         const MIN_RELATED_THRESHOLD = 7;
+
+        // 1. Prepare Title Words (Ignore common filler)
+        const stopWords = new Set(['with', 'from', 'this', 'that', 'have', 'just', 'your', 'what', 'when']);
+        const targetTitleWords = (episode._plainTitle || '')
+            .split(/\s+/)
+            .filter(w => w.length > 3 && !stopWords.has(w));
+
+        // 2. Prepare Geographic Data (Cross-Breeding Origin, Locale, Region)
+        const targetGeo = [episode.origin, episode.locale, episode.region]
+            .filter(Boolean)
+            .map(s => s.toLowerCase().trim());
+
+        // 3. Prepare Tags & Model
+        const targetTags = (episode.tags || []).map(t => t.toLowerCase().trim());
+        const targetModel = (episode.model || "").toLowerCase().trim();
+        const targetModelPrefix = targetModel.length > 3 ? targetModel.substring(0, 4) : null;
 
         return this.episodes
             .filter(e => e !== episode)
             .map(e => {
                 let score = 0;
-                const basis = {}; // Debugging object
+                const basis = {}; // Human-readable debugging log
 
-                // 1. Model Matching
-                if (e.model === episode.model && e.model) {
-                    score += 12; basis.model = "Exact Match (+12)";
-                } else if (modelPrefix && e.model && e.model.toLowerCase().startsWith(modelPrefix)) {
-                    score += 4; basis.model = "Series Prefix (+4)";
-                }
+                // --- A. Geographic Cross-Breeding (+6 points per match) ---
+                const candidateGeo = [e.origin, e.locale, e.region]
+                    .filter(Boolean)
+                    .map(s => s.toLowerCase().trim());
+                
+                let geoMatches = 0;
+                targetGeo.forEach(tStr => {
+                    // If target string is inside any candidate string, OR candidate is inside target
+                    // Example: "We Make Paper Inc." will match "We Make Paper Inc"
+                    const hasMatch = candidateGeo.some(cStr => tStr.includes(cStr) || cStr.includes(tStr));
+                    if (hasMatch) {
+                        geoMatches++;
+                        score += 6; 
+                    }
+                });
+                if (geoMatches > 0) basis.geo = `${geoMatches} Geo Match(es) (+${geoMatches * 6})`;
 
-                // 2. Geographic Tier Matching (The "Baraboo" Logic)
-                if (e.origin === episode.origin && e.origin) {
-                    score += 10; basis.origin = "Origin Match (+10)";
-                }
-                if (e.locale === episode.locale && e.locale) {
-                    score += 6; basis.locale = "Locale Match (+6)";
-                }
-                if (e.region === episode.region && e.region) {
-                    score += 4; basis.region = "Region Match (+4)";
-                }
-                // Planet is excluded or set to 0 to prevent "Everything on Earth" from matching
-                if (e.zone === episode.zone && e.zone && e.zone !== "USA") {
-                    score += 2; basis.zone = "Zone Match (+2)";
-                }
-
-                // 3. Shared Tags
-                let tagMatches = 0;
-                if (e.tags) {
-                    e.tags.forEach(t => {
-                        if (targetTags.has(t)) {
-                            score += 3;
-                            tagMatches++;
+                // --- B. Title Comparison (+4 points per significant word) ---
+                let titleMatches = 0;
+                if (e._plainTitle) {
+                    targetTitleWords.forEach(w => {
+                        if (e._plainTitle.includes(w)) {
+                            titleMatches++;
+                            score += 4;
                         }
                     });
                 }
-                if (tagMatches > 0) basis.tags = `${tagMatches} tags (+${tagMatches * 3})`;
+                if (titleMatches > 0) basis.title = `${titleMatches} Title Word(s) (+${titleMatches * 4})`;
 
-                // 4. Temporal Proximity
-                if (e.date && episode.date && e.date.year === episode.date.year && e.date.year !== 0) {
-                    score += 5; basis.time = "Same Lore Year (+5)";
+                // --- C. Model Comparison (+12 Exact, +4 Prefix) ---
+                if (targetModel && e.model) {
+                    const cModel = e.model.toLowerCase().trim();
+                    if (cModel === targetModel) {
+                        score += 12;
+                        basis.model = "Exact Model (+12)";
+                    } else if (targetModelPrefix && cModel.startsWith(targetModelPrefix)) {
+                        score += 4;
+                        basis.model = "Model Prefix (+4)";
+                    }
+                }
+
+                // --- D. Tag Comparison (+4 points per shared tag) ---
+                let tagMatches = 0;
+                const candidateTags = (e.tags || []).map(t => t.toLowerCase().trim());
+                targetTags.forEach(tTag => {
+                    // Match exactly, OR fuzzy match if the tags are substantial (>3 chars)
+                    const hasTagMatch = candidateTags.some(cTag => 
+                        tTag === cTag || 
+                        (tTag.length > 3 && cTag.length > 3 && (tTag.includes(cTag) || cTag.includes(tTag)))
+                    );
+                    if (hasTagMatch) {
+                        tagMatches++;
+                        score += 4;
+                    }
+                });
+                if (tagMatches > 0) basis.tags = `${tagMatches} Tag(s) (+${tagMatches * 4})`;
+
+                // --- E. Year Proximity (+5 exact match) ---
+                if (e.date && episode.date && e.date.year !== 0 && episode.date.year !== 0) {
+                    if (e.date.year === episode.date.year) {
+                        score += 5;
+                        basis.year = "Same Lore Year (+5)";
+                    }
                 }
 
                 return { ep: e, score, basis };
             })
-            .filter(item => item.score >= MIN_RELATED_THRESHOLD) // Remove weak matches
+            .filter(item => item.score >= MIN_RELATED_THRESHOLD)
             .sort((a, b) => b.score - a.score)
             .slice(0, limit)
             .map(item => {
-                // Attach debug info to a non-enumerable property for the Inspector
+                // Attach debugging info for the Inspector UI
                 item.ep._scoreBasis = item.basis;
                 item.ep._totalScore = item.score;
                 return item.ep;
@@ -2432,11 +2506,13 @@ class PodCubeEngine {
             queueIndex: this._queueIndex,
             currentTime: this.nowPlaying ? this._audio.currentTime : 0,
             epID: this.nowPlaying ? this.nowPlaying.id : null,
-            isPlaying: this.nowPlaying ? !this._audio.paused : false
+            isPlaying: this.nowPlaying ? !this._audio.paused : false,
+            radioMode: this._radioMode,
         };
 
         try {
             localStorage.setItem('podcube_session', JSON.stringify(state));
+            this._hasSession = true;
         } catch (e) {
             // Quota exceeded or disabled
         }
@@ -2444,6 +2520,7 @@ class PodCubeEngine {
 
     _clearSession() {
         localStorage.removeItem('podcube_session');
+        this._hasSession = false;
     }
 
     /**
@@ -2493,6 +2570,11 @@ async restoreSession() {
         // Restore State
         this._queue = queue;
         this._queueIndex = Math.min(state.queueIndex, queue.length - 1);
+        this._hasSession = true;
+
+        if (state.radioMode) {
+            this.setRadioMode(state.radioMode, true);
+        }
 
         this._emit('queue:changed', { queue: this._queue, index: this._queueIndex });
 
@@ -2552,7 +2634,6 @@ async restoreSession() {
                 log.info(`Session: Auto-resume playback`);
             } catch (e) {
                 log.warn("Auto-resume blocked:", e);
-                // Don't clear session just because autoplay was blocked
             }
         }
 
@@ -2582,15 +2663,16 @@ async restoreSession() {
 
         // Clear audio
         if (this._audio) {
-            this._audio.src = '';
-            this._audio = null;
+            this._audio.removeAttribute('src');
+            this._audio.load();
         }
 
         if (this._preloader) {
-            this._preloader.src = '';
-            this._preloader = null;
+            this._preloader.removeAttribute('src');
+            this._preloader.load();
         }
 
+        this.isReady = false;
         log.info("PodCube destroyed");
     }
 }

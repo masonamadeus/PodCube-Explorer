@@ -1,5 +1,5 @@
 // BUMPED TO v2 to force users to download the new caching rules!
-const CACHE_NAME = 'podcube-explorer-v3.1';
+const CACHE_NAME = 'podcube-explorer-v3.2';
 
 // Detect if we are running locally
 const isLocalhost = Boolean(
@@ -28,6 +28,8 @@ self.addEventListener('install', (event) => {
                     './poduser/profile-ui.js',
                     './poduser/achievements.js',
                     './poduser/bingbong_hilo-3.mp3',
+                    './poduser/Bonk-2.mp3',
+                    './poduser/Buzz-3.mp3',
 
                     // INTERACTIVE
                     './interactive/interactive.js',

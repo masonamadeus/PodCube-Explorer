@@ -72,7 +72,7 @@ function initDegradation(visits) {
                 /* Size them independently: 15vh for the band, 4px for the lines */
                 background-size: 100% 15vh, 100% 4px;
                 
-                /* KEY FIX: Do not repeat the large band to prevent snapping */
+                /* Do not repeat the large band to prevent snapping */
                 background-repeat: no-repeat, repeat;
                 
                 opacity: var(--deg-scanline-opacity);
@@ -147,22 +147,25 @@ function startTemporalTextGlitches(visits) {
         window._temporalGlitchInterval = null;
     }
 
-    if (visits < 40) return;
+    // Bumped the starting threshold to 50
+    if (visits < 50) return;
 
-    const severity = Math.min((visits - 40) / 60, 1); 
-    const curve = Math.pow(severity, 3);
+    // Severity now scales from 0 to 1 between visits 50 and 100
+    const severity = Math.min((visits - 50) / 50, 1); 
     
-    // 1. FASTER INTERVAL: Drops from 6000ms all the way down to a hyper-aggressive 50ms
-    const intervalTime = 6000 - (curve * 5950); 
+    // INVERSE CUBIC CURVE:
+    // This creates a smooth but aggressive ramp-up.
+    // v=50 -> 8000ms | v=65 -> ~2700ms | v=100 -> 50ms
+    const intervalTime = 50 + 7950 * Math.pow(1 - severity, 3); 
 
-    // Added heavier, "structural" glitch blocks
     const glitchChars = ['‡', '¥', '§', '▓', '░', 'µ', '¢', 'ø', 'Ä', '¶', '¿', '✖', '█', '▄', '■', '▼'];
 
     window._temporalGlitchInterval = setInterval(() => {
-        const allElements = document.querySelectorAll('h1, h2, h3, h4, .et-text, .transport-title, .ach-title, .pc-share-title, .stat-num, .ep-duration');
+        const allElements = document.querySelectorAll('h1, h2, h3, h4, .et-text, .transport-title, .ach-title, .stat-num, .ep-duration');
         
         const validTargets = Array.from(allElements).filter(el => {
             if (el.childElementCount > 0 || el.matches(':hover')) return false;
+            if (el.closest('.pc-share-card-container')) return false;
             const txt = el.textContent;
             if (!txt || txt.trim().length < 3) return false;
 
@@ -177,8 +180,9 @@ function startTemporalTextGlitches(visits) {
 
         if (validTargets.length === 0) return;
         
-        // 2. MULTIPLE TARGETS: At max severity, glitch up to 4 elements at the exact same time
-        const simultaneousGlitches = Math.floor(1 + (curve * 3)); 
+        // MULTIPLE TARGETS: At max severity, glitch up to 4 elements at the exact same time
+        // Note: I swapped 'curve' for 'severity' here so the multi-targeting scales linearly 
+        const simultaneousGlitches = Math.floor(1 + (severity * 3)); 
 
         for (let i = 0; i < Math.min(simultaneousGlitches, validTargets.length); i++) {
             const target = validTargets[Math.floor(Math.random() * validTargets.length)];
@@ -191,7 +195,7 @@ function startTemporalTextGlitches(visits) {
                 attempts++;
             } while (originalText[charIdx] === ' ' && attempts < 10);
 
-            // 3. MULTI-CHAR CORRUPTION: At high severity, replace chunks of text instead of just 1 character
+            // MULTI-CHAR CORRUPTION: At high severity, replace chunks of text instead of just 1 character
             const glitchLength = Math.floor(1 + (Math.random() * severity * 3));
             let weirdStr = '';
             for(let g = 0; g < glitchLength; g++) {
@@ -200,7 +204,7 @@ function startTemporalTextGlitches(visits) {
 
             target.textContent = originalText.substring(0, charIdx) + weirdStr + originalText.substring(charIdx + glitchLength);
 
-            // 4. CHAOTIC DURATIONS: Hold the glitch for a random amount of time (50ms to 450ms)
+            // CHAOTIC DURATIONS: Hold the glitch for a random amount of time (50ms to 450ms)
             const holdDuration = 50 + Math.random() * 400;
             
             setTimeout(() => {
@@ -222,20 +226,42 @@ window.repairTerminal = async function() {
     flash.style.backgroundColor = '#ffffff';
     flash.style.zIndex = '99999999'; // Above absolutely everything
     flash.style.opacity = '0';
+    flash.style.pointerEvents = 'none'; // Let clicks pass through while it fades
     flash.style.transition = 'opacity 0.1s ease-out'; // Fast, aggressive snap to white
     document.body.appendChild(flash);
 
     // 2. Force browser to register the element before animating
     void flash.offsetWidth;
     
-    // 3. Trigger the flash
+    // 3. Trigger the visual flash
     flash.style.opacity = '1';
 
-    // 4. Wait a tiny fraction of a second so the user feels the flash, then reset and reload
+    // 4. Trigger the audio flash
+    try {
+        const buzz = new Audio('./poduser/Buzz-3.mp3');
+        buzz.volume = 0.2;
+        buzz.play().catch(e => console.warn('Audio play blocked:', e));
+    } catch (e) {
+        console.warn('Failed to load de-gauss audio:', e);
+    }
+
+    // 5. Wait a fraction of a second at peak brightness, then reset data and fade out
     setTimeout(async () => {
+        // Reset the data behind the blinding flash
         PodUser.data.degradation = 0;
-        
         await PodUser.save();
-        window.location.reload();
-    }, 150); // 150ms is just enough time to hide the page reloading behind the white screen
+        updateDegradation(0);
+        
+        // Change to a slower, smoother transition for the fade-out
+        flash.style.transition = 'opacity 1.5s ease-in';
+        flash.style.opacity = '0';
+
+        // 6. Remove the element from the DOM ONLY after the 1.5s fade finishes
+        setTimeout(() => {
+            if (document.body.contains(flash)) {
+                document.body.removeChild(flash);
+            }
+        }, 1500); 
+        
+    }, 150); 
 };
