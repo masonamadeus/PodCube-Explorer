@@ -2474,12 +2474,36 @@ document.addEventListener('keydown', (e) => {
     const isTyping = ['INPUT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable;
     if (isTyping) return;
 
-    // BLOCK NAVIGATION IF SNAKE GAME IS ACTIVE
-    // We check if the "interactive" tab is currently active
+    // BLOCK NAVIGATION IF GAME IS ACTIVE
+    // Check if the "interactive" tab is currently active
     const interactiveTab = document.getElementById('interactive');
     if (interactiveTab && interactiveTab.classList.contains('active')) {
         // Stop here so the game gets the key press instead
         return;
+    }
+
+    // PREVIOUS AND NEXT ON INSPECTOR TAB
+    const inspectorTab = document.getElementById('inspector');
+    if (inspectorTab && inspectorTab.classList.contains('active')) {
+        // Handle Comma (,) or Less-Than (<) for Previous
+        if (e.key === ',' || e.key === '<') {
+            const prevBtn = document.querySelector('.insp-btn-prev');
+            if (prevBtn && !prevBtn.disabled) {
+                e.preventDefault();
+                prevBtn.click();
+            }
+            return; // Stop further key processing
+        }
+        
+        // Handle Period (.) or Greater-Than (>) for Next
+        if (e.key === '.' || e.key === '>') {
+            const nextBtn = document.querySelector('.insp-btn-next-nav');
+            if (nextBtn && !nextBtn.disabled) {
+                e.preventDefault();
+                nextBtn.click();
+            }
+            return; // Stop further key processing
+        }
     }
 
     // Desktop Tab Navigation (Arrow Keys)
