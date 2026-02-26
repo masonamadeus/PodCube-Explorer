@@ -982,27 +982,66 @@ class PodCubeEngine {
 
     getNearestToToday() {
         try {
-            const today = new PodCubeDate(new Date());
-            const todayAbs = PodCubeDate.toAbsoluteDayNumber(today);
+            const today = new Date();
+            const current = new PodCubeDate(today);
+            const todayAbs = PodCubeDate.toAbsoluteDayNumber(current);
 
-            let closestDistance = Infinity;
-            let matches = [];
+            let futureMatches = [];
+            let closestFutureDistance = Infinity;
+
+            let anniversaryMatches = [];
+            let closestAnniversaryDistance = Infinity;
+
+            // HELPER: Get 'Day of Year' (1-366) to compare Month/Day without years.
+            // Using Date.UTC strictly prevents Daylight Saving Time (DST) bugs where 
+            // a day might be calculated as 23 hours instead of 24.
+            // We lock this to 2024 (a leap year) so Feb 29th evaluates correctly.
+            const getDayOfYear = (month, day) => {
+                const d = Date.UTC(2024, month, day);
+                const start = Date.UTC(2024, 0, 0); // Evaluates to Dec 31, 2023
+                return Math.floor((d - start) / 86400000); // 86,400,000 ms in a guaranteed UTC day
+            };
+
+            const todayDOY = getDayOfYear(current.month, current.day);
 
             for (const ep of this.episodes) {
-                if (!ep.date) continue;
+                if (!ep.date || !ep.date.year) continue; 
 
+                // --- PRIORITY 1: Occurring exactly within the next 31 days ---
                 const epAbs = PodCubeDate.toAbsoluteDayNumber(ep.date);
-                const distance = Math.abs(todayAbs - epAbs);
+                const diff = epAbs - todayAbs;
 
-                if (distance < closestDistance) {
-                    closestDistance = distance;
-                    matches = [ep];
-                } else if (distance === closestDistance) {
-                    matches.push(ep);
+                // diff >= 0 ensures it is today or in the future
+                if (diff >= 0 && diff <= 31) {
+                    if (diff < closestFutureDistance) {
+                        closestFutureDistance = diff;
+                        futureMatches = [ep];
+                    } else if (diff === closestFutureDistance) {
+                        futureMatches.push(ep); // Tie (happening on same day)
+                    }
+                }
+
+                // --- PRIORITY 2: Closest month/day match (ignoring year) ---
+                const epDOY = getDayOfYear(ep.date.month, ep.date.day);
+                let doyDiff = Math.abs(todayDOY - epDOY);
+                
+                // Account for calendar wrapping (e.g., Dec 31 is 1 day away from Jan 1, not 365)
+                doyDiff = Math.min(doyDiff, 366 - doyDiff);
+
+                if (doyDiff < closestAnniversaryDistance) {
+                    closestAnniversaryDistance = doyDiff;
+                    anniversaryMatches = [ep];
+                } else if (doyDiff === closestAnniversaryDistance) {
+                    anniversaryMatches.push(ep);
                 }
             }
 
-            return matches;
+            // Return Priority 1 if we found any, otherwise fallback to Priority 2
+            if (futureMatches.length > 0) {
+                return futureMatches;
+            }
+
+            return anniversaryMatches;
         } catch (e) {
             log.error("Failed to find episode nearest to today:", e);
             return [];

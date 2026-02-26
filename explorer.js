@@ -91,7 +91,11 @@ function registerPlaybackListeners() {
         updateTransport();
         updateQueueList();
         syncArchiveUI();
-        if (ep) loadEpisodeInspector(ep);
+
+        const inspectorTab = document.getElementById('inspector');
+        if (ep && inspectorTab && !inspectorTab.classList.contains('active')) {
+            loadEpisodeInspector(ep);
+        }
     });
 
     // Batched to rAF so rapid queue mutations only trigger one repaint.
@@ -210,8 +214,15 @@ function handleDeepLinks() {
     const importCode = PodCube.getImportCodeFromUrl();
     if (importCode) handleIncomingPlaylistCode(importCode);
 
-    // Pre-load the inspector with something useful on first visit.
-    if (PodCube.nowPlaying) {
+    const savedInspectorId = localStorage.getItem('podcube_last_inspected');
+    
+    // 2. Safely look up the episode using the engine (returns null if it no longer exists)
+    const savedEpisode = savedInspectorId ? PodCube.findEpisode(savedInspectorId) : null;
+
+    // Pre-load the inspector with the saved episode, falling back to logical defaults
+    if (savedEpisode) {
+        loadEpisodeInspector(savedEpisode);
+    } else if (PodCube.nowPlaying) {
         loadEpisodeInspector(PodCube.nowPlaying);
     } else if (PodCube.latest) {
         loadEpisodeInspector(PodCube.latest);
@@ -253,11 +264,6 @@ function failSplash(error) {
     const loadBar = document.getElementById('splash-loading-bar');
     if (loadBar) loadBar.style.display = 'none';
 
-    // Hold the error state briefly, then fade so the user can see the main UI's error.
-    setTimeout(() => {
-        splash.style.opacity = '0';
-        splash.style.pointerEvents = 'none';
-    }, 2500);
 }
 
 // --- BOOT SEQUENCE ---
@@ -586,7 +592,7 @@ function updateYearOptions() {
 
 
 // Debounce Archive Updates
-const _debouncedUpdate = debounce(_performUpdateArchive, 300);
+const _debouncedUpdate = debounce(_performUpdateArchive, 400);
 function updateArchive() {
     _debouncedUpdate();
 }
@@ -621,7 +627,7 @@ function _performUpdateArchive() {
     // 4. Update UI
     AppState.filteredResults = results;
     renderArchiveResults(results); // (Ensure you have extracted the rendering logic as discussed previously)
-    
+    refreshInspectorNavigation();
     // Debug Logging
     const activeFilters = Object.keys(filters).filter(k => filters[k]).length;
     logCommand(`PodCube.where({ ${activeFilters} filters }, "${sortMode}") // Found ${results.length}`);
@@ -797,217 +803,267 @@ function loadEpisodeInspector(ep) {
         clearInspector();
         return;
     }
-    
+
     AppState.selectedEpisode = ep;
-    // Save to localStorage for session persistence
     localStorage.setItem('podcube_last_inspected', ep.id);
-    updateArchive();
-    
+    syncArchiveUI(); // Keep visual highlight updated
+
     const idx = PodCube.getEpisodeIndex(ep);
     
-    // === HEADER CARD ===
-    const header = document.getElementById('inspectorHeader');
-    if (header) {
-        header.innerHTML = `
-            <div class="inspector-summary">
-                <div class="inspector-summary-header">
-                    <h2 class="inspector-title">${escapeHtml(ep.title)}</h2>
-                    <div class="inspector-summary-actions">
-                        <button class="inspector-action-btn primary" onclick="run('PodCube.play(PodCube.all[${idx}])')">
-                            PLAY NOW
-                        </button>
-                        <button class="inspector-action-btn" onclick="run('PodCube.addNextInQueue(PodCube.all[${idx}])')">
-                            PLAY NEXT
-                        </button>
-                        <button class="inspector-action-btn" onclick="run('PodCube.addToQueue(PodCube.all[${idx}])')">
-                            ADD TO QUEUE
-                        </button>
-                    </div>
-                </div>
-                <div class="inspector-summary-main">
-                    <div class="inspector-meta-line">
-                        <span class="label">Type</span>
-                        <span class="value">${escapeHtml(ep.episodeType || 'none')}</span>
-                        <span class="separator">•</span>
-                        <span class="label">Model</span>
-                        <span class="value">${escapeHtml(ep.model || 'N/A')}</span>
-                        <span class="separator">•</span>
-                        <span class="label">Duration</span>
-                        <span class="value">${escapeHtml(ep.timestamp || 'N/A')}</span>
-                        <span class="separator">•</span>
-                        <span class="label">Integrity</span>
-                        <span class="value">${escapeHtml(ep.integrity || 'N/A')}</span>
-                    </div>
-                    <div class="inspector-meta-line">
-                        <span class="label">Origin</span>
-                        <span class="value">${escapeHtml(ep.location || 'Unknown')}</span>
-                    </div>
-                    <div class="inspector-meta-line">
-                        <span class="label">Date</span>
-                        <span class="value">${escapeHtml(ep.date?.toString() || 'Unknown Date')}</span>
-                        ${ep.anniversary ? `<span class="separator">•</span><span class="value" style="font-style:italic;">${escapeHtml(ep.anniversary)}</span>` : ''}
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    
-    // === REPORT BODY ===
-    const body = document.getElementById('inspectorBody');
-    body.className = 'inspector-report-body loaded';
-    
-    let html = '';
-    
-    const episodeIndex = PodCube.getEpisodeIndex(ep);
-    
-// Core Properties Section
-html += '<div class="inspector-section">';
-html += '<h4 class="inspector-section-title">Executive Summary</h4>';
-html += '<div class="inspector-prose">';
-html += `<p>This transmission `;
-if (ep.anniversary) {
-    html += `originated <strong>${escapeHtml(ep.anniversary)}</strong>, and `;
-}
-html += `has been titled "<strong>${escapeHtml(ep.title)}</strong>" by the Brigistics department. `;
+    // Determine Nav Context
+    const list = (AppState.filteredResults && AppState.filteredResults.length > 0)
+        ? AppState.filteredResults
+        : PodCube.all;
 
-// Narrative Location Data
-html += `<br><br>Geographic metadata indicates it originated from planet <strong>${escapeHtml(ep.planet || 'Unknown')}</strong>, `;
-html += `within the <strong>${escapeHtml(ep.region || 'Unknown')}</strong> region of the <strong>${escapeHtml(ep.zone || 'Unknown')}</strong> zone. `;
-html += `The specific locale is identified as <strong>${escapeHtml(ep.locale || 'Unknown')}</strong>, `;
-html += `with the primary origin point recorded as <strong>"${escapeHtml(ep.origin || 'Unknown')}"</strong>. `;
+    const currentIndex = list.findIndex(e => e.id === ep.id);
+    const prevEp = currentIndex > 0 ? list[currentIndex - 1] : null;
+    const nextEp = currentIndex !== -1 && currentIndex < list.length - 1 ? list[currentIndex + 1] : null;
 
+    // Grab & Clone Template
+    const template = document.getElementById('tmpl-inspector-view');
+    if (!template) return;
+    const clone = document.importNode(template.content, true);
 
+    // Mini helper for safe text mapping
+    const setTxt = (selector, text) => {
+        const el = clone.querySelector(selector);
+        if (el) el.textContent = text;
+    };
 
-html += `<br><br>It runs for <strong>${escapeHtml(ep.timestamp || 'N/A')}</strong> `;
-html += `(${ep.duration ? ep.duration + ' seconds' : 'duration unknown'})`;
-if (ep.weirdDuration) {
-    html += `, or roughly ${escapeHtml(ep.weirdDuration)}`;
-}
-html += `. `;
-if (ep.sizeBytes) {
-    html += `The audio file size is <strong>${formatBytes(ep.sizeBytes)}</strong>. `;
-}
-html += `Audio source is ${ep.audioUrl ? '<strong>present</strong>' : '<strong style="color:var(--danger);">missing</strong>'}. `;
-html += `This transmission's Global Unique ID string is: <strong>"${escapeHtml(ep.id || 'N/A')}"</strong>. `;
+    // --- 1. NAVIGATION BAR ---
+    const btnPrev = clone.querySelector('.insp-btn-prev');
+    const btnNext = clone.querySelector('.insp-btn-next-nav');
 
-
-html += `<br><br>It has been cataloged at index <strong>PodCube.all[${episodeIndex}]</strong> with shortcode date <strong>${escapeHtml(ep.shortcode || 'N/A')}</strong>, `;
-html += `is of the type: <strong>"${escapeHtml(ep.episodeType || 'N/A')}"</strong>, `;
-html += `and carries an integrity rating of <strong>${escapeHtml(ep.integrity || 'N/A')}</strong>`;
-if (ep.integrityValue !== null) {
-    html += ` (${ep.integrityValue}%). `;
-}
-
-//related check
-const related = PodCube.findRelated(ep, 5);
-if (related.length > 0) {
-    const titles = related.map(relEp => `"${escapeHtml(relEp.title)}"`);
-    let relatedTitlesNarrative = "";
-
-    if (titles.length === 1) {
-        relatedTitlesNarrative = titles[0];
+    if (prevEp) {
+        const prevIdx = PodCube.getEpisodeIndex(prevEp);
+        btnPrev.onclick = () => loadEpisodeInspector(PodCube.all[prevIdx]);
     } else {
-        const lastTitle = titles.pop();
-        relatedTitlesNarrative = titles.join(', ') + ", and/or " + lastTitle;
+        btnPrev.disabled = true;
+        btnPrev.style.opacity = '0.3';
+        btnPrev.style.cursor = 'not-allowed';
     }
 
-    html += `<br><br>It may or may not be related to ${relatedTitlesNarrative} which will be linked at the bottom of this document.`;
-}
-
-html += `</p></div></div>`;
-
-    // Tags
-    if (ep.tags && ep.tags.length > 0) {
-        html += '<div class="inspector-section">';
-        html += '<h4 class="inspector-section-title">Classification Tags</h4>';
-        html += '<div class="inspector-tag-list">';
-        ep.tags.forEach(tag => {
-            html += `<span class="inspector-tag-pill" onclick="applyHierarchyFilter('tag', '${escapeForAttribute(tag)}')">${escapeHtml(tag)}</span>`;
-        });
-        html += '</div>';
-        html += '</div>';
+    if (nextEp) {
+        const nextIdx = PodCube.getEpisodeIndex(nextEp);
+        btnNext.onclick = () => loadEpisodeInspector(PodCube.all[nextIdx]);
+    } else {
+        btnNext.disabled = true;
+        btnNext.style.opacity = '0.3';
+        btnNext.style.cursor = 'not-allowed';
     }
-    
-    // Temporal Analysis
-    html += '<div class="inspector-section">';
-    html += '<h4 class="inspector-section-title">Temporal Analysis</h4>';
-    html += '<div class="inspector-callout">';
-    html += '<div class="inspector-callout-title">Origin Timeline</div>';
-    html += '<div class="inspector-callout-content">';
 
-    
-    html += `<strong>Origin Date:</strong> ${escapeHtml(ep.date?.toString() || 'Unknown Date')}<br>`;
+    setTxt('.insp-nav-counter', currentIndex !== -1 ? `Result ${currentIndex + 1} of ${list.length}` : 'Transmission Data');
+
+    // --- 2. HEADER META ---
+    setTxt('.insp-title', ep.title);
+    setTxt('.insp-type', ep.episodeType || 'none');
+    setTxt('.insp-model', ep.model || 'N/A');
+    setTxt('.insp-duration', ep.timestamp || 'N/A');
+    setTxt('.insp-integrity', ep.integrity || 'N/A');
+    setTxt('.insp-location', ep.location || 'Unknown');
+    setTxt('.insp-tag-count', ep.tags ? ep.tags.length : 0);
+    setTxt('.insp-date', ep.date?.toString() || 'Unknown Date');
+
+    // Play/Queue Action Buttons
+    clone.querySelector('.insp-btn-play').onclick = () => run(`PodCube.play(PodCube.all[${idx}])`);
+    clone.querySelector('.insp-btn-playnext').onclick = () => run(`PodCube.addNextInQueue(PodCube.all[${idx}])`);
+    clone.querySelector('.insp-btn-queue').onclick = () => run(`PodCube.addToQueue(PodCube.all[${idx}])`);
+
+    // Conditional Anniversary logic 
     if (ep.anniversary) {
-        html += `<strong>Anniversary:</strong> ${escapeHtml(ep.anniversary)}<br>`;
+        clone.querySelector('.insp-anniversary-wrapper').style.display = 'inline';
+        setTxt('.insp-anniversary', ep.anniversary);
+        
+        clone.querySelector('.insp-prose-anniv-wrap').style.display = 'inline';
+        setTxt('.insp-prose-anniv', ep.anniversary);
+        
+        clone.querySelector('.insp-temp-anniv-wrap').style.display = 'inline';
+        setTxt('.insp-temp-anniv', ep.anniversary);
     }
-    html += `<strong>Published:</strong> ${ep.published ? new Date(ep.published).toLocaleDateString() + ' at ' + new Date(ep.published).toLocaleTimeString() : 'N/A'}`;
-    
-    html += '</div>';
-    html += '</div>';
-    html += '</div>';
-    
-    // Geographic Data
-    html += '<div class="inspector-section">';
-    html += '<h4 class="inspector-section-title">Geographic Metadata</h4>';
-    html += '<div class="inspector-data-grid">';
-    html += `<div class="data-label">Origin Point</div><div class="data-value code">${escapeHtml(ep.origin || 'N/A')}</div>`;
-    html += `<div class="data-label">Locale</div><div class="data-value code">${escapeHtml(ep.locale || 'N/A')}</div>`;
-    html += `<div class="data-label">Region</div><div class="data-value code">${escapeHtml(ep.region || 'N/A')}</div>`;
-    html += `<div class="data-label">Zone</div><div class="data-value code">${escapeHtml(ep.zone || 'N/A')}</div>`;
-    html += `<div class="data-label">Planet</div><div class="data-value code">${escapeHtml(ep.planet || 'N/A')}</div>`;
-    html += '</div>';
-    html += '</div>';
 
-    // Related Episodes (10 this time)
+    // --- 3. PROSE POPULATION ---
+    setTxt('.insp-prose-title', ep.title);
+    setTxt('.insp-prose-planet', ep.planet || 'Unknown');
+    setTxt('.insp-prose-region', ep.region || 'Unknown');
+    setTxt('.insp-prose-zone', ep.zone || 'Unknown');
+    setTxt('.insp-prose-locale', ep.locale || 'Unknown');
+    setTxt('.insp-prose-origin', ep.origin || 'Unknown');
+    setTxt('.insp-prose-time', ep.timestamp || 'N/A');
+    setTxt('.insp-prose-dur', ep.duration ? ep.duration + ' seconds' : 'duration unknown');
+    
+    if (ep.weirdDuration) {
+        clone.querySelector('.insp-prose-weird-wrap').style.display = 'inline';
+        setTxt('.insp-prose-weird', ep.weirdDuration);
+    }
+
+    if (ep.sizeBytes) {
+        clone.querySelector('.insp-prose-size-wrap').style.display = 'inline';
+        setTxt('.insp-prose-size', formatBytes(ep.sizeBytes));
+    }
+
+    // Audio status uses innerHTML for the bold/color tag, but we hardcode the string so it's safe
+    const audioStat = clone.querySelector('.insp-prose-audio-status');
+    audioStat.innerHTML = ep.audioUrl 
+        ? '<strong>present</strong>' 
+        : '<strong style="color:var(--danger);">missing</strong>';
+
+    setTxt('.insp-prose-id', ep.id || 'N/A');
+    setTxt('.insp-prose-idx', `${idx}`);
+    setTxt('.insp-prose-shortcode', ep.shortcode || 'N/A');
+    setTxt('.insp-prose-type', ep.episodeType || 'N/A');
+    setTxt('.insp-prose-integrity', ep.integrity || 'N/A');
+
+    if (ep.integrityValue !== null) {
+        clone.querySelector('.insp-prose-int-val-wrap').style.display = 'inline';
+        setTxt('.insp-prose-int-val', ep.integrityValue);
+    }
+
+    const related = PodCube.findRelated(ep, 5);
+    if (related.length > 0) {
+        clone.querySelector('.insp-prose-related-wrap').style.display = 'inline';
+        const titles = related.map(relEp => `"${relEp.title}"`);
+        const narrative = titles.length === 1 ? titles[0] : titles.slice(0, -1).join(', ') + ", and/or " + titles[titles.length - 1];
+        setTxt('.insp-prose-related-titles', narrative);
+    }
+
+    // --- 4. TAGS ---
+    if (ep.tags && ep.tags.length > 0) {
+        clone.querySelector('.insp-tags-section').style.display = 'block';
+        const tagList = clone.querySelector('.insp-tags-list');
+        ep.tags.forEach(tag => {
+            const span = document.createElement('span');
+            span.className = 'inspector-tag-pill';
+            span.textContent = tag;
+            span.onclick = () => applyHierarchyFilter('tag', tag);
+            tagList.appendChild(span);
+        });
+    }
+
+    // --- 5. TEMPORAL & GEOGRAPHIC GRID ---
+    setTxt('.insp-temp-date', ep.date?.toString() || 'Unknown Date');
+    setTxt('.insp-temp-pub', ep.published ? new Date(ep.published).toLocaleDateString() + ' at ' + new Date(ep.published).toLocaleTimeString() : 'N/A');
+    setTxt('.insp-geo-origin', ep.origin || 'N/A');
+    setTxt('.insp-geo-locale', ep.locale || 'N/A');
+    setTxt('.insp-geo-region', ep.region || 'N/A');
+    setTxt('.insp-geo-zone', ep.zone || 'N/A');
+    setTxt('.insp-geo-planet', ep.planet || 'N/A');
+
+    // --- 6. RELATED LIST (Bottom 10 items) ---
     const related10 = PodCube.findRelated(ep, 10);
     if (related10.length > 0) {
-        html += '<div class="inspector-section">';
-        html += '<h4 class="inspector-section-title">Related Transmissions</h4>';
-        html += '<div class="inspector-related-list">';
+        clone.querySelector('.insp-related-section').style.display = 'block';
+        const relList = clone.querySelector('.insp-related-list');
+        const relTmpl = document.getElementById('tmpl-related-ep');
+        
         related10.forEach(relEp => {
             const relIdx = PodCube.getEpisodeIndex(relEp);
-            html += `<div class="inspector-related-item" onclick="loadEpisodeInspector(PodCube.all[${relIdx}]); window.scrollTo({ top: 0, behavior: 'instant' });">`; // yeah i know this is bad shut up
-            html += '<div class="inspector-related-item-info">';
-            html += `<div class="inspector-related-item-title">${escapeHtml(relEp.title)}</div>`;
-            html += `<div class="inspector-related-item-meta">${escapeHtml(relEp.model || 'Unknown')} • ${escapeHtml(relEp.origin || 'Unknown')}</div>`;
-            html += '</div>';
-            html += '<div class="inspector-related-item-arrow">→</div>';
-            html += '</div>';
+            const relClone = document.importNode(relTmpl.content, true);
+            
+            relClone.querySelector('.et-text').textContent = relEp.title;
+            relClone.querySelector('.related-ep-meta').textContent = `${relEp.model || 'Unknown'} • ${relEp.origin || 'Unknown'}`;
+            
+            const card = relClone.querySelector('.related-ep-card');
+            card.dataset.epId = relEp.id;
+            card.onclick = () => {
+                loadEpisodeInspector(PodCube.all[relIdx]);
+                window.scrollTo({ top: 0, behavior: 'instant' });
+            };
+            relList.appendChild(relClone);
         });
-        html += '</div>';
-        html += '</div>';
     }
+
+    // --- 7. INJECT INTO DOM ---
+    const headerContainer = document.getElementById('inspectorHeader');
+    const bodyContainer = document.getElementById('inspectorBody');
     
+    headerContainer.innerHTML = '';
+    headerContainer.appendChild(clone.querySelector('.inspector-header-wrapper'));
     
-    body.innerHTML = html;
-    
-    // Show raw data section
+    bodyContainer.innerHTML = '';
+    bodyContainer.appendChild(clone.querySelector('.inspector-body-wrapper'));
+    bodyContainer.className = 'inspector-report-body loaded';
+
+    // --- 8. RAW DATA (Optional debugging bottom panel) ---
     document.getElementById('inspectorRawSection').style.display = 'block';
-    
-    // Raw Data Panels
     try {
         document.getElementById('rawJson').textContent = JSON.stringify(ep, null, 2);
-        
-        // Parsed metadata
         const meta = {};
         ['model', 'origin', 'region', 'zone', 'planet', 'locale', 'integrity', 'date', 'tags'].forEach(key => {
-            if (ep[key] !== undefined && ep[key] !== null) {
-                meta[key] = ep[key];
-            }
+            if (ep[key] !== undefined && ep[key] !== null) meta[key] = ep[key];
         });
         document.getElementById('rawMeta').textContent = JSON.stringify(meta, null, 2);
-        
-        // Raw description
         document.getElementById('rawDesc').textContent = ep.description || '// No description';
     } catch (e) {
         console.error('Error rendering raw data:', e);
     }
-    
+
     logCommand(`PodCube.all[${idx}] // Inspecting: ${ep.title}`);
 }
 
+function refreshInspectorNavigation() {
+    const ep = AppState.selectedEpisode;
+    const header = document.getElementById('inspectorHeader');
+    
+    // If there's no episode loaded or the header isn't in the DOM, do nothing
+    if (!ep || !header) return;
+
+    const btnPrev = header.querySelector('.insp-btn-prev');
+    const btnNext = header.querySelector('.insp-btn-next-nav');
+    const counter = header.querySelector('.insp-nav-counter');
+
+    if (!btnPrev || !btnNext || !counter) return;
+
+    // Determine the current list context
+    const list = (AppState.filteredResults && AppState.filteredResults.length > 0)
+        ? AppState.filteredResults
+        : PodCube.all;
+
+    const currentIndex = list.findIndex(e => e.id === ep.id);
+
+    // If the episode was excluded by the new filter
+    if (currentIndex === -1 && AppState.filteredResults.length > 0) {
+        // Automatically load the first result of the new search
+        loadEpisodeInspector(AppState.filteredResults[0]);
+        return; // Exit here, as loadEpisodeInspector completely rebuilds the UI anyway
+    }
+
+    // Determine Previous and Next Episodes
+    const prevEp = currentIndex > 0 ? list[currentIndex - 1] : null;
+    const nextEp = currentIndex !== -1 && currentIndex < list.length - 1 ? list[currentIndex + 1] : null;
+
+    // Update Previous Button
+    if (prevEp) {
+        const prevIdx = PodCube.getEpisodeIndex(prevEp);
+        btnPrev.disabled = false;
+        btnPrev.style.opacity = '1';
+        btnPrev.style.cursor = 'pointer';
+        btnPrev.onclick = () => loadEpisodeInspector(PodCube.all[prevIdx]);
+    } else {
+        btnPrev.disabled = true;
+        btnPrev.style.opacity = '0.3';
+        btnPrev.style.cursor = 'not-allowed';
+        btnPrev.onclick = null;
+    }
+
+    // Update Next Button
+    if (nextEp) {
+        const nextIdx = PodCube.getEpisodeIndex(nextEp);
+        btnNext.disabled = false;
+        btnNext.style.opacity = '1';
+        btnNext.style.cursor = 'pointer';
+        btnNext.onclick = () => loadEpisodeInspector(PodCube.all[nextIdx]);
+    } else {
+        btnNext.disabled = true;
+        btnNext.style.opacity = '0.3';
+        btnNext.style.cursor = 'not-allowed';
+        btnNext.onclick = null;
+    }
+
+    // Update Counter Text
+    counter.textContent = currentIndex !== -1 ? `Result ${currentIndex + 1} of ${list.length}` : 'Transmission Data';
+}
+
 function clearInspector() {
-    // Reset Header
     const header = document.getElementById('inspectorHeader');
     if (header) {
         header.innerHTML = `
@@ -1017,19 +1073,14 @@ function clearInspector() {
             </div>
         `;
     }
-
-    // Clear body
     const body = document.getElementById('inspectorBody');
     if (body) {
         body.className = 'inspector-report-body';
         body.innerHTML = '';
     }
     
-    // Hide raw data section
     const rawSection = document.getElementById('inspectorRawSection');
-    if (rawSection) {
-        rawSection.style.display = 'none';
-    }
+    if (rawSection) rawSection.style.display = 'none';
     
     AppState.selectedEpisode = null;
 }
@@ -1050,7 +1101,7 @@ function playNextRandom() {
 
 function updatePlayerVolume(value, noSave = false) {
     // Both engines now speak the same language (0-100)
-    PodCube.setVolume(value); 
+    run(`PodCube.setVolume(${value});`) 
 
     if (window.PodUser && !noSave ) {
         PodUser.setVolume(value); 
@@ -1693,7 +1744,7 @@ function renderPunchcardDOM(pl, indexSuffix) {
             <div class="pc-share-qr-frame"></div>
         </div>
         <div class="pc-share-actions">
-            <button class="icon-btn btn-load" title="Load into Queue">LOAD QUEUE</button>
+            <button class="icon-btn btn-load" title="Load into Queue">PLAY</button>
             <button class="icon-btn btn-export" title="Copy to Clipboard">EXPORT</button>
             <button class="icon-btn btn-delete" style="color:var(--danger); border-color:var(--danger);" title="Delete Forever">SHRED</button>
         </div>

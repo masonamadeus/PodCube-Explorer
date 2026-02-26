@@ -124,7 +124,7 @@
         </div>
     </div>
 
-<!-- OVERVIEW TAB -->
+<!-- BRIGISTICS TAB -->
     <div id="overview" class="tab-content active">
         <div class="section">
             <h3>Welcome to the PodCube Explorer. </h3>
@@ -1603,6 +1603,7 @@
             <span class="hi-count"></span>
         </div>
     </template>
+    
     <!-- EPISODE CARDS -->
     <template id="tmpl-ep-card">
         <div class="ep-card">
@@ -1636,6 +1637,165 @@
             </div>
         </div>
     </template>
+    <!-- INSPECTOR TEMPLATES -->
+    <template id="tmpl-inspector-view">
+        <div class="inspector-header-wrapper">
+            <div class="inspector-top-bar" style="display:flex; justify-content:space-between; align-items:center; padding-bottom:15px;">
+                <div style="display:flex; gap:5px;" class="insp-nav-buttons">
+                    <button class="icon-btn insp-btn-prev" style="color:var(--primary);"><< PREV</button>
+                    <button class="icon-btn insp-btn-next-nav" style="color:var(--primary);">NEXT >></button>
+                </div>
+                <div class="insp-nav-counter" style="font-family:'Fustat'; font-size:10px; font-weight:700; color:#888; text-transform:uppercase;">
+                </div>
+            </div>
+
+            <div class="inspector-summary">
+                <div class="inspector-summary-header">
+                    <h2 class="inspector-title insp-title"></h2>
+                </div>
+                
+                <div class="inspector-summary-main inspector-header-grid">
+
+                    <div class="inspector-header-item full-width">
+                        <span class="inspector-header-label">Origin</span>
+                        <span class="inspector-header-value insp-location"></span>
+                    </div>
+
+                    <div class="inspector-header-item full-width">
+                        <span class="inspector-header-label">Model</span>
+                        <span class="inspector-header-value insp-model"></span>
+                    </div>
+
+                    <div class="inspector-header-item span-2">
+                        <span class="inspector-header-label">Date</span>
+                        <span class="inspector-header-value">
+                            <span class="insp-date"></span>
+                            <span class="insp-anniversary-wrapper" style="display:none; color:#888; font-style:italic; font-weight:normal; margin-left:4px;">
+                                (<span class="insp-anniversary"></span>)
+                            </span>
+                        </span>
+                    </div>
+                    
+                    
+
+                    <div class="inspector-header-item">
+                        <span class="inspector-header-label">Type</span>
+                        <span class="inspector-header-value insp-type"></span>
+                    </div>
+                    <div class="inspector-header-item">
+                        <span class="inspector-header-label">Integrity</span>
+                        <span class="inspector-header-value insp-integrity"></span>
+                    </div>
+
+                    <div class="inspector-header-item">
+                        <span class="inspector-header-label">Duration</span>
+                        <span class="inspector-header-value insp-duration"></span>
+                    </div>
+                    
+                    
+
+                    <div class="inspector-header-item">
+                        <span class="inspector-header-label">Tags</span>
+                        <span class="inspector-header-value insp-tag-count"></span>
+                    </div>
+
+                    
+
+                    
+                 
+                    
+                </div>
+            </div>
+
+            <div class="inspector-summary-actions">
+                <button class="inspector-action-btn primary insp-btn-play">PLAY NOW</button>
+                <button class="inspector-action-btn insp-btn-playnext">PLAY NEXT</button>
+                <button class="inspector-action-btn insp-btn-queue">ADD TO QUEUE</button>
+            </div>
+            
+        </div>
+        </div>
+    
+        <div class="inspector-body-wrapper">
+            <div class="inspector-section">
+                <h4 class="inspector-section-title">Executive Summary</h4>
+                <div class="inspector-prose">
+                    <p>
+                        This transmission <span class="insp-prose-anniv-wrap" style="display:none;">originated <strong
+                                class="insp-prose-anniv"></strong>, and </span>has been titled "<strong
+                            class="insp-prose-title"></strong>" by the Brigistics department.
+                    </p>
+                    <p>
+                        Geographic metadata indicates it originated from planet <strong class="insp-prose-planet"></strong>,
+                        within the <strong class="insp-prose-region"></strong> region of the <strong
+                            class="insp-prose-zone"></strong> zone.
+                        The specific locale is identified as <strong class="insp-prose-locale"></strong>,
+                        with the primary origin point recorded as "<strong class="insp-prose-origin"></strong>".
+                    </p>
+                    <p>
+                        It runs for <strong class="insp-prose-time"></strong> (<span class="insp-prose-dur"></span>)<span
+                            class="insp-prose-weird-wrap" style="display:none;">, or roughly <span
+                                class="insp-prose-weird"></span></span>.
+                        <span class="insp-prose-size-wrap" style="display:none;">The audio file size is <strong
+                                class="insp-prose-size"></strong>. </span>
+                        Audio source is <span class="insp-prose-audio-status"></span>.
+                        This transmission's Global Unique ID string is: "<strong class="insp-prose-id"></strong>".
+                    </p>
+                    <p>
+                        It has been cataloged at index <strong class="insp-prose-idx"></strong>
+                        with shortcode date <strong class="insp-prose-shortcode"></strong>,
+                        is of the type: "<strong class="insp-prose-type"></strong>",
+                        and carries an integrity rating of <strong class="insp-prose-integrity"></strong><span
+                            class="insp-prose-int-val-wrap" style="display:none;"> (<span
+                                class="insp-prose-int-val"></span>%)</span>.
+                    </p>
+                    <p class="insp-prose-related-wrap" style="display:none;">
+                        It may or may not be related to <span class="insp-prose-related-titles"></span> which will be linked
+                        at the bottom of this document.
+                    </p>
+                </div>
+            </div>
+    
+            <div class="inspector-section insp-tags-section" style="display:none;">
+                <h4 class="inspector-section-title">Classification Tags</h4>
+                <div class="inspector-tag-list insp-tags-list"></div>
+            </div>
+    
+            <div class="inspector-section">
+                <h4 class="inspector-section-title">Temporal Analysis</h4>
+                <div class="inspector-callout">
+                    <div class="inspector-callout-title">Origin Timeline</div>
+                    <div class="inspector-callout-content">
+                        <strong>Origin Date:</strong> <span class="insp-temp-date"></span><br>
+                        <span class="insp-temp-anniv-wrap" style="display:none;"><strong>Anniversary:</strong> <span
+                                class="insp-temp-anniv"></span><br></span>
+                        <strong>Published:</strong> <span class="insp-temp-pub"></span>
+                    </div>
+                </div>
+            </div>
+    
+            <div class="inspector-section">
+                <h4 class="inspector-section-title">Geographic Metadata</h4>
+                <div class="inspector-data-grid">
+                    <div class="data-label">Origin Point</div>
+                    <div class="data-value code insp-geo-origin"></div>
+                    <div class="data-label">Locale</div>
+                    <div class="data-value code insp-geo-locale"></div>
+                    <div class="data-label">Region</div>
+                    <div class="data-value code insp-geo-region"></div>
+                    <div class="data-label">Zone</div>
+                    <div class="data-value code insp-geo-zone"></div>
+                    <div class="data-label">Planet</div>
+                    <div class="data-value code insp-geo-planet"></div>
+                </div>
+            </div>
+    
+            <div class="inspector-section insp-related-section" style="display:none;">
+                <h4 class="inspector-section-title">Related Transmissions</h4>
+                <div class="inspector-related-list insp-related-list"></div>
+            </div>
+        </div>
+    </template>
     <template id="tmpl-inspector-field">
         <div class="inspector-field doubleborder">
             <div class="inspector-field-value"></div>
@@ -1650,6 +1810,8 @@
             <div class="related-ep-score">→</div>
         </div>
     </template>
+
+    <!-- QUEUE/PLAYLIST -->
     <template id="tmpl-queue-item">
         <div class="queue-item" data-queue-index="">
             <div class="queue-drag-handle">
@@ -1685,6 +1847,8 @@
             </div>
         </div>
     </template>
+
+    <!-- CONSOLE -->
     <template id="tmpl-console-output">
         <div class="console-entry">
             <div class="console-prompt"></div>
