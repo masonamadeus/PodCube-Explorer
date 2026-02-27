@@ -846,15 +846,29 @@
             </div>
         </div>
     
-        <div class="section">
-            <div style="display: flex; flex-direction: column; justify-content: space-between; align-items: center;">
-                <span style="font-family: 'Fustat'; font-size: 9px; color: var(--danger); text-transform: uppercase;">
-                    EMERGENCY MAINTENANCE
-                </span>
-                <button id="btn-degauss" class="icon-btn" style="color: var(--danger); border-color: var(--danger);"
-                    onclick="repairTerminal()">
-                    DE-GAUSS TERMINAL
-                </button>
+        <div class="section" id="btn-degauss" style="transition: all 0.4s ease;">
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                
+                <div class="defrig-container">
+                    <div class="defrig-inner">
+                        <div class="defrig-switches">
+                            <div class="defrig-switch" onclick="toggleDefrigSwitch(this, 1)"></div>
+                            <div class="defrig-switch" onclick="toggleDefrigSwitch(this, 2)"></div>
+                            <div class="defrig-switch" onclick="toggleDefrigSwitch(this, 3)"></div>
+                        </div>
+                        <button id="btn-defrigulate" class="icon-btn defrig-btn" disabled onclick="executeDefrigulate()">
+                            INITIATE DE-FRIGULATION
+                        </button>
+                    </div>
+    
+                    <div class="defrig-plate" id="defrig-plate">
+                        <span class="defrig-plate-text">MAINTENANCE HATCH</span>
+                        <div class="defrig-screw topleft" onclick="removeScrew(this)"></div>
+                        <div class="defrig-screw topright" onclick="removeScrew(this)"></div>
+                        <div class="defrig-screw bottomleft" onclick="removeScrew(this)"></div>
+                        <div class="defrig-screw bottomright" onclick="removeScrew(this)"></div>
+                    </div>
+                </div>
             </div>
         </div>
     
@@ -1774,33 +1788,45 @@
     
             
     
-            <div class="inspector-section">
-                <h4 class="inspector-section-title">Temporal Analysis</h4>
-                <div class="inspector-callout">
-                    <div class="inspector-callout-title">Origin Timeline</div>
-                    <div class="inspector-callout-content">
-                        <strong>Origin Date:</strong> <span class="insp-temp-date"></span><br>
-                        <span class="insp-temp-anniv-wrap" style="display:none;"><strong>Anniversary:</strong> <span
-                                class="insp-temp-anniv"></span><br></span>
-                        <strong>Published:</strong> <span class="insp-temp-pub"></span>
+            <div class="inspector-split-row">
+
+                <div class="inspector-section" style="margin-bottom: 0;">
+                    <h4 class="inspector-section-title">Geographic Metadata</h4>
+                    <div class="inspector-data-grid">
+                        <div class="data-label">Origin Point</div>
+                        <div class="data-value code insp-geo-origin"></div>
+                        <div class="data-label">Locale</div>
+                        <div class="data-value code insp-geo-locale"></div>
+                        <div class="data-label">Region</div>
+                        <div class="data-value code insp-geo-region"></div>
+                        <div class="data-label">Zone</div>
+                        <div class="data-value code insp-geo-zone"></div>
+                        <div class="data-label">Planet</div>
+                        <div class="data-value code insp-geo-planet"></div>
                     </div>
                 </div>
-            </div>
-    
-            <div class="inspector-section">
-                <h4 class="inspector-section-title">Geographic Metadata</h4>
-                <div class="inspector-data-grid">
-                    <div class="data-label">Origin Point</div>
-                    <div class="data-value code insp-geo-origin"></div>
-                    <div class="data-label">Locale</div>
-                    <div class="data-value code insp-geo-locale"></div>
-                    <div class="data-label">Region</div>
-                    <div class="data-value code insp-geo-region"></div>
-                    <div class="data-label">Zone</div>
-                    <div class="data-value code insp-geo-zone"></div>
-                    <div class="data-label">Planet</div>
-                    <div class="data-value code insp-geo-planet"></div>
+
+                <div class="inspector-section" style="margin-bottom: 0;">
+                    <h4 class="inspector-section-title">Temporal Analysis</h4>
+                    <div class="inspector-data-grid">
+                        <div class="data-label">Origin Date</div>
+                        <div class="data-value code insp-temp-date"></div>
+                        
+                        <div class="data-label">Distance to Now™</div>
+                        <div class="data-value code insp-temp-anniv"></div>
+                        
+                        <div class="data-label">Perceived Length</div>
+                        <div class="data-value code insp-temp-weird"></div>
+                        
+                        <div class="data-label">Absolute Length</div>
+                        <div class="data-value code insp-temp-dur"></div>
+                        
+                        <div class="data-label">Intercept Date</div>
+                        <div class="data-value code insp-temp-pub"></div>
+                    </div>
                 </div>
+        
+                
             </div>
     
             <div class="inspector-section insp-related-section" style="display:none;">

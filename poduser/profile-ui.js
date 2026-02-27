@@ -569,6 +569,78 @@ function _buildRewardHtml(ach) {
     }
 }
 
+// ─────────────────────────────────────────────────────────────────
+// DE-FRIGULATOR PANEL LOGIC
+// ─────────────────────────────────────────────────────────────────
+
+let _defrigScrewsRemoved = 0;
+let _defrigSwitches = [false, false, false];
+
+window.removeScrew = function(element) {
+    if (element.classList.contains('removed')) return;
+    
+    element.classList.add('removed');
+    _defrigScrewsRemoved++;
+    
+    // Once all 4 screws are clicked, drop the plate!
+    if (_defrigScrewsRemoved >= 4) {
+        setTimeout(() => {
+            document.getElementById('defrig-plate')?.classList.add('removed');
+            
+            if (typeof logCommand !== 'undefined') {
+                logCommand("// Warning: Emergency panel access violated.");
+            }
+        }, 300);
+    }
+};
+
+window.toggleDefrigSwitch = function(element, index) {
+    const isOn = element.classList.toggle('on');
+    _defrigSwitches[index - 1] = isOn;
+    
+    const allOn = _defrigSwitches.every(Boolean);
+    const btn = document.getElementById('btn-defrigulate');
+    
+    // Unlock the Big Button
+    if (allOn) {
+        btn.classList.add('ready');
+        btn.removeAttribute('disabled');
+        btn.textContent = "EXECUTE DE-FRIGULATION";
+    } else {
+        btn.classList.remove('ready');
+        btn.setAttribute('disabled', 'true');
+        btn.textContent = "INITIATE DE-FRIGULATION";
+    }
+};
+
+window.executeDefrigulate = function() {
+    if (!_defrigSwitches.every(Boolean)) return;
+    
+    // 1. Call the original white-flash sequence from degradation.js
+    if (typeof repairTerminal === 'function') {
+        repairTerminal();
+    }
+    
+    // 2. Secretly bolt the panel back together while the screen is flashing white!
+    setTimeout(() => {
+        _defrigScrewsRemoved = 0;
+        _defrigSwitches = [false, false, false];
+        
+        document.getElementById('defrig-plate')?.classList.remove('removed');
+        
+        document.querySelectorAll('.defrig-screw').forEach(s => s.classList.remove('removed'));
+        document.querySelectorAll('.defrig-switch').forEach(s => s.classList.remove('on'));
+        
+        const btn = document.getElementById('btn-defrigulate');
+        if (btn) {
+            btn.classList.remove('ready');
+            btn.setAttribute('disabled', 'true');
+            btn.textContent = "INITIATE DE-FRIGULATION";
+        }
+    }, 50);
+};
+
+
 
 // CLICK HANDLER FOR NOTIFICATIONS
 window.handleNotificationClick = function(id) {
@@ -614,29 +686,33 @@ window.handleNotificationClick = function(id) {
         renderUserUI(PodUser.data);
 
         setTimeout(() => {
-            const btn = document.getElementById(payload.target);
-            if (btn) {
-                // Scroll to the bottom of the page
-                btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const section = document.getElementById(payload.target);
+            if (section) {
+                // Scroll the wrapper into view
+                section.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 
-                // Flash the button red to draw their eye
-                btn.style.transition = 'box-shadow 0.4s ease, transform 0.4s ease, background-color 0.4s ease, color 0.4s ease';
-                btn.style.boxShadow = '0 0 25px var(--danger)';
-                btn.style.transform = 'scale(1.05)';
-                btn.style.backgroundColor = 'var(--danger)';
-                btn.style.color = '#fff';
-                
-                // Snap it back to normal after 2 seconds
-                setTimeout(() => {
-                    btn.style.boxShadow = 'none';
-                    btn.style.transform = 'none';
-                    btn.style.backgroundColor = 'transparent';
-                    btn.style.color = 'var(--danger)';
-                }, 2000);
+                // Target the hardware panel specifically instead of the wrapper
+                const panel = section.querySelector('.defrig-container');
+                if (panel) {
+                    panel.style.transition = 'box-shadow 0.4s ease, border-color 0.4s ease';
+                    
+                    // Create an outer and inner neon red glow
+                    panel.style.boxShadow = '0 0 30px var(--danger), inset 0 0 15px var(--danger)';
+                    panel.style.borderColor = 'var(--danger)';
+                    
+                    // Snap it back to normal after 2 seconds
+                    setTimeout(() => {
+                        panel.style.boxShadow = '';
+                        panel.style.borderColor = '';
+                        
+                        // Clean up the inline transition style after it fades out
+                        setTimeout(() => panel.style.transition = '', 400);
+                    }, 2000);
+                }
             }
         }, 100);
-    // --- SCENARIO C: NEW TRANSMISSION CLICK ---
-    } else if (payload && payload.type === 'new_episode') {
+    } 
+    else if (payload && payload.type === 'new_episode') {
         const ep = window.PodCube.findEpisode(payload.id);
         if (ep) {
             // Load the episode into the inspector

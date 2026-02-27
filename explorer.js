@@ -956,9 +956,6 @@ function loadEpisodeInspector(ep) {
         
         clone.querySelector('.insp-prose-anniv-wrap').style.display = 'inline';
         setTxt('.insp-prose-anniv', ep.anniversary);
-        
-        clone.querySelector('.insp-temp-anniv-wrap').style.display = 'inline';
-        setTxt('.insp-temp-anniv', ep.anniversary);
     }
 
     // --- 3. PROSE POPULATION ---
@@ -1021,7 +1018,11 @@ function loadEpisodeInspector(ep) {
 
     // --- 5. TEMPORAL & GEOGRAPHIC GRID ---
     setTxt('.insp-temp-date', ep.date?.toString() || 'Unknown Date');
+    setTxt('.insp-temp-anniv', ep.anniversary || 'N/A');
+    setTxt('.insp-temp-weird', ep.weirdDuration || 'N/A');
+    setTxt('.insp-temp-dur', ep.timestamp || 'N/A');
     setTxt('.insp-temp-pub', ep.published ? new Date(ep.published).toLocaleDateString() + ' at ' + new Date(ep.published).toLocaleTimeString() : 'N/A');
+
     setTxt('.insp-geo-origin', ep.origin || 'N/A');
     setTxt('.insp-geo-locale', ep.locale || 'N/A');
     setTxt('.insp-geo-region', ep.region || 'N/A');

@@ -335,7 +335,7 @@ class PodUserEngine {
         if (now - this._lastChimeTime > 1000) {
             this._lastChimeTime = now;
             try {
-                const chime = new Audio('./poduser/Bonk-2.mp3');
+                const chime = new Audio('./poduser/bingbong_hilo-2.mp3');
                 chime.volume = 0.6; 
                 chime.play().catch(e => {
                     console.warn('[PodUser] Chime blocked by browser autoplay policy or missing file:', e.message);
@@ -382,10 +382,22 @@ class PodUserEngine {
         const oldVal = this.data.degradation || 0;
         this.data.degradation = oldVal + amount;
 
+
+        if (oldVal < 50 && this.data.degradation >= 50) {
+            const title = 'MAINTENANCE REMINDER';
+            const body = 'Terminal has reached standard maintenance interval. Please initiate a DE-GAUSS sequence to maintain connection integrity.';
+            
+            // 1. Use the synchronous push so it gets safely bundled into the save below
+            this._pushNotification(title, body);
+            
+            // 2. Fire the OS-level notification so the user actually sees it happen
+            this._triggerOSNotification(title, body);
+        }
+
         // If they JUST crossed the critical threshold mid-session, alert them!
         if (oldVal < 100 && this.data.degradation >= 100) {
             const title = 'CRITICAL: TEMPORAL DESYNC';
-            const body = 'Terminal has exceeded maximum safe temporal exposure limits. Permanent interface corruption is imminent. Please click here and initiate a DE-GAUSS sequence immediately.';
+            const body = 'Terminal has exceeded maximum safe exposure limits. Permanent interface corruption is imminent. Please click here and initiate a DE-GAUSS sequence immediately.';
             
             // 1. Use the synchronous push so it gets safely bundled into the save below
             this._pushNotification(title, body, { type: 'maintenance', target: 'btn-degauss' });
@@ -401,6 +413,8 @@ class PodUserEngine {
         if (typeof updateDegradation === 'function') {
             updateDegradation(this.data.degradation);
         }
+
+        console.log(`TERMINAL INTEGRITY: ${100-this.data.degradation}%`);
     }
 
     // ─────────────────────────────────────────────────────────────

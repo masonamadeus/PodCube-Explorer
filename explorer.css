@@ -662,6 +662,23 @@ h1 {
     display: block;
 }
 
+/* Inspector Split Row (Side-by-side panels) */
+.inspector-split-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-bottom: 25px;
+    padding-top: 5px;
+}
+
+/* Drop to a single column on mobile */
+@media (max-width: 768px) {
+    .inspector-split-row {
+        grid-template-columns: 1fr;
+        gap: 25px;
+    }
+}
+
 .inspector-section {
     margin-bottom: 25px;
 }
@@ -953,7 +970,7 @@ h1 {
     display: flex;
     gap: 5px;
     margin-bottom: 10px;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid var(--text-dim);
 }
 
 .data-tab-btn {
@@ -978,7 +995,7 @@ h1 {
 .data-tab-btn.active {
     color: var(--primary);
     background: var(--bg-body);
-    border-color: var(--primary);
+    border-color: var(--text-dim);
     border-bottom-color: var(--bg-panel);
     margin-bottom: -1px;
 }
@@ -3929,7 +3946,7 @@ label {
         grid-auto-rows: 1fr;
         gap: 10px;
         
-        max-height: 550px; 
+        max-height: 600px; 
         overflow-y: auto;
         
         /* Visual styling to make it look like a distinct terminal pane */
@@ -4210,6 +4227,194 @@ label {
         transition: filter 0.25s ease;
     }
 
+    /* --- DE-FRIGULATOR COMPONENT --- */
+.defrig-container {
+    position: relative;
+    width: 280px;
+    height: 130px;
+    background: #111;
+    border: 1px solid var(--primary-dim); 
+    border-radius: 8px;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.defrig-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    background: #1a1a1a;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+}
+
+.defrig-switches {
+    display: flex;
+    gap: 30px;
+    margin-bottom: 15px;
+}
+
+/* Mechanical Toggle Switch */
+.defrig-switch {
+    width: 24px;
+    height: 48px;
+    background: #333;
+    border: 2px solid #000;
+    border-radius: 4px;
+    position: relative;
+    cursor: pointer;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.8);
+}
+
+.defrig-switch::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    left: 2px;
+    right: 2px;
+    height: 22px;
+    background: linear-gradient(to bottom, #888, #555);
+    border-radius: 2px;
+    border-bottom: 3px solid #333;
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), background 0.15s;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.6);
+}
+
+/* Toggle ON State */
+.defrig-switch.on::after {
+    transform: translateY(-20px);
+    background: linear-gradient(to bottom, #ff4444, #aa0000);
+    border-bottom: none;
+    border-top: 3px solid #550000;
+    box-shadow: 0 -4px 6px rgba(255, 68, 68, 0.4);
+}
+
+/* Switch 1: Primary Blue */
+.defrig-switch:nth-child(1).on::after {
+    background: linear-gradient(to bottom, #60a5fa, #2563eb);
+    border-top: 3px solid #1e3a8a;
+    box-shadow: 0 -4px 8px rgba(59, 130, 246, 0.5);
+}
+
+/* Switch 2: Warning Orange */
+.defrig-switch:nth-child(2).on::after {
+    background: linear-gradient(to bottom, #fb923c, #ea580c);
+    border-top: 3px solid #7c2d12;
+    box-shadow: 0 -4px 8px rgba(249, 115, 22, 0.5);
+}
+
+/* Switch 3: Success Green */
+.defrig-switch:nth-child(3).on::after {
+    background: linear-gradient(to bottom, #4ade80, #16a34a);
+    border-top: 3px solid #14532d;
+    box-shadow: 0 -4px 8px rgba(34, 197, 94, 0.5);
+}
+
+/* Defrigulate Button */
+.defrig-btn {
+    width: 90%;
+    color: #555 !important;
+    border-color: #444 !important;
+    background: #222 !important;
+    pointer-events: none;
+    transition: all 0.3s ease;
+}
+
+.defrig-btn.ready {
+    color: var(--bg-panel) !important;
+    border-color: var(--danger) !important;
+    background: var(--danger) !important;
+    pointer-events: auto;
+    cursor: pointer;
+    animation: pulseDefrig 1.5s infinite;
+}
+
+@keyframes pulseDefrig {
+    0%, 100% { box-shadow: 0 0 5px transparent; }
+    50% { box-shadow: 0 0 15px var(--danger); }
+}
+
+/* Cover Plate */
+.defrig-plate {
+    position: absolute;
+    inset: 0;
+    /* Uses your dynamic variables so it perfectly matches the active theme! */
+    background: var(--bg-panel);
+    border: 1px solid var(--primary-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.6s cubic-bezier(0.5, 0, 0.8, 1), opacity 1s ease;
+    z-index: 10;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.05), 0 5px 15px rgba(0,0,0,0.5);
+}
+
+/* Plate Falling Off */
+.defrig-plate.removed {
+    transform: translateY(120%) rotate(15deg);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.defrig-plate-text {
+    color: var(--text-muted);
+    padding: 6px 12px;
+    font-family: 'Fustat', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    opacity: 0.5;
+}
+
+/* Phillips Head Screws (Drawn with pure CSS) */
+.defrig-screw {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background: var(--primary-dim);
+    border-radius: 50%;
+    border: 1px solid #888;
+    cursor: pointer;
+    transition: transform 0.5s, opacity 1s ease-out;
+    box-shadow: inset 1px 1px 2px rgba(255,255,255,0.8), 1px 1px 3px rgba(0,0,0,0.3);
+}
+
+/* Draw the physical cross grooves perfectly centered */
+.defrig-screw::before{
+    content: '';
+    position: absolute;
+    top: 50%; 
+    left: 50%;
+    background: #666;
+    transform: translate(-50%, -50%);
+    box-shadow: inset 0px 1px 1px rgba(0,0,0,0.5);
+}
+.defrig-screw::before { width: 8px; height: 2px; }
+
+/* Dark mode overrides for screws */
+html.dark-theme .defrig-screw { background: var(--primary-dim); border-color: #333; }
+html.dark-theme .defrig-screw::before { background: #222; }
+
+/* Hover states */
+.defrig-screw:hover { transform: scale(1.15); background: #e0e0e0; }
+html.dark-theme .defrig-screw:hover { background: #777; }
+
+/* Screw Falling Out */
+.defrig-screw.removed {
+    transform: translateY(0px) rotate(-160deg) scale(1.1) !important;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.defrig-screw.topleft { top: 6px; left: 6px; transform: rotate(9deg) }
+.defrig-screw.topright { top: 6px; right: 6px; transform: rotate(30deg); }
+.defrig-screw.bottomleft { bottom: 6px; left: 6px; transform: rotate(20deg); }
+.defrig-screw.bottomright { bottom: 6px; right: 6px; transform: rotate(-25deg); }
 
     /* =========================================
    DARK MODE OVERRIDES

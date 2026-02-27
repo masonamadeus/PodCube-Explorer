@@ -499,7 +499,7 @@ class Episode {
         if (!this.duration) return "IDK?";
         const m = Math.floor(this.duration / 60);
         const f = ((this.duration % 60) / 60).toFixed(2).substring(1);
-        const suffixes = ["ish minutes", " or so minutes", " minutes (+/- a bit)", " minutes and change", " minutes (sorta)", "96722.13 minutes", "-esque minutes"];
+        const suffixes = ["ish minutes", " or so minutes", " minutes (+/- a bit)", " minutes and change", " minutes (sorta)", " long minutes", "-esque minutes", " mins", " minutes", "(??)" ];
         const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
         return `${m}${f}${suffix}`;
     }
@@ -574,21 +574,55 @@ class Episode {
 // THE ENGINE (Singleton API)
 // ==========================================
 /**
-   * Events emitted by PodCubeEngine:
-   * 
-   * @event feed:loading - Feed fetch started
-   * @event feed:loaded - Feed loaded successfully, {episodes: Episode[]}
-   * @event feed:error - Feed loading failed, {error: Error}
-   * 
-   * @event playback:play - Playback started, {episode: Episode}
-   * @event playback:pause - Playback paused
-   * @event playback:ended - Track ended
-   * @event playback:error - Playback error, {error: Error}
-   * @event playback:timeupdate - Time updated, {currentTime: number, duration: number}
-   * @event playback:seeked - Seek completed, {position: number}
-   * 
-   * @event queue:changed - Queue modified, {queue: Episode[], index: number}
-   */
+ * Centralized Event Registry for the PodCube Engine.
+ * Pass these constants to PodCube.on() to safely subscribe to engine events.
+ */
+const PODCUBE_EVENTS = Object.freeze({
+    /** * Fired when playback begins or resumes. 
+     * @payload {Episode} The episode that started playing.
+     */
+    PLAY: 'play',
+
+    /** * Fired when playback is paused. 
+     * @payload {Episode} The episode that was paused.
+     */
+    PAUSE: 'pause',
+
+    /** * Fired when a new track is loaded into the audio element (before it plays). 
+     * @payload {Episode|null} The newly loaded episode, or null if cleared.
+     */
+    TRACK_LOADED: 'track',
+
+    /** * Fired when a track reaches its natural end. 
+     * @payload {Episode} The episode that finished.
+     */
+    TRACK_ENDED: 'ended',
+
+    /** * Fired frequently (~10x/sec) while audio is playing. 
+     * @payload {Object} Comprehensive status object (playing, time, duration, percent, etc).
+     */
+    TIME_UPDATE: 'timeupdate',
+
+    /** * Fired when the queue is added to, removed from, shuffled, reordered, or cleared. 
+     * @payload {Object} { queue: Episode[], index: number }
+     */
+    QUEUE_CHANGED: 'queue:changed',
+
+    /** * Fired when playback naturally reaches the end of the final track in the queue. 
+     * @payload undefined
+     */
+    QUEUE_ENDED: 'queueEnd',
+
+    /** * Fired when Radio Mode is toggled. 
+     * @payload {boolean} isEnabled
+     */
+    RADIO_MODE_CHANGED: 'radiomode:changed',
+
+    /** * Fired on audio decoding, network, or engine-level failures. 
+     * @payload {Object} { event: string, error: Error, episode: Episode }
+     */
+    ERROR: 'error'
+});
 
 class PodCubeEngine {
     constructor() {
@@ -624,33 +658,13 @@ class PodCubeEngine {
 
         this._audio.addEventListener('ended', () => {
             const finishedEp = this.nowPlaying;
-            const isLastTrack = this._queueIndex >= this._queue.length - 1;
 
-            // Radio Mode Logic
-            // NEED TO CHANGE THIS SO THAT IT ONLY ADDS THE NEXT TRACK 30 SECONDS BEFORE THE END OF THE CURRENT ONE??
-            if (isLastTrack && this._radioMode) {
-                log.info("Radio Mode: Auto-queueing random track.");
-                const nextTrack = this.random;
-                if (nextTrack) {
-                    this.addToQueue(nextTrack, false);
-                    this.next();
-                    if (finishedEp) this._emit('ended', finishedEp);
-                    return; // Skip standard session clearing
-                }
+            // Always emit the ended event first so tracking/achievements can log it accurately
+            if (finishedEp) {
+                this._emit('ended', finishedEp);
             }
 
-            if (isLastTrack) {
-                // At end of queue - clear the session
-                this._clearSession();
-            } else {
-                // Moving to next track - preserve session
-                this._saveSession();
-            }
-
-            if (finishedEp){
-                this._emit('ended',finishedEp);
-            }
-
+            // Delegate all progression, Radio Mode, and session clearing logic to next()
             this.next();
         });
 
@@ -1609,7 +1623,7 @@ class PodCubeEngine {
 
     next() {
         try {
-            //  Check Soft Stop
+            // Check Soft Stop
             if (this._stopAfterCurrent) {
                 log.info("Soft stop reached. Halting playback.");
                 this.pause();
@@ -1617,24 +1631,29 @@ class PodCubeEngine {
                 return;
             }
 
-            //  Normal Advance
+            // Normal Advance
             if (this._queueIndex < this._queue.length - 1) {
                 this._queueIndex++;
+                this._saveSession(); // Preserve session when moving forward
                 this._loadAndPlay();
             } else {
-                log.info("Queue finished");
-
-                // If we're in Radio Mode, pick another track at random.
-                if (this._radioMode){
+                // Queue Exhausted
+                if (this._radioMode) {
+                    log.info("Radio Mode: Auto-queueing random track.");
                     const nextTrack = this.random;
                     if (nextTrack) {
                         this.addToQueue(nextTrack, false);
-                        this.next();
+                        this.next(); // Recursively call to trigger the 'Normal Advance' block above
                         return;
                     }
                 }
+
+                // Truly Finished
+                log.info("Queue finished");
+                this._clearSession(); // Clear session because there's nothing left to play
                 this.pause();
-                this._emit('queueEnd'); // Optional: new event
+                this._emit('queueEnd'); 
+                
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.playbackState = 'none';
                 }
@@ -2798,6 +2817,7 @@ async restoreSession() {
 
 const PodCubeInstance = new PodCubeEngine();
 PodCubeInstance.Episode = Episode;
+PodCubeInstance.EVENTS = PODCUBE_EVENTS;
 
 
 if (typeof window !== 'undefined') {
