@@ -52,12 +52,13 @@ function _refreshLoginCode() {
             container.innerHTML = '';
             new QRCode(container, {
                 text: url.toString(),
-                width: 134,
-                height: 134,
+                width: 400,
+                height: 400,
                 colorDark: "#000000",
                 colorLight: "#ffffff",
                 correctLevel: QRCode.CorrectLevel.L // L allows massive payloads (up to ~2900 bytes)
             });
+            container.style.maxHeight = "100%"
         } catch (e) {
             console.warn("Payload too large for QR Code. Falling back to text.", e);
             container.innerHTML = `<textarea readonly style="width:100%; height:100%; font-size:8px; border:none; resize:none; font-family:monospace;" onclick="this.select(); document.execCommand('copy'); alert('Copied!');">${url.toString()}</textarea>`;
@@ -232,7 +233,7 @@ function _renderProfileHero(userData) {
                 ${escapeHtml(userData.username)}
             </span>
             <button onclick="renameUser()" title="Change Designation" 
-                    style="background:none; border:none; color:var(--primary); cursor:pointer; font-size:0.5em; vertical-align:middle; padding:4px;">
+                    style="background:none; border:none; color:var(--primary); cursor:pointer; font-size:0.5em; vertical-align:middle; padding:4px; box-shadow: none;">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                     <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                 </svg>
@@ -371,7 +372,7 @@ function _renderAchievements(userData) {
     }
 
     const gallery = document.createElement('div');
-    gallery.className = 'achievement-gallery';
+    gallery.className = 'achievement-gallery panel';
 
     list.forEach(ach => {
         const unlocked = userData.achievements.includes(ach.id);
@@ -384,7 +385,7 @@ function _renderAchievements(userData) {
 
         const card = document.createElement('div');
         card.id = `ach-card-${ach.id}`; 
-        card.className = `ach-card ${unlocked ? 'unlocked' : 'locked'} ${isHidden ? 'hidden-goal' : ''}`;
+        card.className = `ach-card ${unlocked ? 'unlocked' : 'locked'} ${isHidden ? 'hidden-goal' : ''} raised`;
 
         let rewardHtml = '';
         if (unlocked && ach.reward) {

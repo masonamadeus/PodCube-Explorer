@@ -450,11 +450,13 @@ window.Interactive = (() => {
     let _boundBoard = null;
     let _inputPending = {
         pressed: {},
+        sequence: [],
         clicked: false,
         sx: 0, sy: 0 // Swipe coords
     };
     const input = { 
         pressed: {},  // True only on the specific frame a key was pressed
+        sequence: [],
         held: {},     // True as long as the key is held down
         mouse: { x: 0, y: 0, down: false, clicked: false }, 
         _sx: 0, _sy: 0 // Internal variables for touch-swipe detection
@@ -769,7 +771,7 @@ window.Interactive = (() => {
             input.held = {}; 
             input.mouse.down = false; 
             input.mouse.clicked = false;
-            _inputPending = { pressed: {}, clicked: false, sx: 0, sy: 0 }; 
+            _inputPending = { pressed: {}, sequence: [], clicked: false, sx: 0, sy: 0 }; 
             
             _inputLocked = true;
             setTimeout(() => _inputLocked = false, 200);
@@ -1021,10 +1023,12 @@ window.Interactive = (() => {
 
         // LATCH INPUTS AT START OF FRAME
         input.pressed = { ..._inputPending.pressed };
+        input.sequence = [ ..._inputPending.sequence ];
         input.mouse.clicked = _inputPending.clicked;
 
         // Clear pending
         _inputPending.pressed = {};
+        _inputPending.sequence = [];
         _inputPending.clicked = false;
 
         _activeGame.update(dt, input);
@@ -1039,103 +1043,111 @@ window.Interactive = (() => {
 
     // ── Input Binding ────────────────────────────────────────────────────────
     function _bind() {
-        // Define handlers (so we can remove them later)
+        // KEYBOARD
         _handlers.keydown = e => {
             const action = KEY_MAP[e.key];
             const isTyping = ['INPUT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable;
-            if (isTyping) return;
-            if (!action || _inputLocked || !_activeGame) return;
+            if (isTyping || !action || _inputLocked || !_activeGame) return;
+            
+            // Kill OS repeat, we track held state
+            if (e.repeat) return; 
+
             e.preventDefault();
             _inputPending.pressed[action] = true;
+            if (!_inputPending.sequence.includes(action)) _inputPending.sequence.push(action);
             input.held[action] = true;
-            // Mirror the keypress on the matching on-screen button.
             document.querySelector(`[data-action="${action}"]`)?.classList.add('pc-active');
         };
 
         _handlers.keyup = e => {
             const action = KEY_MAP[e.key];
             const isTyping = ['INPUT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable;
-            if (isTyping) return;
-            if (!action || !_activeGame) return;
+            if (isTyping || !action || !_activeGame) return;
+            
             input.held[action] = false;
             document.querySelector(`[data-action="${action}"]`)?.classList.remove('pc-active');
         };
 
-        // Bind to Window
         window.addEventListener('keydown', _handlers.keydown);
         window.addEventListener('keyup', _handlers.keyup);
 
+        // CANVAS SWIPES
         const b = document.querySelector('.pc-game-board');
-        if(!b) return;
-        _boundBoard = b; // Remember which element we bound to
+        if(b) {
+            _boundBoard = b;
+            const u = (e) => { 
+                const r = _canvas.getBoundingClientRect(); 
+                input.mouse.x = (e.clientX - r.left)*(W/r.width); 
+                input.mouse.y = (e.clientY - r.top)*(H/r.height); 
+            };
 
-        // Helper for mouse pos
-        const u = (e) => { 
-            const r = _canvas.getBoundingClientRect(); 
-            input.mouse.x = (e.clientX - r.left)*(W/r.width); 
-            input.mouse.y = (e.clientY - r.top)*(H/r.height); 
-        };
+            _handlers.ptrDown = e => { 
+                if(e.target.closest('.pc-overlay') || e.target.closest('button')) return; 
+                if(_inputLocked || !_activeGame) return; 
+                b.setPointerCapture(e.pointerId); 
+                input.mouse.down = true; 
+                input._sx = e.clientX; 
+                input._sy = e.clientY; 
+                u(e); 
+            };
 
-        // Define Pointer Handlers
-        _handlers.ptrDown = e => { 
-            if(e.target.closest('.pc-overlay') || e.target.closest('button')) return; 
-            if(_inputLocked || !_activeGame) return; 
-            b.setPointerCapture(e.pointerId); 
-            input.mouse.down = true; 
-            input._sx = e.clientX; 
-            input._sy = e.clientY; 
-            u(e); 
-        };
+            _handlers.ptrMove = e => { 
+                if(input.mouse.down) e.preventDefault(); 
+                u(e); 
+            };
 
-        _handlers.ptrMove = e => { 
-            if(input.mouse.down) e.preventDefault(); 
-            u(e); 
-        };
+            _handlers.ptrUp = e => {
+                if (_inputLocked || !_activeGame) return;
+                input.mouse.down = false;
+                _inputPending.clicked = true;
 
-        _handlers.ptrUp = e => {
-            if (_inputLocked || !_activeGame) return;
-            input.mouse.down = false;
-            _inputPending.clicked = true;
+                const dx = e.clientX - input._sx;
+                const dy = e.clientY - input._sy;
+                if (Math.abs(dx) > 30 || Math.abs(dy) > 30) {
+                    const dir = Math.abs(dx) > Math.abs(dy)
+                        ? (dx > 0 ? 'RIGHT' : 'LEFT')
+                        : (dy > 0 ? 'DOWN'  : 'UP');
+                    _inputPending.pressed[dir] = true;
+                    if (!_inputPending.sequence.includes(dir)) _inputPending.sequence.push(dir);
+                }
+            };
 
-            // A swipe on the canvas fires a directional input.
-            // Short taps fire nothing — use Q/E for actions.
-            const dx = e.clientX - input._sx;
-            const dy = e.clientY - input._sy;
-            if (Math.abs(dx) > 30 || Math.abs(dy) > 30) {
-                const dir = Math.abs(dx) > Math.abs(dy)
-                    ? (dx > 0 ? 'RIGHT' : 'LEFT')
-                    : (dy > 0 ? 'DOWN'  : 'UP');
-                _inputPending.pressed[dir] = true;
-            }
-        };
+            b.addEventListener('pointerdown', _handlers.ptrDown);
+            b.addEventListener('pointermove', _handlers.ptrMove);
+            b.addEventListener('pointerup',   _handlers.ptrUp);
+        }
 
-        // Bind pointer events on the canvas board
-        b.addEventListener('pointerdown', _handlers.ptrDown);
-        b.addEventListener('pointermove', _handlers.ptrMove);
-        b.addEventListener('pointerup',   _handlers.ptrUp);
-
-        // Bind all on-screen control buttons via [data-action] attribute.
-        // Storing the handler refs in _handlers.ctrlBtns lets _unbind() clean them up.
+        // VIRTUAL CONTROLLER BUTTONS
         _handlers.ctrlBtns = [];
         document.querySelectorAll('[data-action]').forEach(btn => {
             const action = btn.dataset.action;
 
             const onDown = e => {
                 if (_inputLocked || !_activeGame) return;
-                e.preventDefault();
+                // preventDefault here instantly kills OS gesture delays and double-tap zooms
+                if (e.cancelable) e.preventDefault(); 
+                
                 _inputPending.pressed[action] = true;
+                if (!_inputPending.sequence.includes(action)) _inputPending.sequence.push(action);
                 input.held[action] = true;
                 btn.classList.add('pc-active');
             };
-            const onRelease = () => {
+            
+            const onRelease = e => {
+                if (e && e.cancelable) e.preventDefault();
                 input.held[action] = false;
                 btn.classList.remove('pc-active');
             };
 
-            btn.addEventListener('pointerdown',  onDown);
-            btn.addEventListener('pointerup',    onRelease);
-            btn.addEventListener('pointerleave', onRelease);
-            btn.addEventListener('pointercancel',onRelease);
+            // Native Touch (Instant response on mobile)
+            btn.addEventListener('touchstart',  onDown, { passive: false });
+            btn.addEventListener('touchend',    onRelease, { passive: false });
+            btn.addEventListener('touchcancel', onRelease, { passive: false });
+
+            // Mouse Fallback (For desktop clicking)
+            btn.addEventListener('mousedown',  onDown);
+            btn.addEventListener('mouseup',    onRelease);
+            btn.addEventListener('mouseleave', onRelease);
 
             _handlers.ctrlBtns.push({ btn, onDown, onRelease });
         });
@@ -1154,10 +1166,13 @@ window.Interactive = (() => {
 
         if (_handlers.ctrlBtns) {
             _handlers.ctrlBtns.forEach(({ btn, onDown, onRelease }) => {
-                btn.removeEventListener('pointerdown',  onDown);
-                btn.removeEventListener('pointerup',    onRelease);
-                btn.removeEventListener('pointerleave', onRelease);
-                btn.removeEventListener('pointercancel',onRelease);
+                // Cleanup all the specific listeners we attached
+                btn.removeEventListener('touchstart',  onDown);
+                btn.removeEventListener('touchend',    onRelease);
+                btn.removeEventListener('touchcancel', onRelease);
+                btn.removeEventListener('mousedown',   onDown);
+                btn.removeEventListener('mouseup',     onRelease);
+                btn.removeEventListener('mouseleave',  onRelease);
                 btn.classList.remove('pc-active');
             });
         }

@@ -25,7 +25,7 @@ function toggleTheme() {
 }
 
 
-// --- STATE MANAGEMENT ---
+// #region STATE MANAGEMENT
 const AppState = {
     selectedEpisode: null,
     lastCommandTime: null,
@@ -48,7 +48,7 @@ const ICONS = {
     shuffle: `<svg viewBox="0 0 24 24" class="icon-svg"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>`
 };
 
-// --- INITIALIZATION ---
+// #region INITIALIZATION
 
 // Phase 1: Boot both core engines. Everything else depends on this.
 async function initEngines() {
@@ -62,6 +62,8 @@ function initUserCallbacks() {
     PodUser.onUpdate((data) => {
         renderUserUI(data);
         syncArchiveUI();
+        updatePassengerOptions();
+
     });
 
     renderUserUI(PodUser.data);
@@ -222,11 +224,14 @@ function renderInitialUI() {
 function initUIControls() {
     initArchiveControls();
     updateBrigistics();
+    BrigisticsViz.init();
     updateGeoDistribution();
     updateArchive();
+    updatePassengerOptions();
     showDistribution();
     updatePlaylistsUI();
     initQueueDragAndDrop();
+    initBufferDragAndDrop();
     enableScrubbing('scrubber');
     enableScrubbing('playerScrubber');
     refreshSessionInspector();
@@ -341,9 +346,9 @@ window.addEventListener('PodCube:Ready', async () => {
     }
 });
 
+// #endregion
 
-
-// --- CORE UTILITIES ---
+// #region CORE UTILITIES ---
 function run(code, silent = false) {
     if (!silent) {
         logCommand(code);
@@ -378,25 +383,29 @@ function logCommand(code) {
     const timestamp = new Date().toLocaleTimeString();
     
     if (monitorText && wrapper) {
-        // Reset the animation states completely on every new message
+        // 1. Reset the animation states and update the text
         monitorText.classList.remove('marquee-active');
         monitorText.style.transform = 'none';
         monitorText.textContent = code;
         
-        // Wait 1 frame for the browser to render the new text so we can measure it
-        requestAnimationFrame(() => {
-            if (monitorText.scrollWidth > wrapper.clientWidth) {
-                // Calculate distance it needs to slide (+15px buffer to clear the edge)
-                const distance = monitorText.scrollWidth - wrapper.clientWidth + 15;
-                // Calculate duration so the scroll speed remains constant (approx 30px per sec)
-                const duration = Math.max(3, distance / 30); 
-                
-                // Inject the math into CSS variables and trigger animation
-                monitorText.style.setProperty('--marquee-dist', `-${distance}px`);
-                monitorText.style.setProperty('--marquee-dur', `${duration}s`);
-                monitorText.classList.add('marquee-active');
-            }
-        });
+        // 2. THE FIX: Force a synchronous layout recalculation (Reflow).
+        // Asking the browser for the offsetWidth halts the JS thread for a microsecond,
+        // forcing the browser to instantly calculate the real width of the new text,
+        // AND formally registering the removal of the animation class.
+        void monitorText.offsetWidth;
+        
+        // 3. Now we can safely measure and apply immediately
+        if (monitorText.scrollWidth > wrapper.clientWidth) {
+            // Calculate distance it needs to slide (+15px buffer to clear the edge)
+            const distance = monitorText.scrollWidth - wrapper.clientWidth + 15;
+            // Calculate duration so the scroll speed remains constant (approx 30px per sec)
+            const duration = Math.max(3, distance / 30); 
+            
+            // Inject the math into CSS variables and trigger animation
+            monitorText.style.setProperty('--marquee-dist', `-${distance}px`);
+            monitorText.style.setProperty('--marquee-dur', `${duration}s`);
+            monitorText.classList.add('marquee-active');
+        }
     }
     
     const timestampEl = document.getElementById('monitorTimestamp');
@@ -438,7 +447,9 @@ async function checkForNewTransmissions() {
     localStorage.setItem('podcube_known_count', currentCount.toString());
 }
 
-// --- UI SUBRENDERERS ---
+//#endregion
+
+// UI SUBRENDERERS ---
 function renderSystemInfo() {
     // Populate API Tab Statistics
     const totalEl = document.getElementById('confTotal');
@@ -541,9 +552,9 @@ function showDistribution() {
     }));
 
     const columns = [
-        { title: 'Models', items: dist.models, key: 'model' },
         { title: 'Eras', items: eras, key: 'year', noSort: true },
-        { title: 'Tags', items: dist.tags, key: 'tag' }
+        { title: 'Tags', items: dist.tags, key: 'tag' },
+        { title: 'Models', items: dist.models, key: 'model' }
     ];
 
     renderDistributionGrid('loreOutput', columns, 'distribution-grid');
@@ -593,6 +604,15 @@ function applyHierarchyFilter(filterType, value) {
         return;
     }
 
+    if (filterType === 'passenger_tag') {
+        const passElement = document.getElementById('arcPassenger');
+        if (passElement) {
+            passElement.value = `tag:${value}`;
+            updateArchive();
+        }
+        return;
+    }
+
     // Apply standard filters
     const elementMap = {
         'model': 'arcModel',
@@ -601,7 +621,7 @@ function applyHierarchyFilter(filterType, value) {
         'zone': 'arcZone',
         'planet': 'arcPlanet',
         'locale': 'arcLocale',
-        'tag': 'arcSearch'
+        'tag': 'arcTag'
     };
     
     const elementId = elementMap[filterType];
@@ -635,21 +655,57 @@ function initArchiveControls() {
         });
     };
     
+    // Core attributes
     populate('arcModel', PodCube.models);
     populate('arcOrigin', PodCube.origins);
+    populate('arcTag', PodCube.tags);
     
-    // Populate geo filters
-    const regions = [...new Set(PodCube.all.map(ep => ep.region).filter(Boolean))];
-    const zones = [...new Set(PodCube.all.map(ep => ep.zone).filter(Boolean))];
-    const planets = [...new Set(PodCube.all.map(ep => ep.planet).filter(Boolean))];
-    const locales = [...new Set(PodCube.all.map(ep => ep.locale).filter(Boolean))];
-    
-    populate('arcRegion', regions);
-    populate('arcZone', zones);
-    populate('arcPlanet', planets);
-    populate('arcLocale', locales);
+    // Geographic attributes
+    populate('arcRegion', PodCube.regions);
+    populate('arcZone', PodCube.zones);
+    populate('arcPlanet', PodCube.planets);
+    populate('arcLocale', PodCube.locales);
     
     updateYearOptions();
+}
+
+function updatePassengerOptions() {
+    const sel = document.getElementById('arcPassenger');
+    if (!sel) return;
+
+    // Preserve the current selection so the UI doesn't jump if they add a new tag
+    const currentVal = sel.value;
+
+    const staticOptions = `
+        <option value="">All Transmissions</option>
+        <option value="unplayed">Unplayed</option>
+        <option value="played">Played</option>
+        <option value="verified">Elevated</option>
+        <option value="suppressed">Suppressed</option>
+    `;
+
+    let tagOptions = '';
+    if (window.PodUser && window.PodUser.data.annotations) {
+        const uniqueTags = new Set();
+        Object.values(window.PodUser.data.annotations).forEach(tags => {
+            tags.forEach(t => uniqueTags.add(t));
+        });
+
+        if (uniqueTags.size > 0) {
+            tagOptions = `<optgroup label="Your Tags">`;
+            Array.from(uniqueTags).sort().forEach(tag => {
+                tagOptions += `<option value="tag:${escapeHtml(tag)}">${escapeHtml(tag)}</option>`;
+            });
+            tagOptions += `</optgroup>`;
+        }
+    }
+
+    sel.innerHTML = staticOptions + tagOptions;
+    
+    // Restore selection if it still exists
+    if (Array.from(sel.options).some(opt => opt.value === currentVal)) {
+        sel.value = currentVal;
+    }
 }
 
 function updateYearOptions() {
@@ -683,6 +739,7 @@ function _performUpdateArchive() {
     const filters = {
         search: document.getElementById('arcSearch')?.value || '',
         model: document.getElementById('arcModel')?.value || '',
+        tag: document.getElementById('arcTag')?.value || '',
         origin: document.getElementById('arcOrigin')?.value || '',
         region: document.getElementById('arcRegion')?.value || '',
         zone: document.getElementById('arcZone')?.value || '',
@@ -697,17 +754,38 @@ function _performUpdateArchive() {
         filters.year = JSON.parse(yearRangeVal);
     }
 
-    // 2. Gather Sort State
+    // Gather Sort State
     const sortMode = document.getElementById('arcSort')?.value || 'release_desc';
 
-    // 3. Execute API Call
+    // Execute API Call
     // Now passing 'filters' AND 'sortMode' to the improved where()
-    const results = PodCube.where(filters, sortMode);
+    let results = PodCube.where(filters, sortMode);
 
-    // 4. Update UI
+    // POST-FILTER: Local Passenger Data
+    if (window.PodUser) {
+        const passFilter = document.getElementById('arcPassenger')?.value;
+        if (passFilter) {
+            const uData = window.PodUser.data;
+            results = results.filter(ep => {
+                const nid = ep.nanoId;
+                if (passFilter === 'verified') return uData.verified.includes(nid);
+                if (passFilter === 'suppressed') return uData.suppressed.includes(nid);
+                if (passFilter === 'played') return uData.history.includes(nid);
+                if (passFilter === 'unplayed') return !uData.history.includes(nid);
+                if (passFilter.startsWith('tag:')) {
+                    const tag = passFilter.substring(4); // strip 'tag:'
+                    return uData.annotations[nid] && uData.annotations[nid].includes(tag);
+                }
+                return true;
+            });
+        }
+    }
+
+    // Update UI
     AppState.filteredResults = results;
     renderArchiveResults(results); // (Ensure you have extracted the rendering logic as discussed previously)
     refreshInspectorNavigation();
+
     // Debug Logging
     const activeFilters = Object.keys(filters).filter(k => filters[k]).length;
     logCommand(`PodCube.where({ ${activeFilters} filters }, "${sortMode}") // Found ${results.length}`);
@@ -715,7 +793,7 @@ function _performUpdateArchive() {
 
 function renderArchiveResults(results) {
     const resCount = document.getElementById('resCount');
-    if (resCount) resCount.textContent = `${results.length} Records`;
+    if (resCount) resCount.textContent = `${results.length} Transmissions`;
     
     const list = document.getElementById('archiveList');
     const tCard = document.getElementById('tmpl-ep-card');
@@ -727,7 +805,7 @@ function renderArchiveResults(results) {
         list.innerHTML = `
             <div class="empty-state">
                 <div class="empty-state-icon">🅿️</div>
-                <div>No records match your search parameters.</div>
+                <div>No transmissions match your search parameters.</div>
             </div>
         `;
         return;
@@ -781,7 +859,21 @@ function renderArchiveResults(results) {
 
         clone.querySelector('.btn-queue').addEventListener('click', (e) => {
             e.stopPropagation();
-            run(`PodCube.addToQueue(PodCube.all[${idx}])`);
+            const qIdx = PodCube.queueItems.findIndex(qEp => qEp.id === ep.id);
+            if (qIdx > -1) {
+                run(`PodCube.removeFromQueue(${qIdx})`);
+            } else {
+                run(`PodCube.addToQueue(PodCube.all[${idx}])`);
+            }
+        });
+
+        clone.querySelector('.btn-print').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (window.PodUser) {
+                await PodUser.togglePrintBuffer(ep.nanoId);
+                syncArchiveUI();
+                updatePunchcardPreview();
+            }
         });
 
         fragment.appendChild(clone);
@@ -792,8 +884,7 @@ function renderArchiveResults(results) {
 }
 
 /**
- * TARGETED UPDATE: Syncs visual state (Queue/Playing) without re-rendering DOM.
- * Prevents 'weirdDuration' churn and layout thrashing.
+ * TARGETED UPDATE: Syncs visual state (Queue/Playing/Catalog) without re-rendering DOM.
  */
 function syncArchiveUI() {
     const queueIds = new Set(PodCube.queueItems.map(ep => ep.id));
@@ -801,40 +892,89 @@ function syncArchiveUI() {
     
     // This Set contains 5-character Nano-GUIDs
     const historyIds = window.PodUser ? new Set(window.PodUser.data.history) : new Set();
+    const verifiedIds = window.PodUser ? new Set(window.PodUser.data.verified) : new Set();
+    const suppressedIds = window.PodUser ? new Set(window.PodUser.data.suppressed) : new Set();
+    const printBufferIds = window.PodUser ? new Set(window.PodUser.data.printBuffer) : new Set();
 
+    // 1. Sync Archive List Cards
     const cards = document.querySelectorAll('#archiveList .ep-card, #inspectorRelated .related-ep-card');
-    
     cards.forEach(card => {
-        const id = card.dataset.epId; // This is the Long UUID
+        const id = card.dataset.epId; // Long UUID
         if (!id) return;
 
-        // Grab the Nano-ID for history matching
         const ep = PodCube.findEpisode(id);
         const nanoId = ep ? ep.nanoId : null;
 
         const queueBtn = card.querySelector('.btn-queue');
-
         if (queueBtn) {
             if (queueIds.has(id)) {
                 queueBtn.classList.add('selected');
+                queueBtn.textContent = 'QUEUE';
             } else {
                 queueBtn.classList.remove('selected');
+                queueBtn.textContent = 'QUEUE';
             }
         }
 
-        if (id === playingId) {
-            card.classList.add('selected');
-        } else {
-            card.classList.remove('selected');
-        }
+        const printBtn = card.querySelector('.btn-print');
+        if (printBtn) printBtn.classList.toggle('staged', printBufferIds.has(nanoId));
 
-        // Check against the nanoId, not the Long UUID
-        if (nanoId && historyIds.has(nanoId)) {
-            card.classList.add('is-played');
-        } else {
-            card.classList.remove('is-played');
+        card.classList.toggle('selected', id === playingId);
+        if (nanoId) {
+            card.classList.toggle('is-played', historyIds.has(nanoId));
+            card.classList.toggle('is-verified', verifiedIds.has(nanoId));
+            card.classList.toggle('is-suppressed', suppressedIds.has(nanoId));
         }
     });
+
+    // 2. Sync Inspector Dashboard Buttons
+    if (AppState.selectedEpisode) {
+        const epId = AppState.selectedEpisode.id;
+        const nanoId = AppState.selectedEpisode.nanoId;
+        
+        const inspQueueBtn = document.querySelector('#inspectorHeader .insp-btn-queue');
+        if (inspQueueBtn) {
+            if (queueIds.has(epId)) {
+                inspQueueBtn.classList.add('selected');
+                inspQueueBtn.textContent = 'QUEUE';
+            } else {
+                inspQueueBtn.classList.remove('selected');
+                inspQueueBtn.textContent = 'QUEUE';
+            }
+        }
+        
+        if (window.PodUser) {
+            const btnOk = document.querySelector('#inspectorHeader .insp-btn-ok');
+            const btnNo = document.querySelector('#inspectorHeader .insp-btn-no');
+            const btnPrint = document.querySelector('#inspectorHeader .insp-btn-print');
+            
+            if (btnOk) btnOk.classList.toggle('active-catalog', verifiedIds.has(nanoId));
+            if (btnNo) btnNo.classList.toggle('active-catalog', suppressedIds.has(nanoId));
+            if (btnPrint) btnPrint.classList.toggle('active-catalog', printBufferIds.has(nanoId));
+        }
+    }
+
+    // 3. Sync Global Transport Catalog Buttons
+    const playingEp = PodCube.nowPlaying;
+    const transActions = document.getElementById('transportCatalogActions');
+    const transBtnOk = document.getElementById('transBtnOk');
+    const transBtnNo = document.getElementById('transBtnNo');
+    
+    if (transActions && transBtnOk && transBtnNo) {
+        // Only show up/down votes for actual Lore Transmissions, not system audio
+        if (playingEp && window.PodUser && playingEp.episodeType !== 'none' && playingEp.episodeType !== 'twibbie_ondemand') {
+            const nid = playingEp.nanoId;
+            transActions.style.display = 'flex';
+            
+            transBtnOk.classList.toggle('active-catalog', verifiedIds.has(nid));
+            transBtnNo.classList.toggle('active-catalog', suppressedIds.has(nid));
+            
+            transBtnOk.onclick = async () => await PodUser.toggleVerified(nid);
+            transBtnNo.onclick = async () => await PodUser.toggleSuppressed(nid);
+        } else {
+            transActions.style.display = 'none';
+        }
+    }
 }
 
 function handleEpisodeClick(index) {
@@ -847,7 +987,10 @@ function handleEpisodeClick(index) {
 }
 
 function resetArchive() {
-    ['arcSearch', 'arcModel', 'arcOrigin', 'arcRegion', 'arcZone', 'arcPlanet', 'arcLocale', 'arcType', 'arcYear'].forEach(id => {
+    ['arcSearch', 'arcModel', 'arcOrigin', 
+        'arcRegion', 'arcZone', 'arcPlanet', 
+        'arcLocale', 'arcType', 'arcYear', 
+        'arcTag', 'arcPassenger'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
@@ -886,7 +1029,6 @@ function loadEpisodeInspector(ep) {
 
     AppState.selectedEpisode = ep;
     localStorage.setItem('podcube_last_inspected', ep.id);
-    syncArchiveUI(); // Keep visual highlight updated
 
     const idx = PodCube.getEpisodeIndex(ep);
     
@@ -947,7 +1089,57 @@ function loadEpisodeInspector(ep) {
     // Play/Queue Action Buttons
     clone.querySelector('.insp-btn-play').onclick = () => run(`PodCube.play(PodCube.all[${idx}])`);
     clone.querySelector('.insp-btn-playnext').onclick = () => run(`PodCube.addNextInQueue(PodCube.all[${idx}])`);
-    clone.querySelector('.insp-btn-queue').onclick = () => run(`PodCube.addToQueue(PodCube.all[${idx}])`);
+    clone.querySelector('.insp-btn-queue').onclick = () => {
+        const qIdx = PodCube.queueItems.findIndex(qEp => qEp.id === ep.id);
+        if (qIdx > -1) run(`PodCube.removeFromQueue(${qIdx})`);
+        else run(`PodCube.addToQueue(PodCube.all[${idx}])`);
+    };
+
+    // Cataloging Buttons
+    const btnOk = clone.querySelector('.insp-btn-ok');
+    const btnNo = clone.querySelector('.insp-btn-no');
+    const btnPrint = clone.querySelector('.insp-btn-print');
+
+    btnOk.onclick = async () => { if(window.PodUser) await PodUser.toggleVerified(ep.nanoId); };
+    btnNo.onclick = async () => { if(window.PodUser) await PodUser.toggleSuppressed(ep.nanoId); };
+    btnPrint.onclick = async () => {
+        if(window.PodUser) {
+            await PodUser.togglePrintBuffer(ep.nanoId);
+            updatePunchcardPreview(); 
+        }
+    };
+
+    const updateCatalogBtns = () => {
+        if(!window.PodUser) return;
+        const nid = ep.nanoId;
+        btnOk.classList.toggle('active-catalog', PodUser.data.verified.includes(nid));
+        btnNo.classList.toggle('active-catalog', PodUser.data.suppressed.includes(nid));
+        btnPrint.classList.toggle('active-catalog', PodUser.data.printBuffer.includes(nid));
+    };
+    
+    updateCatalogBtns(); // Set initial state
+
+    btnOk.onclick = async () => {
+        if(window.PodUser) {
+            await PodUser.toggleVerified(ep.nanoId);
+            updateCatalogBtns();
+            syncArchiveUI();
+        }
+    };
+    btnNo.onclick = async () => {
+        if(window.PodUser) {
+            await PodUser.toggleSuppressed(ep.nanoId);
+            updateCatalogBtns();
+            syncArchiveUI();
+        }
+    };
+    btnPrint.onclick = async () => {
+        if(window.PodUser) {
+            await PodUser.togglePrintBuffer(ep.nanoId);
+            updateCatalogBtns();
+            updatePunchcardPreview(); // Instantly updates the preview on the Cards tab!
+        }
+    };
 
     // Conditional Anniversary logic 
     if (ep.anniversary) {
@@ -958,7 +1150,90 @@ function loadEpisodeInspector(ep) {
         setTxt('.insp-prose-anniv', ep.anniversary);
     }
 
-    // --- 3. PROSE POPULATION ---
+    // --- TAGS (System & Passenger) ---
+    const tagInput = clone.querySelector('.insp-tag-input');
+    const tagsSection = clone.querySelector('.insp-tags-section');
+    const tagsList = clone.querySelector('.insp-tags-list');
+
+    const renderAllTags = () => {
+        tagsList.innerHTML = '';
+        const sysTags = ep.tags || [];
+        const passTags = (window.PodUser && window.PodUser.data.annotations && window.PodUser.data.annotations[ep.nanoId]) || [];
+
+        // Hide the whole section if there are no tags of either type
+        if (sysTags.length === 0 && passTags.length === 0) {
+            tagsSection.style.display = 'none';
+            return;
+        } 
+        
+        tagsSection.style.display = 'block';
+
+        // 1. Render System Tags
+        sysTags.forEach(tag => {
+            const span = document.createElement('span');
+            span.className = 'inspector-tag-pill';
+            span.textContent = tag;
+            span.title = "System Classification";
+            span.onclick = () => applyHierarchyFilter('tag', tag);
+            tagsList.appendChild(span);
+        });
+
+        // 2. Render Passenger Tags
+        passTags.forEach(tag => {
+            const span = document.createElement('span');
+            span.className = 'inspector-tag-pill';
+            span.title = "Passenger Annotation";
+            
+            // Text portion (clickable to filter)
+            const textNode = document.createElement('span');
+            textNode.textContent = tag;
+            textNode.onclick = (e) => {
+                e.stopPropagation();
+                applyHierarchyFilter('passenger_tag', tag);
+            };
+            
+            // Remove portion (X icon)
+            const removeNode = document.createElement('span');
+            removeNode.className = 'remove-tag';
+            removeNode.textContent = '×';
+            removeNode.title = 'Remove Annotation';
+            removeNode.onclick = async (e) => {
+                e.stopPropagation(); // Prevents triggering the filter click
+                await PodUser.removeAnnotation(ep.nanoId, tag);
+                ep._passengerTags = PodUser.data.annotations[ep.nanoId] || []; // Sync engine
+                renderAllTags(); // Re-render the list
+                if (document.getElementById('arcSearch').value) updateArchive(); // Live refresh search
+            };
+
+            span.appendChild(textNode);
+            span.appendChild(removeNode);
+            tagsList.appendChild(span);
+        });
+    };
+
+    renderAllTags(); // Initial render
+
+    // 3. Define the Save Action
+    const saveTag = async () => {
+        const val = tagInput.value.trim();
+        if (val && window.PodUser) {
+            await PodUser.addAnnotation(ep.nanoId, val);
+            ep._passengerTags = PodUser.data.annotations[ep.nanoId] || []; // Sync engine
+            tagInput.value = ''; // Clear input immediately
+            renderAllTags(); // Instantly populates inline with system tags!
+        }
+    };
+
+    tagInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            saveTag();
+        }
+    });
+
+    tagInput.addEventListener('blur', saveTag);
+
+    // --- PROSE POPULATION ---
     setTxt('.insp-prose-title', ep.title);
     setTxt('.insp-prose-planet', ep.planet || 'Unknown');
     setTxt('.insp-prose-region', ep.region || 'Unknown');
@@ -1003,20 +1278,8 @@ function loadEpisodeInspector(ep) {
         setTxt('.insp-prose-related-titles', narrative);
     }
 
-    // --- 4. TAGS ---
-    if (ep.tags && ep.tags.length > 0) {
-        clone.querySelector('.insp-tags-section').style.display = 'block';
-        const tagList = clone.querySelector('.insp-tags-list');
-        ep.tags.forEach(tag => {
-            const span = document.createElement('span');
-            span.className = 'inspector-tag-pill';
-            span.textContent = tag;
-            span.onclick = () => applyHierarchyFilter('tag', tag);
-            tagList.appendChild(span);
-        });
-    }
 
-    // --- 5. TEMPORAL & GEOGRAPHIC GRID ---
+    // --- TEMPORAL & GEOGRAPHIC GRID ---
     setTxt('.insp-temp-date', ep.date?.toString() || 'Unknown Date');
     setTxt('.insp-temp-anniv', ep.anniversary || 'N/A');
     setTxt('.insp-temp-weird', ep.weirdDuration || 'N/A');
@@ -1029,8 +1292,8 @@ function loadEpisodeInspector(ep) {
     setTxt('.insp-geo-zone', ep.zone || 'N/A');
     setTxt('.insp-geo-planet', ep.planet || 'N/A');
 
-    // --- 6. RELATED LIST (Bottom 10 items) ---
-    const related10 = PodCube.findRelated(ep, 10);
+    // --- RELATED LIST (Bottom 5 items) ---
+    const related10 = PodCube.findRelated(ep, 5);
     if (related10.length > 0) {
         clone.querySelector('.insp-related-section').style.display = 'block';
         const relList = clone.querySelector('.insp-related-list');
@@ -1078,6 +1341,8 @@ function loadEpisodeInspector(ep) {
         console.error('Error rendering raw data:', e);
     }
 
+    
+    syncArchiveUI(); // Keep visual highlight updated
     logCommand(`PodCube.all[${idx}] // Inspecting: ${ep.title}`);
 }
 
@@ -1249,44 +1514,76 @@ function enableScrubbing(elementId) {
 function updatePunchcardPreview() {
     const list = document.getElementById('pcPreviewList');
     const countLabel = document.getElementById('pcPreviewCount');
+    const durationLabel = document.getElementById('pcPreviewDuration'); // <-- Add this reference
     if (!list || !countLabel) return;
 
-    const q = PodCube.queueItems;
+    const bufferIds = window.PodUser ? window.PodUser.data.printBuffer : [];
+    const bufferEps = bufferIds.map(id => PodCube.findEpisode(id)).filter(Boolean);
     
-    // Update count
-    countLabel.textContent = `${q.length} Item${q.length !== 1 ? 's' : ''}`;
+    // Set the count
+    countLabel.textContent = `${bufferEps.length} Item${bufferEps.length !== 1 ? 's' : ''}`;
     
-    // Clear list
+    // Calculate and set the total duration
+    if (durationLabel) {
+        const totalDuration = bufferEps.reduce((sum, ep) => sum + (ep.duration || 0), 0);
+        durationLabel.textContent = formatTime(totalDuration);
+    }
+
     list.innerHTML = '';
 
-    if (q.length === 0) {
-        list.innerHTML = '<div class="pc-preview-empty">Buffer empty. Add transmissions to queue to issue card.</div>';
+    if (bufferEps.length === 0) {
+        list.innerHTML = '<div class="pc-preview-empty">Buffer empty. Stage transmissions from the Inspector.</div>';
         return;
     }
 
-    // Populate simplified list
-    // We limit to 50 items for performance in the mini view
-    const previewItems = q.slice(0, 50);
-    
+    const previewItems = bufferEps.slice(0, 50);
     previewItems.forEach((ep, i) => {
         const div = document.createElement('div');
         div.className = 'pc-preview-item';
+        div.dataset.index = i;
+        
+        // Add the SVG Drag Handle and Action Buttons
         div.innerHTML = `
-            <span class="pc-preview-title">${i + 1}. ${escapeHtml(ep.title)}</span>
-            <span class="pc-preview-meta">${ep.timestamp || '0:00'}</span>
+            <div class="pc-drag-handle" title="Drag to reorder">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                    <path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                </svg>
+            </div>
+            <span class="pc-preview-title" title="${escapeHtml(ep.title)}">${i + 1}. ${escapeHtml(ep.title)}</span>
+            <div class="pc-preview-actions">
+                <button title="Move Up" onclick="moveBufferItem(${i}, -1)" ${i === 0 ? 'disabled style="opacity:0.3"' : ''}>▲</button>
+                <button title="Move Down" onclick="moveBufferItem(${i}, 1)" ${i === bufferEps.length - 1 ? 'disabled style="opacity:0.3"' : ''}>▼</button>
+                <button class="btn-danger" title="Remove" onclick="removeBufferItem(${i})">✕</button>
+            </div>
         `;
         list.appendChild(div);
     });
 
-    if (q.length > 50) {
+    if (bufferEps.length > 50) {
         const more = document.createElement('div');
         more.className = 'pc-preview-item';
         more.style.justifyContent = 'center';
         more.style.color = '#888';
-        more.textContent = `...and ${q.length - 50} more...`;
+        more.textContent = `...and ${bufferEps.length - 50} more...`;
         list.appendChild(more);
     }
 }
+
+// UI Hook: Arrow Buttons
+window.moveBufferItem = async function(index, dir) {
+    if (!window.PodUser) return;
+    const newIndex = index + dir;
+    await window.PodUser.moveInPrintBuffer(index, newIndex);
+    updatePunchcardPreview();
+};
+
+// UI Hook: Remove Button
+window.removeBufferItem = async function(index) {
+    if (!window.PodUser) return;
+    await window.PodUser.removeFromPrintBufferIndex(index);
+    syncArchiveUI(); // Ensures Archive highlighting turns off if it was the last instance
+    updatePunchcardPreview();
+};
 
 // --- QUEUE RENDERING & INTERACTION ---
 
@@ -1325,8 +1622,8 @@ function updateQueueList() {
         const clone = document.importNode(template.content, true);
         const item = clone.querySelector('.queue-item');
         
-        // --- CRITICAL FIX: Disable Native Drag ---
-        // We handle drag manually via JS. Native drag causes the red cursor issue.
+        // Disable Native Drag
+        // We handle drag manually via JS
         item.removeAttribute('draggable'); 
         item.dataset.queueIndex = i;
         item.dataset.id = ep.id;
@@ -1367,6 +1664,32 @@ function updateQueueList() {
     });
 
     list.appendChild(fragment);
+
+    // Re-apply display order after every re-render
+    if (queueDisplayReversed) {
+        list.style.display = 'flex';
+        list.style.flexDirection = 'column-reverse';
+    } else {
+        list.style.flexDirection = '';
+    }
+}
+
+// --- QUEUE DISPLAY ORDER TOGGLE ---
+// Pure visual state — never touches _queue data, _queueIndex, or session.
+// Persists across re-renders because updateQueueList checks the flag each time.
+
+let queueDisplayReversed = false;
+
+function toggleQueueDisplayOrder() {
+    queueDisplayReversed = !queueDisplayReversed;
+    const list = document.getElementById('playerQueueList');
+    if (!list) return;
+    if (queueDisplayReversed) {
+        list.style.display = 'flex';
+        list.style.flexDirection = 'column-reverse';
+    } else {
+        list.style.flexDirection = 'column';
+    }
 }
 
 
@@ -1543,6 +1866,127 @@ function onDragEnd(e) {
     dragState.ghost = null;
 }
 
+// --- PRINT BUFFER DRAG AND DROP SYSTEM ---
+const bufferDragState = {
+    active: false, item: null, ghost: null, startIndex: -1,
+    offsetY: 0, listRect: null, scroller: null, scrollSpeed: 0
+};
+
+function initBufferDragAndDrop() {
+    const list = document.getElementById('pcPreviewList');
+    if (!list) return;
+    list.removeEventListener('mousedown', onBufferDragStart);
+    list.removeEventListener('touchstart', onBufferDragStart);
+    list.addEventListener('mousedown', onBufferDragStart);
+    list.addEventListener('touchstart', onBufferDragStart, { passive: false });
+}
+
+function onBufferDragStart(e) {
+    const target = e.target;
+    const handle = target.closest('.pc-drag-handle');
+    if (!handle) return; 
+
+    const item = handle.closest('.pc-preview-item');
+    if (!item) return;
+
+    if (e.type === 'touchstart') e.preventDefault();
+
+    const point = e.touches ? e.touches[0] : e;
+    const rect = item.getBoundingClientRect();
+
+    bufferDragState.active = true;
+    bufferDragState.item = item;
+    bufferDragState.startIndex = parseInt(item.dataset.index);
+    bufferDragState.offsetY = point.clientY - rect.top;
+    bufferDragState.listRect = document.getElementById('pcPreviewList').getBoundingClientRect();
+
+    bufferDragState.ghost = item.cloneNode(true);
+    bufferDragState.ghost.classList.add('dragging-ghost');
+    
+    Object.assign(bufferDragState.ghost.style, {
+        position: 'fixed', top: `${rect.top}px`, left: `${rect.left}px`,
+        width: `${rect.width}px`, height: `${rect.height}px`,
+        zIndex: '10000', opacity: '0.9', backgroundColor: 'var(--bg-panel)',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.2)', pointerEvents: 'none', transform: 'scale(1.02)'
+    });
+    
+    document.body.appendChild(bufferDragState.ghost);
+    item.style.opacity = '0.0';
+
+    if (e.type === 'touchstart') {
+        window.addEventListener('touchmove', onBufferDragMove, { passive: false });
+        window.addEventListener('touchend', onBufferDragEnd);
+    } else {
+        window.addEventListener('mousemove', onBufferDragMove);
+        window.addEventListener('mouseup', onBufferDragEnd);
+    }
+}
+
+function onBufferDragMove(e) {
+    if (!bufferDragState.active) return;
+    if (e.cancelable && e.type === 'touchmove') e.preventDefault();
+
+    const point = e.touches ? e.touches[0] : e;
+    bufferDragState.ghost.style.top = `${point.clientY - bufferDragState.offsetY}px`;
+
+    const list = document.getElementById('pcPreviewList');
+    const zone = 30;
+    
+    bufferDragState.scrollSpeed = 0;
+    if (point.clientY < bufferDragState.listRect.top + zone) bufferDragState.scrollSpeed = -10;
+    else if (point.clientY > bufferDragState.listRect.bottom - zone) bufferDragState.scrollSpeed = 10;
+
+    if (bufferDragState.scrollSpeed !== 0 && !bufferDragState.scroller) {
+        bufferDragState.scroller = setInterval(() => { list.scrollTop += bufferDragState.scrollSpeed; }, 16);
+    } else if (bufferDragState.scrollSpeed === 0 && bufferDragState.scroller) {
+        clearInterval(bufferDragState.scroller);
+        bufferDragState.scroller = null;
+    }
+
+    const elementBelow = document.elementFromPoint(point.clientX, point.clientY);
+    const targetItem = elementBelow?.closest('.pc-preview-item');
+
+    if (targetItem && targetItem !== bufferDragState.item && list.contains(targetItem)) {
+        const children = Array.from(list.children);
+        const currentIndex = children.indexOf(bufferDragState.item);
+        const targetIndex = children.indexOf(targetItem);
+
+        if (currentIndex < targetIndex) list.insertBefore(bufferDragState.item, targetItem.nextSibling);
+        else list.insertBefore(bufferDragState.item, targetItem);
+    }
+}
+
+async function onBufferDragEnd(e) {
+    if (!bufferDragState.active) return;
+
+    window.removeEventListener('touchmove', onBufferDragMove);
+    window.removeEventListener('touchend', onBufferDragEnd);
+    window.removeEventListener('mousemove', onBufferDragMove);
+    window.removeEventListener('mouseup', onBufferDragEnd);
+
+    if (bufferDragState.scroller) clearInterval(bufferDragState.scroller);
+    bufferDragState.scroller = null;
+    
+    if (bufferDragState.ghost) bufferDragState.ghost.remove();
+    if (bufferDragState.item) bufferDragState.item.style.opacity = '1';
+
+    const list = document.getElementById('pcPreviewList');
+    const newIndex = Array.from(list.children).indexOf(bufferDragState.item);
+
+    if (newIndex !== -1 && newIndex !== bufferDragState.startIndex) {
+        if (window.PodUser) {
+            await window.PodUser.moveInPrintBuffer(bufferDragState.startIndex, newIndex);
+            updatePunchcardPreview();
+        }
+    } else {
+        updatePunchcardPreview(); // Failsafe cleanup
+    }
+
+    bufferDragState.active = false;
+    bufferDragState.item = null;
+    bufferDragState.ghost = null;
+}
+
 /**
  * Reads PodCube session data from localStorage and updates the inspector display.
  */
@@ -1646,14 +2090,17 @@ function handleIncomingPlaylistCode(rawInput) {
 
 
 /**
- * Saves the current queue and triggers the "Printing" animation.
+ * Saves the current print buffer and triggers the "Printing" animation.
  */
-function saveQueueAsPlaylist() {
+function saveBufferAsPlaylist() {
     const input = document.getElementById('playlistNameInput');
     let baseName = input?.value.trim() || "Untitled";
     
-    if (PodCube.queueItems.length === 0) {
-        logCommand('// Error: Queue is empty');
+    const bufferIds = window.PodUser ? window.PodUser.data.printBuffer : [];
+    const bufferEps = bufferIds.map(id => PodCube.findEpisode(id)).filter(Boolean);
+
+    if (bufferEps.length === 0) {
+        logCommand('// Error: Print Buffer is empty');
         return;
     }
 
@@ -1665,21 +2112,29 @@ function saveQueueAsPlaylist() {
         counter++;
     }
 
-    const playlist = PodCube.savePlaylist(finalName, PodCube.queueItems);
+    const playlist = PodCube.savePlaylist(finalName, bufferEps);
     logCommand(`PodCube.savePlaylist("${finalName}", ...)`);
     
     if (input) input.value = '';
 
-    if (window.PodUser) window.PodUser.logPunchcardPrinted();
-    animatePunchcardIssue(playlist);
+    if (window.PodUser) {
+        window.PodUser.logPunchcardPrinted();
+        // Flush buffer, update preview, THEN animate after layout settles.
+        // updatePunchcardPreview() collapses the queue height and shifts the slot
+        // upward. The two rAFs ensure the browser fully recalculates layout before
+        // we call getBoundingClientRect() on the slot.
+        PodUser.clearPrintBuffer().then(() => {
+            updatePunchcardPreview();
+            requestAnimationFrame(() => requestAnimationFrame(() => animatePunchcardIssue(playlist)));
+        });
+    }
 }
-
 
 /**
  * ANIMATION: Printer Slot -> Print -> Drop -> Pop
  */
 function animatePunchcardIssue(playlist) {
-    const input = document.getElementById('playlistNameInput');
+    const input = document.getElementById('punchcard-print-slot');
     if (!input) {
         updatePlaylistsUI(playlist.name);
         return;
@@ -1687,20 +2142,21 @@ function animatePunchcardIssue(playlist) {
 
     // 1. Calculate Geometry (Now factoring in page scroll!)
     const rect = input.getBoundingClientRect();
-    const cardWidth = 300; 
-    const maskWidth = 320; 
-    const maskHeight = 480; 
-    
-    // Center mask relative to input, anchored to the document
-    const maskLeft = (rect.left + (rect.width / 2)) - (maskWidth / 2) + window.scrollX;
-    const maskTop = rect.bottom + window.scrollY; 
+    const cardWidth = 300;
+    const maskWidth = 300;  // Match slot width so card clips flush to slot edges
+    const maskHeight = 480;
+
+    // Align mask TOP with slot TOP — overflow:hidden clips the card until it
+    // slides below the slot line, making it look like it emerges from the slot.
+    const maskLeft = rect.left + window.scrollX;
+    const maskTop  = rect.top  + window.scrollY;
 
     // 2. Create Mask (Start Closed)
     const mask = document.createElement('div');
     mask.className = 'pc-printer-mask';
     mask.style.position = 'absolute'; // Force absolute positioning to document
     mask.style.left = `${maskLeft}px`;
-    mask.style.top = `${maskTop}px`;
+    mask.style.top = `${maskTop+2}px`;
     mask.style.width = `${maskWidth}px`;
     mask.style.height = '0px'; 
     
@@ -1718,16 +2174,16 @@ function animatePunchcardIssue(playlist) {
     // 4. Mount to DOM
     mask.appendChild(card);
     document.body.appendChild(mask);
+
+    // Mark the machine as actively printing (slot glow)
+    const wrapper = document.getElementById('punchcardReader');
+    if (wrapper) wrapper.classList.add('is-printing');
     
-    void mask.offsetWidth; 
+    void mask.offsetWidth;
 
     // --- ANIMATION SEQUENCE ---
 
-    requestAnimationFrame(() => {
-        mask.classList.add('open-slot');
-    });
-
-    // Step 1: Open the Slot
+    // Step 1: Expand the mask (transparent — slot element handles the visual)
     setTimeout(() => {
         mask.style.height = `${maskHeight}px`;
     }, 100); 
@@ -1740,9 +2196,6 @@ function animatePunchcardIssue(playlist) {
 
     // Step 3: Detach & Drop
     setTimeout(() => {
-        mask.classList.remove('open-slot');
-        mask.classList.add('close-slot');
-
         // Get exact onscreen coordinates, plus scroll offset
         const dropRect = card.getBoundingClientRect();
         
@@ -1774,6 +2227,9 @@ function animatePunchcardIssue(playlist) {
 
             // Kill the mask
             if (mask.parentNode) mask.parentNode.removeChild(mask);
+
+            // Release the printing state
+            if (wrapper) wrapper.classList.remove('is-printing');
         }, 400); 
 
     }, 2300); 
@@ -2315,11 +2771,16 @@ function debounce(func, wait) {
 }
 
 function formatTime(s) {
-    if (!s) return "0:00";
+    if (!s || !isFinite(s)) return "0:00";
+    
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
     const sec = Math.floor(s % 60);
-    return `${h<1? '' : h+':'}${m}:${sec < 10 ? '0' + sec : sec}`;
+    
+    if (h > 0) {
+        return `${h}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+    }
+    return `${m}:${sec.toString().padStart(2, '0')}`;
 }
 
 function formatBytes(bytes) {
@@ -2483,12 +2944,32 @@ function performUISwitch(targetId) {
         Interactive.init(); 
     }
 
+    
+
     // Update Classes (This invalidates the layout)
     document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     
     btn.classList.add('active');
     content.classList.add('active');
+
+    // Special case: Pause Brigistics Vis for Performance
+    if (window.BrigisticsViz) {
+        if (targetId === 'overview') {
+            BrigisticsViz.resume();
+        } else {
+            BrigisticsViz.pause();
+        }
+    }
+
+    // Special case: User Profile Badge 
+    document.querySelectorAll('.user-badge').forEach(badge => {
+        if (targetId === "profile") {
+            badge.classList.add('active');
+        } else {
+            badge.classList.remove('active');
+        }
+    });
 
     // Apply scroll immediately using our pre-calculated values
     window.scrollTo({ top: targetScroll, behavior: 'instant' });

@@ -1,0 +1,417 @@
+/* --- BRIGISTICS HARDWARE SCANNER --- */
+
+/* Fix clipping from the parent punchcard wrapper */
+#brigistics-scanner-hardware {
+    overflow: visible !important;
+}
+
+#brigistics-scanner-hardware *{
+    user-select: none;
+}
+/* Layout Wrapper for Spheroid Bay */
+.bhs-layout-wrapper {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap; 
+    padding: 25px 15px; 
+    background: #d4d0c8; /* Deep recessed bay in the plastic casing */
+    box-shadow: inset 0 3px 10px rgba(0,0,0,0.15);
+    user-select: none;
+}
+
+/* --- 1. SPHEROID SCREEN (Light Blueprint) --- */
+.bhs-screen-bezel {
+    background: #c5c1b9;
+    padding: 12px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,0,0,0.15);
+    box-shadow: 
+        inset 0 2px 4px rgba(255,255,255,0.6),
+        0 8px 16px rgba(0,0,0,0.25);
+    touch-action: none;
+}
+
+.bhs-scene {
+    position: relative;
+    /* SHRUNK TO 2/3 SCALE */
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    perspective: 800px;
+    
+    background-color: var(--bg-panel);
+    background-image: 
+        repeating-radial-gradient(circle at 50% 50%, transparent, transparent 15%, rgba(23, 104, 218, 0.04) 15%, rgba(23, 104, 218, 0.04) 15.5%),
+        repeating-linear-gradient(rgba(23, 104, 218, 0.08), rgba(23, 104, 218, 0.08) 1px, transparent 1px, transparent 20px),
+        repeating-linear-gradient(90deg, rgba(23, 104, 218, 0.08), rgba(23, 104, 218, 0.08) 1px, transparent 1px, transparent 20px);
+    
+    border: 2px solid var(--primary-dim);
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
+    overflow: hidden;
+    cursor: grab;
+}
+.bhs-scene:active { cursor: grabbing; }
+
+.bhs-sphere {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    transform-style: preserve-3d;
+    transform: translateZ(-100px) rotateX(-15deg) rotateY(0deg); 
+}
+
+/* Holographic Depth Planes */
+.bhs-ring {
+    position: absolute;
+    top: 4px; left: 4px; right: 4px; bottom: 4px;
+    border: 1px dashed rgba(23, 104, 218, 0.25);
+    border-radius: 50%;
+    pointer-events: none; 
+}
+.ring-x { 
+    transform: rotateX(90deg); 
+    background: rgba(23, 218, 82, 0.1);
+    border: 2px solid rgba(23, 218, 82, 0.15);
+}
+.ring-y { 
+    transform: rotateY(90deg); 
+    background: rgba(241, 135, 1, 0.1); 
+    border: 2px solid rgba(241, 135, 1, 0.15);
+}
+.ring-z { 
+    transform: rotateZ(0deg); 
+    border: 2px solid rgba(23, 104, 218, 0.1);
+    background: rgba(23, 104, 218, 0.1); 
+}
+
+.bhs-node {
+    position: absolute;
+    top: 50%; left: 50%;
+    border-radius: 50%;
+    transform-style: preserve-3d;
+    backface-visibility: hidden; 
+    cursor: crosshair;
+    box-shadow: 0 0 3px currentColor;
+    border: 1px solid var(--bg-body);
+    transform: translate(-50%, -50%) rotateY(var(--ry)) rotateX(var(--rx)) translateZ(var(--rz));
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.bhs-node.targeted {
+    box-shadow: 0 0 0 2px var(--bg-body), 0 0 0 4px var(--primary);
+    transform: translate(-50%, -50%) rotateY(var(--ry)) rotateX(var(--rx)) translateZ(var(--rz)) scale(2);
+    z-index: 100;
+}
+
+/* The Hardware Crosshair */
+.bhs-crosshair {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 30px; height: 30px; /* Shrunk */
+    transform: translate(-50%, -50%);
+    border: 2px solid rgba(23, 104, 218, 0.6); 
+    border-radius: 50%;
+    pointer-events: none; 
+    z-index: 50;
+    transition: transform 0.2s, opacity 0.2s, border-color 0.2s;
+}
+.bhs-crosshair::before, .bhs-crosshair::after {
+    content: '';
+    position: absolute;
+    background: rgba(23, 104, 218, 0.6); 
+}
+.bhs-crosshair::before { top: 50%; left: -8px; right: -8px; height: 2px; transform: translateY(-50%); }
+.bhs-crosshair::after { left: 50%; top: -8px; bottom: -8px; width: 2px; transform: translateX(-50%); }
+
+.bhs-crosshair.locked {
+    transform: translate(-50%, -50%) scale(1.2);
+    border-color: var(--orange);
+}
+.bhs-crosshair.locked::before, .bhs-crosshair.locked::after { background: var(--orange); }
+
+/* --- 2. FLEXIBLE READOUT PANEL --- */
+.bhs-readout-panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--primary-dim);
+    padding: 15px; /* Shrunk */
+    border-radius: 4px;
+    
+    flex: 1 1 240px; /* Adapts to available space */
+    max-width: 100%;
+    min-height: 250px;
+    max-height: 250px;
+    box-sizing: border-box;
+    
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+    overflow: hidden; 
+}
+
+.bhs-readout-empty {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+.bhs-empty-title {
+    color: var(--primary);
+    font-family: monospace;
+    font-size: 10px;
+    margin-bottom: 15px;
+    text-align: center;
+    letter-spacing: 0.1em;
+}
+.bhs-empty-subtitle {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    margin-top: 20px;
+    letter-spacing: 0.2em;
+    animation: pulseScan 1.5s infinite alternate;
+    text-align: center;
+}
+.bhs-empty-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 80%;
+}
+.bhs-empty-bar {
+    height: 4px;
+    background: var(--primary-dim);
+    width: 100%;
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+}
+.bhs-empty-bar::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -50%; width: 50%; height: 100%;
+    background: var(--primary);
+    animation: scanBar 2s linear infinite;
+}
+.bhs-empty-bar:nth-child(2)::after { animation-delay: 0.6s; }
+.bhs-empty-bar:nth-child(3)::after { animation-delay: 1.2s; }
+
+@keyframes scanBar { 0% { left: -50%; } 100% { left: 100%; } }
+@keyframes pulseScan { 0% { opacity: 0.3; } 100% { opacity: 1; } }
+
+.bhs-readout-content {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    height: 100%;
+    position: relative;
+    z-index: 2;
+}
+.bhs-readout-label {
+    font-size: var(--fs-xs);
+    color: var(--orange);
+    font-family: "Fustat", sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+}
+.bhs-readout-title {
+    font-family: "Libertinus Math", serif;
+    color: var(--primary);
+    margin: 0;
+    line-height: 1.2;
+    font-size: 1.2em;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.bhs-readout-meta {
+    font-family: "Fustat", sans-serif;
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+.bhs-readout-desc {
+    font-family: "Fustat", sans-serif;
+    font-size: var(--fs-sm);
+    color: var(--text-main);
+    margin-bottom: auto; 
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.bhs-readout-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    flex-shrink: 0;
+}
+.bhs-readout-actions button {
+    flex: 1;
+    font-size: var(--fs-xs);
+    padding: 8px 5px;
+}
+
+#bhs-btn-play {
+    background: var(--primary);
+    color: var(--bg-body);
+}
+
+/* --- 3. TIMELINE BAY --- */
+.bhs-timeline-bay {
+    background: #e0dcd5; 
+    padding: 15px; 
+    border-radius: 0 0 4px 4px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden; /* Prevents stretching parent */
+}
+.spacetime-timeline-container {
+    /* FIX: display: block restores natural horizontal overflow */
+    display: block; 
+    overflow-x: auto;
+    white-space: nowrap;
+    
+    /* Reduced padding, 35px protects the angled labels */
+    padding: 15px 15px 35px 15px; 
+    margin-top: 10px;
+    
+    width: 100%;
+    box-sizing: border-box;
+    scrollbar-width: thin;
+    
+    background-color: var(--bg-body);
+    background-image: 
+        repeating-linear-gradient(rgba(23, 104, 218, 0.08), rgba(23, 104, 218, 0.08) 1px, transparent 1px, transparent 20px),
+        repeating-linear-gradient(90deg, rgba(23, 104, 218, 0.08), rgba(23, 104, 218, 0.08) 1px, transparent 1px, transparent 20px);
+    
+    border: 1px solid var(--primary-dim);
+    border-radius: 4px;
+    box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);
+    min-height: 100px;
+}
+
+.st-track {
+    /* FIX: Inline-flex allows the child elements to push the width beyond 100% */
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 4px; 
+    padding-bottom: 2px;
+    border-bottom: 2px solid var(--primary);
+    min-width: max-content;
+    position: relative;
+    z-index: 2;
+}
+
+.st-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 8px;
+    position: relative;
+}
+
+.st-spike {
+    width: 6px;
+    border-radius: 1px 1px 0 0;
+    cursor: pointer;
+    transition: filter 0.2s, transform 0.1s;
+    min-height: 4px;
+}
+
+@media(hover: hover){
+    .st-spike:hover {
+        filter: brightness(1.2);
+        transform: scaleY(1.2);
+        transform-origin: bottom;
+    }
+}
+
+.st-spike.active {
+    box-shadow: 0 0 0 2px var(--bg-body), 0 0 0 5px var(--orange);
+    transform: scaleY(1.4);
+    transform-origin: bottom;
+    z-index: 10;
+}
+
+.st-axis-label {
+    position: absolute;
+    top: 100%; 
+    margin-top: 10px; 
+    
+    /* Anchor to the horizontal center of the node */
+    left: 50%;
+    
+    /* FIX: Pull the label back by 50% of its own width to center it perfectly.
+       This fixes the labels feeling "too far to the right" */
+    transform: translateX(-50%);
+    
+    font-family: "Fustat", monospace;
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    color: var(--text-muted);
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* FIX: The first label needs to start at the left edge of the node 
+   to prevent it from being pushed off the screen */
+.st-axis-label.st-label-first {
+    left: 0;
+    transform: translateX(0);
+}
+
+/* --- TODAY MARKER --- */
+.st-today-marker {
+    width: 2px;
+    height: 0px; /* Anchors it to the bottom of the flex track */
+    position: relative;
+    z-index: 5;
+}
+
+.st-today-tick {
+    position: absolute;
+    top: 2px; /* Punches through the track's padding and border */
+    left: 0;
+    width: 2px;
+    height: 12px;
+    background: var(--orange);
+    box-shadow: 0 0 5px var(--orange);
+}
+
+.st-today-label {
+    position: absolute;
+    top: 18px; /* Hangs just below the tick */
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: "Fustat", monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--orange);
+    text-shadow: 0 0 5px rgba(241, 135, 1, 0.4);
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+/* 1. Modern Standard (Firefox, newer Chrome/Edge) */
+.spacetime-timeline-container {
+    /* Format: thumb-color track-color */
+    scrollbar-color: #d4d0c8 #928f8a !important; 
+}
+
+/* 2. WebKit Fallback (Safari, older Chrome) */
+.spacetime-timeline-container::-webkit-scrollbar {
+    height: 8px; /* CRITICAL: Horizontal scrollbars need a height, or they disappear! */
+}
+
+.spacetime-timeline-container::-webkit-scrollbar-track {
+    background: #d4d0c8;
+    border-radius: 4px;
+}
+
+.spacetime-timeline-container::-webkit-scrollbar-thumb {
+    background: #d4d0c8;
+    border-radius: 4px;
+}

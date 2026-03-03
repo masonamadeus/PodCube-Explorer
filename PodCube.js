@@ -942,36 +942,74 @@ class PodCubeEngine {
     }
 
     // --- ACCESSORS ---
+
+    
     get FEED_TYPE() { return CONFIG.FEED_TYPE; }
     get DEBUG() { return CONFIG.DEBUG; }
     get isLoading() { return this._isLoading; }
     get hasPreloadedNext() { return this._hasPreloadedNext; }
-    get all() { return this.episodes; }
-    get latest() { return this.getByReleaseOrder()[0] || null; }
 
+    // Case-insensitive deduplication for clean UI dropdowns
+    _getUniqueFuzzy(items) {
+        const seen = new Set();
+        const result = [];
+        for (const item of items) {
+            if (!item) continue;
+            const normalized = String(item).toLowerCase().trim();
+            if (!seen.has(normalized)) {
+                seen.add(normalized);
+                // Keep the original casing of the FIRST time we see it
+                result.push(String(item).trim());
+            }
+        }
+        // Alphabetical sort, ignoring case
+        return result.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+    }
+
+    get all() { 
+        return this.episodes; 
+    }
+    
+    get latest() { 
+        return this.getByReleaseOrder()[0] || null;
+    }    
 
     get models() {
-        const models = this.episodes
-            .filter(e => e.model)
-            .map(e => e.model);
-        return [...new Set(models)].sort();
+        const models = this.episodes.map(e => e.model);
+        return this._getUniqueFuzzy(models);
     }
 
     get origins() {
-        const origins = this.episodes
-            .filter(e => e.origin)
-            .map(e => e.origin);
-        return [...new Set(origins)].sort();
+        const origins = this.episodes.map(e => e.origin);
+        return this._getUniqueFuzzy(origins);
     }
 
     get tags() {
-        const tags = new Set();
+        const tags = [];
         this.episodes.forEach(e => {
-            if (Array.isArray(e.tags)) {
-                e.tags.forEach(tag => tags.add(tag));
-            }
+            if (Array.isArray(e.tags)) tags.push(...e.tags);
         });
-        return [...tags].sort();
+        return this._getUniqueFuzzy(tags);
+    }
+
+    get locales() {
+        const locales = this.episodes.map(e => e.locale);
+        return this._getUniqueFuzzy(locales);
+    }
+
+    get regions() {
+        const regions = this.episodes.map(e => e.region);
+        return this._getUniqueFuzzy(regions);
+    }
+
+    get zones() {
+        const zones = this.episodes.map(e => e.zone);
+        return this._getUniqueFuzzy(zones);
+    }
+
+    get planets() {
+        const planets = this.episodes.map(e => e.planet);
+        return this._getUniqueFuzzy(planets);
     }
 
     
@@ -1209,20 +1247,52 @@ class PodCubeEngine {
                             const [min, max] = value;
                             if (!e.date || !e.date.year || e.date.year < min || e.date.year > max) return false;
                         }
-                        // D. Special: Tags (Exact Match in Array)
+                        // D. Special: Tags (Fuzzy Match)
                         else if (key === 'tag' || key === 'tags') {
                             const searchTags = Array.isArray(value) ? value : [value];
-                            if (!searchTags.some(t => e.tags && e.tags.includes(t))) return false;
+                            const normalizedSearch = searchTags.map(t => String(t).toLowerCase().trim());
+                            
+                            if (!e.tags || e.tags.length === 0) return false;
+                            
+                            const hasMatch = normalizedSearch.some(searchTag => 
+                                e.tags.some(epTag => {
+                                    const cleanEpTag = String(epTag).toLowerCase().trim();
+                                    // Bi-directional substring match (e.g. "Cat" matches "Cats" and vice-versa)
+                                    return cleanEpTag === searchTag || cleanEpTag.includes(searchTag) || searchTag.includes(cleanEpTag);
+                                })
+                            );
+                            if (!hasMatch) return false;
                         }
-                        // E. Standard Properties
+                        // E. Special: Model (Fuzzy Match)
+                        else if (key === 'model') {
+                            if (!e.model) return false;
+                            
+                            const searchModels = Array.isArray(value) ? value : [value];
+                            const normalizedSearch = searchModels.map(m => String(m).toLowerCase().trim());
+                            const epModel = String(e.model).toLowerCase().trim();
+                            
+                            const hasMatch = normalizedSearch.some(searchModel => 
+                                epModel === searchModel || epModel.includes(searchModel) || searchModel.includes(epModel)
+                            );
+                            if (!hasMatch) return false;
+                        }
+                        // F. Standard Properties (Case-Insensitive Strings)
                         else {
-                            // If filter value is an array, check if episode property is IN that array
+                            const epVal = e[key];
                             if (Array.isArray(value)) {
-                                if (!value.includes(e[key])) return false;
-                            } 
-                            // Otherwise strict equality
-                            else if (e[key] !== value) {
-                                return false;
+                                const hasMatch = value.some(v => {
+                                    if (typeof v === 'string' && typeof epVal === 'string') {
+                                        return v.toLowerCase().trim() === epVal.toLowerCase().trim();
+                                    }
+                                    return v === epVal;
+                                });
+                                if (!hasMatch) return false;
+                            } else {
+                                if (typeof value === 'string' && typeof epVal === 'string') {
+                                    if (value.toLowerCase().trim() !== epVal.toLowerCase().trim()) return false;
+                                } else if (epVal !== value) {
+                                    return false;
+                                }
                             }
                         }
                     }
@@ -1481,8 +1551,6 @@ class PodCubeEngine {
             try {
                 if (!this.nowPlaying) return;
 
-                // If audio src is missing or stale (can happen after iOS interruption),
-                // do a full reload rather than a bare play() call.
                 const needsReload = !this._audio.src
                     || this._audio.src === window.location.href
                     || this._audio.error !== null;
@@ -1490,13 +1558,21 @@ class PodCubeEngine {
                 if (needsReload) {
                     await this._loadAndPlay(true);
                 } else {
-                    await this._audio.play();
+                    // Try to play normally
+                    try {
+                        await this._audio.play();
+                    } catch (playErr) {
+                        // FIX: iOS likely dropped the buffer to save RAM. 
+                        // Force a synchronous reload to immediately bind the OS 
+                        // user-gesture token, then try playing again.
+                        log.warn("Play rejected (buffer drop). Forcing synchronous load.");
+                        this._audio.load();
+                        await this._audio.play();
+                    }
                 }
                 this._updateMediaPosition();
             } catch (e) {
-                log.warn("MediaSession play action failed:", e);
-                // Last resort: full reload of the current track
-                try { await this._loadAndPlay(true); } catch (_) {}
+                log.error("MediaSession play action unrecoverable:", e);
             }
         });
 

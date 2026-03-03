@@ -39,6 +39,12 @@ class PodUserEngine {
             notifications: [],    
             degradation:   0,
             volume:        100, // default to max
+
+            // cataloging
+            verified:      [], // The "OK" tracks (Array of Nano-GUIDs)
+            suppressed:    [], // The "NO" tracks (Array of Nano-GUIDs)
+            printBuffer:   [], // The "PRINT" staged tracks (Array of Nano-GUIDs)
+            annotations:   {}  // Custom passenger tags (Key: Nano-GUID, Value: Array of Strings)
         };
     }
 
@@ -167,8 +173,100 @@ class PodUserEngine {
         });
     }
 
+
     // ─────────────────────────────────────────────────────────────
-    // ACTION HOOKS (Fixed Race Conditions)
+    // CATALOGING HOOKS (OK, NO, PRINT)
+    // ─────────────────────────────────────────────────────────────
+
+    async toggleVerified(nanoId) {
+        if (!nanoId) return;
+        
+        // Remove from suppressed if it was there (Mutually exclusive)
+        this.data.suppressed = this.data.suppressed.filter(id => id !== nanoId);
+
+        const idx = this.data.verified.indexOf(nanoId);
+        if (idx > -1) {
+            this.data.verified.splice(idx, 1); // Toggle off
+        } else {
+            this.data.verified.push(nanoId);   // Toggle on
+        }
+        await this.save();
+    }
+
+    async toggleSuppressed(nanoId) {
+        if (!nanoId) return;
+        
+        // Remove from verified if it was there
+        this.data.verified = this.data.verified.filter(id => id !== nanoId);
+
+        const idx = this.data.suppressed.indexOf(nanoId);
+        if (idx > -1) {
+            this.data.suppressed.splice(idx, 1); // Toggle off
+        } else {
+            this.data.suppressed.push(nanoId);   // Toggle on
+        }
+        await this.save();
+    }
+
+    async togglePrintBuffer(nanoId) {
+        if (!nanoId) return;
+        const idx = this.data.printBuffer.indexOf(nanoId);
+        if (idx > -1) {
+            this.data.printBuffer.splice(idx, 1);
+        } else {
+            this.data.printBuffer.push(nanoId);
+        }
+        await this.save();
+    }
+
+    async clearPrintBuffer() {
+        this.data.printBuffer = [];
+        await this.save();
+    }
+
+    async moveInPrintBuffer(fromIndex, toIndex) {
+        if (fromIndex < 0 || fromIndex >= this.data.printBuffer.length) return;
+        if (toIndex < 0 || toIndex >= this.data.printBuffer.length) return;
+        
+        // Remove from old index and insert at new index
+        const [item] = this.data.printBuffer.splice(fromIndex, 1);
+        this.data.printBuffer.splice(toIndex, 0, item);
+        await this.save();
+    }
+
+    async removeFromPrintBufferIndex(index) {
+        if (index < 0 || index >= this.data.printBuffer.length) return;
+        this.data.printBuffer.splice(index, 1);
+        await this.save();
+    }
+
+    async addAnnotation(nanoId, tag) {
+        if (!nanoId || !tag) return;
+        const cleanTag = tag.trim().toLowerCase();
+        if (!cleanTag) return;
+        
+        if (!this.data.annotations) this.data.annotations = {};
+        if (!this.data.annotations[nanoId]) this.data.annotations[nanoId] = [];
+        
+        if (!this.data.annotations[nanoId].includes(cleanTag)) {
+            this.data.annotations[nanoId].push(cleanTag);
+            await this.save();
+        }
+    }
+
+    async removeAnnotation(nanoId, tag) {
+        if (!nanoId || !tag || !this.data.annotations?.[nanoId]) return;
+        this.data.annotations[nanoId] = this.data.annotations[nanoId].filter(t => t !== tag);
+        
+        // Clean up empty arrays
+        if (this.data.annotations[nanoId].length === 0) {
+            delete this.data.annotations[nanoId];
+        }
+        await this.save();
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // ACTION HOOKS
     // ─────────────────────────────────────────────────────────────
 
     /**
@@ -385,7 +483,7 @@ class PodUserEngine {
 
         if (oldVal < 50 && this.data.degradation >= 50) {
             const title = 'MAINTENANCE REMINDER';
-            const body = 'Terminal has reached standard maintenance interval. Please initiate a DE-GAUSS sequence to maintain connection integrity.';
+            const body = 'Terminal has reached standard maintenance interval. Please initiate a DEFRIGULATION sequence to maintain connection integrity.';
             
             // 1. Use the synchronous push so it gets safely bundled into the save below
             this._pushNotification(title, body);
@@ -397,7 +495,7 @@ class PodUserEngine {
         // If they JUST crossed the critical threshold mid-session, alert them!
         if (oldVal < 100 && this.data.degradation >= 100) {
             const title = 'CRITICAL: TEMPORAL DESYNC';
-            const body = 'Terminal has exceeded maximum safe exposure limits. Permanent interface corruption is imminent. Please click here and initiate a DE-GAUSS sequence immediately.';
+            const body = 'Terminal has exceeded maximum safe exposure limits. Permanent interface corruption is imminent. Please click here and initiate a DEFRIGULATION sequence immediately.';
             
             // 1. Use the synchronous push so it gets safely bundled into the save below
             this._pushNotification(title, body, { type: 'maintenance', target: 'btn-degauss' });
@@ -419,10 +517,6 @@ class PodUserEngine {
 
     // ─────────────────────────────────────────────────────────────
     // DATA PORTABILITY
-    // ─────────────────────────────────────────────────────────────
-
-    // ─────────────────────────────────────────────────────────────
-    // DATA PORTABILITY (V2.1 Ultra-High Density)
     // ─────────────────────────────────────────────────────────────
 
     exportCode() {
@@ -454,7 +548,32 @@ class PodUserEngine {
             this.data.volume ?? 100
         ].join('.'));
 
-        params.set('h', this.data.history.join('')); 
+        // Bitmask: 1=History, 2=Verified, 4=Suppressed
+        const idStates = new Map();
+        const addState = (arr, bit) => {
+            if (!arr) return;
+            for (const id of arr) idStates.set(id, (idStates.get(id) || 0) | bit);
+        };
+
+        addState(this.data.history, 1);
+        addState(this.data.verified, 2);
+        addState(this.data.suppressed, 4);
+
+        const stateGroups = {};
+        for (const [id, state] of idStates.entries()) {
+            if (!stateGroups[state]) stateGroups[state] = [];
+            stateGroups[state].push(id);
+        }
+
+        // Output format: c=1abcde12345.3fffff.7zzzzz
+        const catalogBlocks = [];
+        for (const [state, ids] of Object.entries(stateGroups)) {
+            catalogBlocks.push(parseInt(state, 10).toString(16) + ids.join(''));
+        }
+
+        if (catalogBlocks.length > 0) {
+            params.set('c', catalogBlocks.join('.'));
+        }
         
         // Games: gameId_score_plays.gameId2_score_plays
         const combinedGames = [];
@@ -507,11 +626,32 @@ class PodUserEngine {
             const i = parseInt(stats[3] || '0', 10);
             const vl = parseInt(stats[4] ?? '100', 10);
 
-            // HISTORY
+            // CATALOG / HISTORY UNPACKING
             const parsedHistory = [];
-            const hStr = params.get('h') || '';
-            for (let idx = 0; idx < hStr.length; idx += 5) {
-                parsedHistory.push(hStr.substring(idx, idx + 5));
+            const parsedVerified = [];
+            const parsedSuppressed = [];
+
+            const cParam = params.get('c');
+            if (cParam) {
+                // V2.1 Dense Catalog Format
+                cParam.split('.').forEach(block => {
+                    if (!block) return;
+                    const state = parseInt(block[0], 16); 
+                    const idsStr = block.slice(1);        
+                    
+                    for (let idx = 0; idx < idsStr.length; idx += 5) {
+                        const id = idsStr.substring(idx, idx + 5);
+                        if (state & 1) parsedHistory.push(id);
+                        if (state & 2) parsedVerified.push(id);
+                        if (state & 4) parsedSuppressed.push(id);
+                    }
+                });
+            } else {
+                // BACKWARD COMPATIBILITY: Fallback for V2.0 Memory Cards
+                const hStr = params.get('h') || '';
+                for (let idx = 0; idx < hStr.length; idx += 5) {
+                    parsedHistory.push(hStr.substring(idx, idx + 5));
+                }
             }
 
             // GAMES
@@ -556,6 +696,14 @@ class PodUserEngine {
                 punchcardImport: i,
                 achievements: parsedAchievements,
                 volume: vl,
+                
+                // Inject the decoded arrays
+                verified: parsedVerified,
+                suppressed: parsedSuppressed,
+                
+                // Preserve local ephemeral data if restoring mid-session
+                printBuffer: this.data.printBuffer || [],
+                annotations: this.data.annotations || {}
             };
 
             // PLAYLISTS

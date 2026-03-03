@@ -55,13 +55,22 @@ class Snake extends Entity {
     }
 
     update(dt, input) {
-        // 1. Buffer Inputs: Capture all valid direction changes
-        if (input.pressed.UP && (this.inputBuffer[0]?.y || this.dir.y) === 0) this.inputBuffer.push({ x: 0, y: -1 });
-        if (input.pressed.DOWN && (this.inputBuffer[0]?.y || this.dir.y) === 0) this.inputBuffer.push({ x: 0, y: 1 });
-        if (input.pressed.LEFT && (this.inputBuffer[0]?.x || this.dir.x) === 0) this.inputBuffer.push({ x: -1, y: 0 });
-        if (input.pressed.RIGHT && (this.inputBuffer[0]?.x || this.dir.x) === 0) this.inputBuffer.push({ x: 1, y: 0 });
+        // 1. Buffer Inputs: Process in the EXACT physical order they were pressed
+        input.sequence.forEach(action => {
+            // Determine the most recently queued direction (or current dir if empty)
+            const lastDir = this.inputBuffer.length > 0 
+                ? this.inputBuffer[this.inputBuffer.length - 1] 
+                : this.dir;
 
-        // Limit buffer size to 2 to prevent "laggy" control feelings
+            // Only allow 90-degree turns relative to the LAST move we made
+            if (action === 'UP' && lastDir.y === 0) this.inputBuffer.push({ x: 0, y: -1 });
+            if (action === 'DOWN' && lastDir.y === 0) this.inputBuffer.push({ x: 0, y: 1 });
+            if (action === 'LEFT' && lastDir.x === 0) this.inputBuffer.push({ x: -1, y: 0 });
+            if (action === 'RIGHT' && lastDir.x === 0) this.inputBuffer.push({ x: 1, y: 0 });
+        });
+
+        // Limit buffer size to 2 to prevent "laggy" control feelings.
+        // We do this AFTER pushing so it safely drops excess spam.
         if (this.inputBuffer.length > 2) this.inputBuffer.length = 2;
 
         // 2. Wait for Timer

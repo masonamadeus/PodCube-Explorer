@@ -3,7 +3,7 @@
   "short_name": "PodCube™",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#fdfdfc",
+  "background_color": "#1768da",
   "theme_color": "#1768da",
   "icons": [
     {

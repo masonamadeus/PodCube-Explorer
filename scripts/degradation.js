@@ -14,9 +14,9 @@ function initDegradation(visits) {
                 --deg-sepia: 0;
                 --deg-chromatic: 0px;
                 --deg-scanline-opacity: 0;
-                /* Base PodCube Blue: hsl(215, 82%, 47%) */
+                /* Base PodCube Blue: hsla(215, 81%, 47%, 1.00) */
                 --deg-hue: 215;
-                --deg-sat: 82%;
+                --deg-sat: 81%;
                 --deg-light: 47%;
             }
 
@@ -231,7 +231,7 @@ function startTemporalTextGlitches(visits) {
 
             setTimeout(() => {
                 // --- NEW: The Kill Switch ---
-                // If a De-Gauss advanced the epoch while we were waiting, abort!
+                // If a Defrigulation advanced the epoch while we were waiting, abort!
                 if (window._glitchEpoch !== currentEpoch) return;
 
                 if (target.textContent !== originalText) {

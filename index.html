@@ -32,7 +32,8 @@
     <meta name="twitter:image" content="https://poweredbypodcube.com/podcubeogimg.jpg">
 
     <!-- STYLESHEETS -->
-    <link rel="stylesheet" href="./explorer.css">
+    <link rel="stylesheet" href="./themes/explorer.css">
+    <link rel="stylesheet" href="./themes/theme-plastic.css">
     <link rel="stylesheet" href="./interactive/interactive.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fustat:wght@400;600;700&family=Libertinus+Math&display=swap">
 
@@ -44,13 +45,21 @@
     <!--PODCUBE API-->
     <script src="./PodCube.js" type="module"></script>
 
-    <!-- EXPLORER FEATURE SCRIPTS-->
-    <script src="./degradation.js"></script>
+    <!-- PODUSER SCRIPTS -->
     <script src="./poduser/poduser.js"></script>
     <script src="./poduser/profile-ui.js"></script>
     <script src="./poduser/achievements.js"></script>
-    <script src="./explorer.js"></script>
-    <script src="./playlist-sharing.js"></script>
+
+    <!-- EXPLORER FEATURE SCRIPTS-->
+    <script src="./scripts/explorer.js"></script>
+    <script src="./scripts/degradation.js"></script>
+    <script src="./scripts/playlist-sharing.js"></script>
+
+    <!-- BRIGISTICS VISUALIZATION -->
+    <script src="./scripts/brigistics-vis.js"></script>
+    <link rel="stylesheet" href="./themes/brigistics-vis.css">
+
+    <!-- INTERACTIVE -->
     <script src="./interactive/interactive.js"></script>
 
 </head>
@@ -66,7 +75,7 @@
             PodCube™ <i>Explorer</i></h1>
 
         <div
-            style="font-family: 'Fustat', sans-serif; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.1em; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+            style="font-family: 'Fustat', sans-serif; font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.1em; display: flex; flex-direction: column; align-items: center; gap: 12px;">
             <span id="splash-status" style="font-weight: 700;">Establishing secure connection...</span>
 
             <div id="splash-loading-bar"
@@ -100,15 +109,14 @@
                 </div>
             </div>
         
-            <div style="display:flex; gap: 5px;">
+            <div style="display:flex; gap: 5px;justify-content:space-between;">
                 <!--<div id="statusIndicator" class="meta" style="color: #888;">Initializing...</div>-->
                 <div id="userBadge" class="user-badge" onclick="switchTab('profile', true)">
-                    <span class="text-muted" style="font-family:'Fustat'; font-size:9px;">LOGGED IN: </span>
-                    <strong id="ub-name" style="font-family:'Fustat'; font-size:11px; color:var(--primary);">---</strong>
+                    <span class="text-muted" style="font-family:'Fustat'; font-size:var(--fs-xs)">LOGGED IN: </span>
+                    <strong id="ub-name" style="font-family:'Fustat'; font-size:var(--fs-sm); color:var(--primary);">---</strong>
                     <span id="ub-notif" class="notif-dot" style="display:none;">0</span>
                 </div>
-                <button id="themeToggleBtn" class="icon-btn" onclick="toggleTheme()" style="padding: 4px 8px; font-size: 14px; color: transparent; text-shadow: 0 0 var(--primary);" title="Toggle Night Mode">🌙</button>
-                
+                <!--<button id="themeToggleBtn" class="icon-btn" onclick="toggleTheme()" style="padding: 4px 8px; font-size: var(--fs-md); color: transparent; text-shadow: 0 0 var(--primary);" title="Toggle Night Mode">🌙</button>-->
             </div>
         </header>
         <div class="tabs-wrapper">
@@ -132,7 +140,8 @@
             <h3>Welcome to the PodCube Explorer. </h3>
             <p class="meta mb-10 text-muted">Use this interface to intercept, review, and catalog 4D audio transmissions from across spacetime.</p>
         </div>
-        <div class="section brigistics-hero">
+
+        <div class="section brigistics-hero panel">
             <div class="hero-actions">
                 <button class="hero-btn"
                     onclick="run('PodCube.play(PodCube.getNearestToToday()[0]); toggleAutoplayMode(true);'); logCommand('PodCube.play(PodCube.getNearestToToday()[0])');">
@@ -165,17 +174,73 @@
             </div>
             <img src="./CLEAN-LOGO.png" class="hero-logo" alt="PodCube™ Logo">
         </div>
-        <div class="section">
+
+       <!-- BHS SCANNER MODULE -->
+        <div class="section no-indent" style="margin-top: 30px; margin-bottom: 30px;">
+            <div class="punchcard-reader-wrapper" id="brigistics-scanner-hardware">
+                
+                <div class="punchcard-row punchcard-top-row" style="margin-bottom: 0 !important; border-bottom: 1px solid rgba(0,0,0,0.22); align-items: center;">
+                    <label class="punchcard-label" style="margin-bottom: 0; font-size: var(--fs-base);">BLAKELY-HUFFMAN SPHEROID SCANNER</label>
+                    <button id="bhs-scan-toggle" class="icon-btn" style="font-size: var(--fs-xs); padding: 4px 8px; margin-right: 15px; color: var(--success); border-color: var(--success); background: var(--bg-panel); font-weight: bold; width: 120px;">AUTO-SCAN: ON</button>
+                </div>
+    
+                <div class="bhs-layout-wrapper">
+                    <div class="bhs-screen-bezel">
+                        <div id="bhs-scene" class="bhs-scene">
+                            <div class="bhs-crosshair" id="bhs-crosshair"></div>
+                            <div id="bhs-sphere" class="bhs-sphere">
+                                <div class="bhs-ring ring-x"></div>
+                                <div class="bhs-ring ring-y"></div>
+                                <div class="bhs-ring ring-z"></div>
+                            </div>
+                        </div>
+                    </div>
+            
+                    <div id="bhs-readout" class="bhs-readout-panel">
+                        <div class="bhs-readout-empty">
+                            <div class="bhs-empty-title">AWAITING TEMPORAL LOCK...</div>
+                            <div class="bhs-empty-grid">
+                                <div class="bhs-empty-bar"></div>
+                                <div class="bhs-empty-bar"></div>
+                                <div class="bhs-empty-bar"></div>
+                            </div>
+                            <div id="bhs-scan-date" class="bhs-empty-subtitle">SCANNING THE ISWORM</div>
+                        </div>
+                        <div class="bhs-readout-content" style="display:none;">
+                            <div class="bhs-readout-label">TRANSMISSION DATA:</div>
+                            <h4 id="bhs-readout-title" class="bhs-readout-title">Transmission Title</h4>
+                            <div id="bhs-readout-meta" class="bhs-readout-meta">Date • Integrity</div>
+                            <div id="bhs-readout-desc" class="bhs-readout-desc">Model Info</div>
+                            <div class="bhs-readout-actions">
+                                <button id="bhs-btn-play" class="icon-btn primary">PLAY NOW</button>
+                                <button id="bhs-btn-inspect" class="icon-btn">INSPECT</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+    
+                <div style="height: 0; margin: 0; border-top: 2px solid rgba(0,0,0,0.16); border-bottom: 1px solid rgba(255,255,255,0.55);"></div>
+    
+                <div class="bhs-timeline-bay">
+                    <label class="punchcard-label" style="margin-bottom: 8px;">CHRONOLOGICAL RELATIVE TO NOW™</label>
+                    <div id="spacetime-timeline" class="spacetime-timeline-container"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section raised">
             <h3>Brigistics Overview</h3>
             <p class="meta mb-10 text-muted">Aggregate analysis of the connected PodCube™ feeds</p>
             <div id="statsGrid" class="stat-grid"></div>
         </div>
+
+        <div class="panel">
         <div class="section">
             <h3>Temporal Analysis</h3>
             <p class="text-muted meta mb-10">
                 Scroll for more • Click any item to filter
             </p>
-            <div id="loreOutput"></div>
+            <div id="loreOutput" class=""></div>
         </div>
         <div class="section">
             <h3>Geographic Distribution</h3>
@@ -184,12 +249,13 @@
             </p>
             <div id="geoDistribution"></div>
         </div>
+        </div>
     </div>
 
 <!-- BROWSE & SEARCH TAB -->
     <div id="archive" class="tab-content">
         <div class="registry-container">
-            <div class="registry-sidebar">
+            <div class="registry-sidebar raised">
 
                 <div class="sidebar-header">
                     <h3>Search & Filter</h3>
@@ -203,9 +269,19 @@
                     </button>
                 </div>
 
-                <div style="border-top:1px solid #ddd; padding-top:12px; margin-top:12px;"></div>
-                <input type="checkbox" id="filter-toggle" class="filter-toggle-cb">
+                <div style="border-top:1px solid var(--primary-dim); padding-top:12px; margin-top:12px;"></div>
+
+                <input type="checkbox" id="filter-toggle" class="filter-toggle-cb"><!--hidden toggle-->
+
                 <div class="sidebar-content">
+                     <div>
+                        <label>Passenger Catalog</label>
+                        <select id="arcPassenger" onchange="updateArchive()">
+                            </select>
+                    </div>
+
+                    <div style="border-top:1px solid var(--primary-dim); padding-top:12px; margin-top:12px;"></div>
+
                     <div>
                         <label>Full-Text Search</label>
                         <input type="text" id="arcSearch" placeholder="Title, description, tags..."
@@ -226,15 +302,14 @@
                         </select>
                     </div>
 
+
                     <label>Transmission Type</label>
                     <select id="arcType" onchange="updateArchive()">
                         <option value="">Any Type</option>
-                        <option value="transmission">PodCube™ Transmission</option>
-                        <option value="podcube_hq">P.R.I.C.</option>
+                        <option value="transmission">Transmission</option>
+                        <option value="podcube_hq">PodCube™ Research & Innovation Campus</option>
                         <option value="twibbie_ondemand">Twibbie™ On-Demand</option>
                         <option value="none">Other/Unknown</option>
-                        <option value="issues" style="color:var(--danger); font-weight:bold;">Flagged for Review
-                        </option>
                     </select>
 
                     <div>
@@ -245,8 +320,14 @@
                     </div>
 
 
-                    <div style="border-top:1px solid #ddd; padding-top:12px; margin-top:12px;"></div>
+                    <div style="border-top:1px solid var(--primary-dim); padding-top:12px; margin-top:12px;"></div>
 
+                    <div>
+                        <label>Classification Tag</label>
+                        <select id="arcTag" onchange="updateArchive()">
+                            <option value="">All Tags</option>
+                        </select>
+                    </div>
                     <div>
                         <label>Model</label>
                         <select id="arcModel" onchange="updateArchive()">
@@ -286,12 +367,12 @@
 
                 </div>
             </div>
-            <div class="registry-results">
+            <div class="registry-results panel">
                 <div
                     style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center; flex-wrap:wrap; gap:10px;">
                     <h3 id="resCount">0 Records</h3>
                     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                        <span class="text-muted" style="font-size:11px;">
+                        <span class="text-muted" style="font-size:var(--fs-sm);">
                             Click transmission to inspect.
                         </span>
                         <button class="icon-btn" onclick="playFilteredResults()">Play All</button>
@@ -308,11 +389,12 @@
     <div id="inspector" class="tab-content">
         <!-- Header Card -->
         <div class="section">
-            <div id="inspectorHeader" class="inspector-header-card">
-                <div class="inspector-empty-state">
-                    <h3>Transmission Data Inspector</h3>
-                    <p class="text-muted">Select a file from the Transmissions tab to view complete metadata and
-                        analysis.</p>
+            <div id="inspectorHeader">
+                <div class="inspector-header-card raised">
+                    <div class="inspector-empty-state">
+                        <h3>Transmission Data Inspector</h3>
+                        <p class="text-muted">Select a file from the Transmissions tab to view complete metadata and analysis.</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -323,7 +405,7 @@
         </div>
 
         <!-- Raw Data Section -->
-        <div class="section" id="inspectorRawSection" style="display:none;">
+        <div class="section panel" id="inspectorRawSection" style="display:none;">
             <h4 class="section-subtitle">Raw Data</h4>
             <div class="data-tabs">
                 <button class="data-tab-btn active" data-target="rawJson">Complete JSON</button>
@@ -338,8 +420,8 @@
 
 <!-- PLAYBACK CONTROL TAB -->
     <div id="player" class="tab-content">
-        <div class="section">
-            <div class="player-now-playing-card">
+        <div class="section player-now-playing-card panel">
+            <div>
                 <div class="player-card-header">
                     <span class="player-card-label">Now Playing</span>
                     <div class="player-card-time">
@@ -359,7 +441,7 @@
 
                 <div class="player-transport-row">
                     <div class="player-transport-main-group">
-                        <button class="player-transport-btn" style="border-left: 3px double var(--primary);" onclick="run('PodCube.prev()')"><svg viewBox="0 0 24 24"
+                        <button class="player-transport-btn" onclick="run('PodCube.prev()')"><svg viewBox="0 0 24 24"
                                 class="icon-svg">
                                 <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
                             </svg></button>
@@ -379,7 +461,7 @@
                                 <path
                                     d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z" />
                             </svg></button>
-                        <button class="player-transport-btn" style="border-right: 3px double var(--primary);" onclick="run('PodCube.next()')"><svg viewBox="0 0 24 24"
+                        <button class="player-transport-btn" onclick="run('PodCube.next()')"><svg viewBox="0 0 24 24"
                                 class="icon-svg">
                                 <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
                             </svg></button>
@@ -414,7 +496,7 @@
             </div>
         </div>
 
-        <div class="section">
+        <div class="section panel">
             <div class="player-section-header">
                 <h3>Transmission Queue</h3>
                 <div class="player-queue-actions">
@@ -438,28 +520,37 @@
             <div id="punchcardReader" class="punchcard-reader-wrapper">
                 <div class="punchcard-row punchcard-top-row">
                     <label class="punchcard-label">PODCUBE™ PUNCHCARD MACHINE</label>
-                    <button class="punchcard-btn punchcard-btn-clr" onclick="run('PodCube.clearQueue()')"
-                        style="color:var(--danger); border-color:var(--danger); background-color:var(--bg-body);"
+                    <button class="punchcard-btn punchcard-btn-clr" onclick="PodUser.clearPrintBuffer().then(() => updatePunchcardPreview())"
+                        style="color:var(--danger); border-color:var(--text-dim); background-color:var(--bg-body);"
                         title="Clear Write Buffer">CLEAR</button>
                 </div>
 
+                
+
                 <div class="pc-queue-preview" id="pcQueuePreview">
-                    <div class="pc-preview-header">
-                        <span>Current Queue</span>
-                        <span id="pcPreviewCount">0 Items</span>
-                    </div>
+                    
                     <div id="pcPreviewList">
-                        <div class="pc-preview-empty">Buffer empty. Add transmissions to queue.</div>
+                        <div class="pc-preview-empty">Buffer empty. Stage transmissions from the Inspector.</div>
                     </div>
                 </div>
 
-                <div class="punchcard-row">
+                <div class="pc-preview-header">
+                        <span>Print Buffer</span>
+                        <span>
+                            <span id="pcPreviewDuration">0:00</span>
+                            <span style="opacity: 0.5; margin: 0 4px;">•</span>
+                            <span id="pcPreviewCount">0 Items</span>
+                        </span>
+                    </div>
 
-                    <button class="punchcard-btn punchcard-issue-btn" onclick="saveQueueAsPlaylist()">PRINT
+                <div class="punchcard-row">
+                    <button class="punchcard-btn punchcard-issue-btn" onkeydown="if(event.key === 'Enter') saveBufferAsPlaylist()" onclick="saveBufferAsPlaylist()">PRINT
                         CARD</button>
 
                     <input type="text" id="playlistNameInput" class="punchcard-input" placeholder="NAME THIS PUNCHCARD">
                 </div>
+
+                <div id="punchcard-print-slot" class="punchcard-print-slot" aria-hidden="true"></div>
 
                 <div style="border-top: 1px dashed var(--primary); margin: 15px 0;"></div>
 
@@ -467,12 +558,12 @@
                 <div class="punchcard-row">
                     <input type="text" id="playlistImportInput" class="punchcard-input"
                         placeholder="PASTE PUNCH CARD IMAGE OR CODE HERE">
-                    <button class="punchcard-btn" onclick="importPlaylistFromInput()">READ</button>
+                    <button class="punchcard-btn" onkeydown="if(event.key === 'Enter') importPlaylistFromInput()" onclick="importPlaylistFromInput()">READ</button>
                 </div>
             </div>
         </div>
 
-        <div class="section">
+        <div class="section raised">
             <h4 class="player-section-title">Punchcard Registry</h4>
             <div id="playlistList" class="playlist-list"></div>
         </div>
@@ -480,7 +571,7 @@
 
 <!-- ABOUT TAB (we should get jordan to record words from this so we can make them clickable and hear it-->
     <div id="about" class="tab-content">
-        <div class="section doubleborder about-hero" data-label="About PodCube™">
+        <div class="section doubleborder about-hero panel" data-label="About PodCube™">
             <div class="hero-actions" style="max-width: 100%;">
                 <div style="margin-bottom: 20px;">
                     <h2>PodCube™ is the universal leader in Time-Agnostic Podcasting™.</h2>
@@ -517,7 +608,7 @@
             <img src="./CLEAN-LOGO.png" class="hero-logo" alt="PodCube™ Logo">
         </div>
     
-        <div class="section">
+        <div class="section no-indent">
             <h3>Our Visionary Beginnings</h3>
             <p class="mb-10">
                 The origins of PodCube™ lie in the joint discovery of the Blakely-Huffman Spheroid (BHS), a
@@ -560,7 +651,7 @@
         </div>
     
     
-        <div class="section">
+        <div class="section raised">
             <h3>The P.R.I.C. Headquarters</h3>
             <p class="mb-10">
                 Our operations are centered at the PodCube™ Research and Innovation Campus, a massive, multi-layer
@@ -575,7 +666,7 @@
             </p>
         </div>
     
-        <div class="section">
+        <div class="section panel">
             <h3>Campus Departments</h3>
     
             <h4 style="margin-top: 15px; margin-bottom: 5px;">Brigistics</h4>
@@ -653,22 +744,22 @@
         </div>
     
         <div class="section">
-            <div class="doubleborder" data-label="ARCHIVAL RECORDING" style="padding: 20px;">
+            <div class="doubleborder raised" data-label="ARCHIVAL RECORDING" style="padding: 20px;">
                 <p class="mb-10 text-muted">
                     An official musical chronicle of PodCube's development and deployment history, as performed by our
-                    in-house Historical Documentation Chorus.
+                    in-house Automated Historical Documentation Chorus.
                 </p>
                 <button class="hero-btn" onclick="playHistorySong()" style="width: 100%;">
                     <span class="hero-btn-icon">◆</span>
                     <span class="hero-btn-text">
                         <strong>Play History Song</strong>
-                        <span>Classification: Internal Archive • Not Part of Standard Feed</span>
+                        <span>Internal Archival Recording</span>
                     </span>
                 </button>
             </div>
         </div>
     
-        <div class="section">
+        <div class="section panel">
             <p class="text-muted" style="text-align: center;">
                 Whether you are listening through a PodCube™ Pocket Pal, the PodCube™ Explorer Web-Application, or our
                 experimental HORUS Pineal Implant - we thank you for choosing (or having already chosen) PodCube™
@@ -681,22 +772,23 @@
     </div>
 
 <!-- INTERACTIVE TAB -->
-    <div id="interactive" class="tab-content">
     
+    <div id="interactive" class="tab-content">
+
         <div id="pc-menu-view" class="section">
             <h3>Productivity Modules</h3>
             <p class="text-muted mb-20">Select a task. Performance is monitored.</p>
             <div id="pc-cartridge-slot" class="game-menu-grid"></div>
         </div>
-    
+
         <div id="pc-machine-view" class="game-stage" style="display:none;">
-    
+
             <div class="game-navbar">
                 <button class="icon-btn pc-btn danger" onclick="Interactive.eject()">EJECT MODULE</button>
             </div>
-    
+
             <div class="pc-game-container">
-    
+
                 <div class="pc-game-hud pc-hud">
                     <div class="pc-hud-cell">
                         <span class="pc-hud-label">STATUS</span>
@@ -705,14 +797,14 @@
                     <div class="pc-hud-cell"
                         style="flex:1; align-items:center; justify-content:flex-end; padding-bottom:4px;">
                         <span id="pc-hud-aux"
-                            style="font-family:'Fustat'; font-weight:700; font-size:12px; color:var(--primary); text-transform:uppercase; letter-spacing:0.05em; display:none;"></span>
+                            style="font-family:'Fustat'; font-weight:700; font-size:var(--fs-base); color:var(--primary); text-transform:uppercase; letter-spacing:0.05em; display:none;"></span>
                     </div>
                     <div class="pc-hud-cell">
                         <span class="pc-hud-label">DATA</span>
                         <span class="pc-hud-val" id="pc-hud-score">0</span>
                     </div>
                 </div>
-    
+
                 <div class="pc-game-board">
                     <canvas id="pc-canvas" width="400" height="300" class="pc-game-canvas"></canvas>
                     <div id="pc-dom-layer" class="pc-layer-dom"></div>
@@ -722,9 +814,9 @@
                         <button class="pc-btn primary" id="pc-overlay-btn">INITIALIZE</button>
                     </div>
                 </div>
-    
+
                 <div class="pc-controls-strip" id="pc-controls">
-    
+
                     <div class="pc-action-cluster">
                         <div class="pc-action-item">
                             <span class="pc-action-key">Primary</span>
@@ -735,30 +827,46 @@
                             <button class="pc-action-btn" data-action="E" aria-label="E">E</button>
                         </div>
                     </div>
-    
+
                     <div class="pc-dpad">
-                        <button class="pc-dpad-btn pc-dpad-up" data-action="UP" aria-label="Up">▲</button>
-                        <button class="pc-dpad-btn pc-dpad-left" data-action="LEFT" aria-label="Left">◄</button>
+                        <button class="pc-dpad-btn pc-dpad-up" data-action="UP" aria-label="Up">
+                            <svg viewBox="0 0 24 24" style="fill: currentColor;">
+                                <path d="M12 6l-8 12h16z" />
+                            </svg>
+                        </button>
+                        <button class="pc-dpad-btn pc-dpad-left" data-action="LEFT" aria-label="Left">
+                            <svg viewBox="0 0 24 24" style="fill: currentColor; transform: rotate(-90deg);">
+                                <path d="M12 6l-8 12h16z" />
+                            </svg>
+                        </button>
                         <div class="pc-dpad-center"></div>
-                        <button class="pc-dpad-btn pc-dpad-right" data-action="RIGHT" aria-label="Right">►</button>
-                        <button class="pc-dpad-btn pc-dpad-down" data-action="DOWN" aria-label="Down">▼</button>
+                        <button class="pc-dpad-btn pc-dpad-right" data-action="RIGHT" aria-label="Right">
+                            <svg viewBox="0 0 24 24" style="fill: currentColor; transform: rotate(90deg);">
+                                <path d="M12 6l-8 12h16z" />
+                            </svg>
+                        </button>
+                        <button class="pc-dpad-btn pc-dpad-down" data-action="DOWN" aria-label="Down">
+                            <svg viewBox="0 0 24 24" style="fill: currentColor; transform: rotate(180deg);">
+                                <path d="M12 6l-8 12h16z" />
+                            </svg>
+                        </button>
                     </div>
-    
+
                 </div>
-    
+
             </div>
             <div class="pc-controls-helper">
                 <span>Keyboard Supported: WASD / Arrows</span>
             </div>
         </div>
-    
+
     </div>
 
 <!-- USER PROFILE TAB -->
     <div id="profile" class="tab-content">
     
         <!-- ── HERO / HEADER ──────────────────────────────────────── -->
-        <div class="profile-hero">
+        <div class="profile-hero panel">
             <div>
                 <h2 id="prof-username" class="profile-username">Loading...</h2>
                 <p class="profile-role">PRIC Terminal — Authorized Personnel</p>
@@ -774,6 +882,12 @@
                 </button>
             </div>
         </div>
+
+        <!-- ── STATS ──────────────────────────────────────────────── -->
+        <div class="section raised">
+            <h3>Terminal Statistics</h3>
+            <div class="stat-grid profile-stat-grid" id="prof-stats-grid"></div>
+        </div>
     
         <!-- ── SYSTEM ALERTS ──────────────────────────────────────── -->
         <div class="section">
@@ -783,15 +897,14 @@
                     Mark All Read
                 </button>
             </div>
-            <div id="prof-notifications" class="notifications-scroll"></div>
+            
+            <div id="prof-notifications" class="notifications-scroll panel">
+
+            </div>
         </div>
     
     
-        <!-- ── STATS ──────────────────────────────────────────────── -->
-        <div class="section">
-            <h3>Terminal Statistics</h3>
-            <div class="stat-grid profile-stat-grid" id="prof-stats-grid"></div>
-        </div>
+        
     
     
         <!-- ── ACHIEVEMENTS ───────────────────────────────────────── -->
@@ -814,7 +927,8 @@
         <!-- MEMORY CARD -->
         <div class="section">
             <div class="memory-card-section">
-                <p style="font-family:'Fustat'; font-size:11px; text-transform:uppercase; color:#888; line-height:1.6; margin-bottom:16px; letter-spacing:0.03em;">
+                <span style="font-family: Fustat; color: var(--text-dim)">MEMORY CARD - BACKUP AND RESTORE</span>
+                <p style="font-family:'Fustat'; font-size:var(--fs-sm); text-transform:uppercase; color:#888; line-height:1.6; margin-bottom:16px; letter-spacing:0.03em;">
                     Your progress, scores, and unlocked content are stored locally. Save this Memory Card QR code to back up or restore your profile.
                 </p>
     
@@ -822,23 +936,23 @@
                     
                     <div style="display:flex; flex-direction:column; align-items:center; gap:10px;">
                         <div id="prof-qr-container" style="background:#fff; border:3px double var(--primary); padding:10px; width:160px; height:160px; display:flex; justify-content:center; align-items:center;">
-                            <span class="text-muted" style="font-size:10px;">GENERATING...</span>
+                            <span class="text-muted" style="font-size:var(--fs-xs);">GENERATING...</span>
                         </div>
                         <button class="hero-btn" onclick="downloadMemoryCard()" style="padding: 8px 12px; width:100%;">
                             <span class="hero-btn-icon" style="font-size:1.2em;color:transparent;text-shadow: 0 0 var(--primary);">📇</span>
                             <span class="hero-btn-text">
-                                <strong style="font-size:12px;">SAVE CARD</strong>
-                                <span style="font-size:9px;">Download Image</span>
+                                <strong style="font-size:var(--fs-base);">SAVE CARD</strong>
+                                <span style="font-size:var(--fs-xs);">Download Image</span>
                             </span>
                         </button>
                     </div>
     
-                    <div style="flex:1; min-width:200px; display:flex; flex-direction:column; gap:10px;">
+                    <div style="flex:1; display:flex; flex-direction:column; gap:10px;">
                         <label class="punchcard-label" style="margin-bottom:0;">RESTORE FROM IMAGE</label>
                         <div class="punchcard-reader-wrapper" id="memCardReader" 
                              style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:20px; cursor:pointer; min-height: 160px;" 
                              onclick="document.getElementById('memCardUpload').click()">
-                            <span style="font-family:'Fustat'; font-size:11px; font-weight:bold; color:var(--primary);">CLICK TO BROWSE OR DROP IMAGE</span>
+                            <span style="font-family:'Fustat'; font-size:var(--fs-sm); font-weight:bold; color:var(--primary);">CLICK TO BROWSE OR DROP IMAGE</span>
                             <input type="file" id="memCardUpload" accept="image/*" style="display:none;" onchange="handleMemoryCardUpload(event)">
                         </div>
                     </div>
@@ -846,7 +960,7 @@
             </div>
         </div>
     
-        <div class="section" id="btn-degauss" style="transition: all 0.4s ease;">
+        <div class="section no-indent" id="btn-degauss" style="transition: all 0.4s ease;">
             <div style="display: flex; flex-direction: column; align-items: center;">
                 
                 <div class="defrig-container">
@@ -862,7 +976,6 @@
                     </div>
     
                     <div class="defrig-plate" id="defrig-plate">
-                        <span class="defrig-plate-text">MAINTENANCE HATCH</span>
                         <div class="defrig-screw topleft" onclick="removeScrew(this)"></div>
                         <div class="defrig-screw topright" onclick="removeScrew(this)"></div>
                         <div class="defrig-screw bottomleft" onclick="removeScrew(this)"></div>
@@ -907,9 +1020,9 @@
             </div>
         </div>
 
-        <div class="section">
+        <div class="section panel">
             <h3>Live API Console</h3>
-            <p class="text-muted mb-10" style="font-size:12px;">
+            <p class="text-muted mb-10" style="font-size:var(--fs-base);">
                 Execute PodCube™ API commands directly. Press Enter or click Execute.
             </p>
             <div class="console-input-container">
@@ -924,9 +1037,9 @@
             </div>
         </div>
 
-        <div class="section">
+        <div class="section raised">
             <h3>Status Inspector</h3>
-            <p class="text-muted mb-10" style="font-size:12px;">
+            <p class="text-muted mb-10" style="font-size:var(--fs-base);">
                 The PodCube.status object contains detailed information about the current state of the application.
             </p>
 
@@ -942,7 +1055,8 @@
                 </button>
             </div>
         </div>
-        <!-- COMPLETE PODCUBE API REFERENCE -->
+
+<!-- COMPLETE PODCUBE API REFERENCE -->
         <div class="section">
             <h3>Complete API Reference</h3>
             <!-- Episode Access & Filtering -->
@@ -967,7 +1081,7 @@
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.where(filters, sort)</code>
-                        <div style="font-size: 12px; color: #666; margin: 0;">
+                        <div style="font-size: var(--fs-base); color: #666; margin: 0;">
                             Filter and optionally sort episodes. Filters object supports:
                             <ul style="margin-left:20px; margin-top:8px;">
                                 <li><code>episodeType: 'issues'</code> - Special flag to filter hasIssues=true episodes
@@ -1023,15 +1137,14 @@
                 <div class="api-methods">
                     <div class="api-method">
                         <code class="api-signature">PodCube.models</code>
-                        <p>Array of unique model names (sorted alphabetically)</p>
-                    </div>
-                    <div class="api-method">
                         <code class="api-signature">PodCube.origins</code>
-                        <p>Array of unique origin points (sorted alphabetically)</p>
-                    </div>
-                    <div class="api-method">
                         <code class="api-signature">PodCube.tags</code>
-                        <p>Array of all unique tags across all episodes (sorted alphabetically)</p>
+                        <br>
+                        <code class="api-signature">PodCube.locales</code>
+                        <code class="api-signature">PodCube.regions</code>
+                        <code class="api-signature">PodCube.zones</code>
+                        <code class="api-signature">PodCube.planets</code>
+                        <p>Arrays containing all unique values for the respective metadata fields across the entire feed. Sorted alphabetically.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.getDistribution()</code>
@@ -1568,28 +1681,42 @@
                     <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
                 </svg>
             </button>
-            <div class="transport-info">
-                <div class="transport-title" id="transTitle">Select a transmission...</div>
-                <div class="meta" id="transTime" style="font-size:11px; color:#888;">0:00 / 0:00</div>
+            <div class="transport-info" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                <div style="min-width:0; flex:1;">
+                    <div class="transport-title" id="transTitle">Select a transmission...</div>
+                    <div class="meta" id="transTime" style="font-size:var(--fs-sm); color:#888;">0:00 / 0:00</div>
+                </div>
+                
             </div>
             <div class="transport-controls">
-                <div class="transport-control-group">
-                    <label class="transport-label">Speed:</label>
-                    <select id="transportSpeed" onchange="updatePlayerSpeed(this.value)" class="transport-select">
-                        <option value="0.5">0.5x</option>
-                        <option value="0.75">0.75x</option>
-                        <option value="1" selected>1.0x</option>
-                        <option value="1.25">1.25x</option>
-                        <option value="1.5">1.5x</option>
-                        <option value="2">2.0x</option>
-                    </select>
-                </div>
+                
                 <div class="transport-control-group">
                     <label class="transport-label">Vol:</label>
                     <input type="range" id="transportVolume" min="0" max="100" value="100"
                         oninput="updatePlayerVolume(this.value)" class="transport-slider">
                     <span class="transport-value" id="transportVolumeValue">100%</span>
                 </div>
+
+                <div class="transport-control-group">
+
+                    <div id="transportCatalogActions" style="display:none; gap:5px; flex-shrink:0;">
+                        <button id="transBtnOk" class="icon-btn insp-btn-ok" title="Elevate Transmission"
+                            style="padding:4px 8px; font-size:10px; font-weight:bold; display: flex; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor;">
+                                <path d="M12 6l-8 12h16z" />
+                            </svg>
+                        </button>
+
+                        <button id="transBtnNo" class="icon-btn insp-btn-no" title="Suppress Transmission"
+                            style="padding:4px 8px; font-size:10px; font-weight:bold; display: flex; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor; transform: rotate(180deg);">
+                                <path d="M12 6l-8 12h16z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+
             </div>
         </div>
         <div class="scrubber" id="scrubber" title="Click to seek">
@@ -1615,7 +1742,7 @@
         </div>
     </template>
     <template id="tmpl-hierarchy-col">
-        <div class="hierarchy-col">
+        <div class="hierarchy-col raised">
             <h4 class="hierarchy-title"></h4>
             <div class="hierarchy-list"></div>
         </div>
@@ -1657,117 +1784,114 @@
                 <button class="icon-btn btn-play">PLAY</button>
                 <button class="icon-btn btn-play-next">PLAY NEXT</button>
                 <button class="icon-btn btn-queue">QUEUE</button>
+                <button class="icon-btn btn-print">PRINT</button>
             </div>
         </div>
     </template>
+
     <!-- INSPECTOR TEMPLATES -->
     <template id="tmpl-inspector-view">
+        
         <div class="inspector-header-wrapper">
-            <div class="inspector-top-bar" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed var(--primary-dim);margin-bottom: 7px; padding-bottom:7px;">
-                <div style="display:flex; gap:5px;" class="insp-nav-buttons">
-                    <button class="icon-btn insp-btn-prev" style="color:var(--primary);"><< PREV</button>
-                    <button class="icon-btn insp-btn-next-nav" style="color:var(--primary);">NEXT >></button>
-                </div>
-                <div class="insp-nav-counter" style="font-family:'Fustat'; font-size:10px; font-weight:700; color:#888; text-transform:uppercase;">
-                </div>
-            </div>
-
-            <div class="inspector-summary">
-                <div class="inspector-summary-header">
-                    <h2 class="inspector-title insp-title"></h2>
-                </div>
+            
+            <div class="inspector-header-card">
                 
-                <div class="inspector-summary-main inspector-header-grid">
-
+                <div class="inspector-top-bar">
+                    <div class="insp-nav-buttons">
+                        <button class="icon-btn insp-btn-prev">&lt;&lt; PREV</button>
+                        
+                        <div class="insp-nav-counter"></div>
+                        
+                        <button class="icon-btn insp-btn-next-nav">NEXT &gt;&gt;</button>
+                    </div>
+                </div>
+    
+                <h2 class="inspector-title insp-title"></h2>
+                
+                <div class="inspector-header-grid">
                     <div class="inspector-header-item full-width">
                         <span class="inspector-header-label">Origin</span>
                         <span class="inspector-header-value insp-location"></span>
                     </div>
-
                     <div class="inspector-header-item full-width">
                         <span class="inspector-header-label">Model</span>
                         <span class="inspector-header-value insp-model"></span>
                     </div>
-
                     <div class="inspector-header-item span-2">
                         <span class="inspector-header-label">Date</span>
                         <span class="inspector-header-value">
                             <span class="insp-date"></span>
-                            <span class="insp-anniversary-wrapper" style="display:none; color:#888; font-style:italic; font-weight:normal; margin-left:4px;">
-                                (<span class="insp-anniversary"></span>)
-                            </span>
+                            <span class="insp-anniversary-wrapper" style="display:none;">(<span class="insp-anniversary"></span>)</span>
                         </span>
                     </div>
-                    
-                    
-
                     <div class="inspector-header-item">
                         <span class="inspector-header-label">Type</span>
                         <span class="inspector-header-value insp-type"></span>
                     </div>
-
                     <div class="inspector-header-item">
                         <span class="inspector-header-label">Tags</span>
                         <span class="inspector-header-value insp-tag-count"></span>
                     </div>
-
                     <div class="inspector-header-item">
                         <span class="inspector-header-label">Integrity</span>
                         <span class="inspector-header-value insp-integrity"></span>
                     </div>
-
                     <div class="inspector-header-item">
                         <span class="inspector-header-label">Duration</span>
                         <span class="inspector-header-value insp-duration"></span>
+                    </div> 
+                </div>
+    
+                <div class="inspector-dashboard"> 
+                    <div class="dashboard-row playback-row">
+                        <button class="inspector-action-btn primary insp-btn-play">PLAY NOW</button>
+                        <button class="inspector-action-btn insp-btn-playnext">PLAY NEXT</button>
+                        <button class="inspector-action-btn insp-btn-queue">QUEUE</button>
+                        <button class="inspector-action-btn insp-btn-print">PRINT</button>
                     </div>
                     
-                    
+                    <div class="dashboard-row verification-row">
+                        <button class="inspector-action-btn insp-btn-ok">ELEVATE</button>
+                        <button class="inspector-action-btn insp-btn-no">SUPPRESS</button>
+                        
+                        
+                        <input type="text" class="passenger-tag-input insp-tag-input" maxlength="15" placeholder="Add Tag/Note...">
+                        
+                    </div>
 
-                  
+                    <div class="dashboard-row annotations-row">
+                        
+                    </div>
 
-                    
-
-                    
-                 
-                    
                 </div>
-            </div>
 
-            <div class="inspector-summary-actions">
-                <button class="inspector-action-btn primary insp-btn-play">PLAY NOW</button>
-                <button class="inspector-action-btn insp-btn-playnext">PLAY NEXT</button>
-                <button class="inspector-action-btn insp-btn-queue">ADD TO QUEUE</button>
+                
+
             </div>
-            
         </div>
-    
+        
         <div class="inspector-body-wrapper">
-
             <div class="inspector-section insp-tags-section" style="display:none;">
                 <h4 class="inspector-section-title">Classification Tags</h4>
-                <div class="inspector-tag-list insp-tags-list"></div>
+                <div class="inspector-tag-list insp-tags-list">
+                </div>
             </div>
+            
             <div class="inspector-section">
                 <h4 class="inspector-section-title">Executive Summary</h4>
                 <div class="inspector-prose">
                     <p>
-                        This transmission <span class="insp-prose-anniv-wrap" style="display:none;">originated <strong
-                                class="insp-prose-anniv"></strong>, and </span>has been titled "<strong
-                            class="insp-prose-title"></strong>" by the Brigistics department.
+                        This transmission <span class="insp-prose-anniv-wrap" style="display:none;">originated <strong class="insp-prose-anniv"></strong>, and </span>has been titled "<strong class="insp-prose-title"></strong>" by the Brigistics department.
                     </p>
                     <p>
                         Geographic metadata indicates it originated from planet <strong class="insp-prose-planet"></strong>,
-                        within the <strong class="insp-prose-region"></strong> region of the <strong
-                            class="insp-prose-zone"></strong> zone.
+                        within the <strong class="insp-prose-region"></strong> region of the <strong class="insp-prose-zone"></strong> zone.
                         The specific locale is identified as <strong class="insp-prose-locale"></strong>,
                         with the primary origin point recorded as "<strong class="insp-prose-origin"></strong>".
                     </p>
                     <p>
-                        It runs for <strong class="insp-prose-time"></strong> (<span class="insp-prose-dur"></span>)<span
-                            class="insp-prose-weird-wrap" style="display:none;">, or roughly <span
-                                class="insp-prose-weird"></span></span>.
-                        <span class="insp-prose-size-wrap" style="display:none;">The audio file size is <strong
-                                class="insp-prose-size"></strong>. </span>
+                        It runs for <strong class="insp-prose-time"></strong> (<span class="insp-prose-dur"></span>)<span class="insp-prose-weird-wrap" style="display:none;">, or roughly <span class="insp-prose-weird"></span></span>.
+                        <span class="insp-prose-size-wrap" style="display:none;">The audio file size is <strong class="insp-prose-size"></strong>. </span>
                         Audio source is <span class="insp-prose-audio-status"></span>.
                         This transmission's Global Unique ID string is: "<strong class="insp-prose-id"></strong>".
                     </p>
@@ -1775,9 +1899,7 @@
                         It has been cataloged at index <strong class="insp-prose-idx"></strong>
                         with shortcode date <strong class="insp-prose-shortcode"></strong>,
                         is of the type: "<strong class="insp-prose-type"></strong>",
-                        and carries an integrity rating of <strong class="insp-prose-integrity"></strong><span
-                            class="insp-prose-int-val-wrap" style="display:none;"> (<span
-                                class="insp-prose-int-val"></span>%)</span>.
+                        and carries an integrity rating of <strong class="insp-prose-integrity"></strong><span class="insp-prose-int-val-wrap" style="display:none;"> (<span class="insp-prose-int-val"></span>%)</span>.
                     </p>
                     <p class="insp-prose-related-wrap" style="display:none;">
                         It may or may not be related to <span class="insp-prose-related-titles"></span> which will be linked
@@ -1786,10 +1908,7 @@
                 </div>
             </div>
     
-            
-    
             <div class="inspector-split-row">
-
                 <div class="inspector-section" style="margin-bottom: 0;">
                     <h4 class="inspector-section-title">Geographic Metadata</h4>
                     <div class="inspector-data-grid">
@@ -1805,28 +1924,22 @@
                         <div class="data-value code insp-geo-planet"></div>
                     </div>
                 </div>
-
+    
                 <div class="inspector-section" style="margin-bottom: 0;">
                     <h4 class="inspector-section-title">Temporal Analysis</h4>
                     <div class="inspector-data-grid">
                         <div class="data-label">Origin Date</div>
                         <div class="data-value code insp-temp-date"></div>
-                        
                         <div class="data-label">Distance to Now™</div>
                         <div class="data-value code insp-temp-anniv"></div>
-                        
                         <div class="data-label">Perceived Length</div>
                         <div class="data-value code insp-temp-weird"></div>
-                        
                         <div class="data-label">Absolute Length</div>
                         <div class="data-value code insp-temp-dur"></div>
-                        
                         <div class="data-label">Intercept Date</div>
                         <div class="data-value code insp-temp-pub"></div>
                     </div>
                 </div>
-        
-                
             </div>
     
             <div class="inspector-section insp-related-section" style="display:none;">

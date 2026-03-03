@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'podcube-explorer-v5.pee';
+const CACHE_NAME = 'podcube-explorer-v6.plasticSpheroid';
 
 // Detect if we are running locally
 const isLocalhost = Boolean(
@@ -17,11 +17,18 @@ self.addEventListener('install', (event) => {
                     // ROOT
                     './',
                     './index.html',
-                    './explorer.css',
-                    './explorer.js',
                     './PodCube.js',
-                    './degradation.js',
-                    './playlist-sharing.js',
+
+                    // SCRIPTS
+                    './scripts/degradation.js',
+                    './scripts/explorer.js',
+                    './scripts/playlist-sharing.js',
+                    './scripts/brigistics-vis.js',
+
+                    // STYLES/THEMES
+                    './themes/explorer.css',
+                    './themes/theme-plastic.css',
+                    './themes/brigistics-vis.css',
 
                     // PODUSER
                     './poduser/poduser.js',
@@ -73,7 +80,6 @@ self.addEventListener('fetch', (event) => {
     // ===================================================================
     // If the request is NOT going to our own domain, bypass the cache entirely.
     if (!url.origin.includes(self.location.hostname)) {
-        event.respondWith(fetch(event.request));
         return;
     }
 

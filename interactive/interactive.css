@@ -66,6 +66,7 @@
     display: flex;
     flex-direction: column;
     margin-bottom: 10px;
+    user-select: none;
 }
 
 .pc-game-hud {
@@ -140,6 +141,7 @@
     background: var(--bg-body);
     user-select: none;
     -webkit-user-select: none;
+    box-shadow: rgba(0, 0, 0, 0.4) 0px 2px 4px, rgba(0, 0, 0, 0.3) 0px 7px 13px -3px, rgba(0, 0, 0, 0.2) 0px -3px 0px inset;
     touch-action: manipulation; /* Allows page scrolling before game starts */
 }
 
@@ -219,6 +221,7 @@
 /* Action Cluster (Q & E) */
 .pc-action-cluster {
     display: flex;
+    
     align-items: center; /* Changed from flex-end so they balance from the middle */
     gap: 12px; /* Close enough to comfortably slide a thumb */
     touch-action: none;
@@ -256,8 +259,12 @@
     background: var(--bg-panel); color: var(--primary);
     font-family: "Fustat", sans-serif; font-size: 18px; font-weight: 700;
     cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
+box-shadow: rgba(0, 0, 0, 0.4) 0px 2px 4px, rgba(0, 0, 0, 0.3) 0px 7px 13px -3px, rgba(0, 0, 0, 0.2) 0px -3px 0px inset;    -webkit-tap-highlight-color: transparent;
     transition: background 80ms, color 80ms;
+}
+
+.pc-action.btn *, .pc-dpad-btn * {
+    pointer-events: none;
 }
 
 /* D-Pad Grid */
@@ -276,14 +283,14 @@
 
 .pc-dpad-up     { grid-area: up; }
 .pc-dpad-left   { grid-area: left; }
-.pc-dpad-center { grid-area: center; background: var(--primary-dim); border: 1px solid var(--primary-dim); pointer-events: none; }
+.pc-dpad-center { grid-area: center; background: var(--plastic-lo); pointer-events: none; }
 .pc-dpad-right  { grid-area: right; }
 .pc-dpad-down   { grid-area: down; }
 
 .pc-dpad-btn {
     width: 100%; height: 100%;
     display: flex; align-items: center; justify-content: center;
-    border: 1px solid var(--primary);
+box-shadow: rgba(0, 0, 0, 0.4) 0px 2px 4px, rgba(0, 0, 0, 0.3) 0px 7px 13px -3px, rgba(0, 0, 0, 0.2) 0px -3px 0px inset;    border: 1px solid var(--primary);
     background: var(--bg-panel); color: var(--primary);
     font-size: 12px; cursor: pointer;
     -webkit-tap-highlight-color: transparent;

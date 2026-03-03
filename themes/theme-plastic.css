@@ -1,0 +1,699 @@
+/* ============================================================
+   PodCube™ Plastic Hardware Theme  v4
+   Drop-in after explorer.css. No structural changes.
+
+   UTILITY CLASSES (opt-in, add to any element in HTML):
+     .panel    — recessed bay / molded depression
+     .raised   — lifted card sitting above the surface
+
+   .section is deliberately left visual-neutral here so that
+   explorer.css's spacing rules are the only thing it does.
+   Use .section.panel or .section.raised as needed in HTML.
+   ============================================================ */
+
+
+/*  PALETTE & SURFACE ==================================== */
+
+:root {
+    --bg-body:     #f2efe9;  /* Off-white ABS plastic    */
+    --bg-panel:    #edeae4;  /* Slightly recessed surface */
+    --plastic-hi:  rgba(255,255,255,0.65);  /* Highlight bevel */
+    --plastic-lo:  rgba(0,0,0,0.14);        /* Shadow bevel    */
+    --plastic-mid: rgba(0,0,0,0.07);        /* Ambient depth   */
+}
+
+/* Desk surface the device body sits on */
+html {
+    background: #cbc7c0 !important;
+}
+
+/* The device body — raised column */
+body {
+    background: var(--bg-body);
+    border-left:  1px solid rgba(0,0,0,0.18) !important;
+    border-right: 1px solid rgba(0,0,0,0.18) !important;
+    box-shadow:
+        0 8px 32px rgba(0,0,0,0.32),
+        0 2px  6px rgba(0,0,0,0.18),
+        inset -2px 0 0 rgba(255,255,255,0.6),
+        inset  2px 0 0 rgba(0,0,0,0.06);
+}
+
+
+/*  HEADER =============================================== */
+
+.tabs-wrapper {
+    background: var(--bg-body);
+    box-shadow:
+        inset -2px 0 0 rgba(255,255,255,0.6),
+        inset  2px 0 0 rgba(0,0,0,0.06);
+}
+
+
+.user-badge{
+    background: var(--bg-panel) !important;
+    border: 1px solid rgba(0,0,0,0.22) !important;
+    box-shadow:
+        inset 0  2px 0 var(--plastic-hi),
+        inset 0 -2px 0 var(--plastic-lo),
+        inset -1px 0 0 var(--plastic-mid),
+        0 2px 3px rgba(0,0,0,0.15);
+    transition: box-shadow 60ms, transform 60ms, background 60ms;
+    position: relative;
+    top: 0;
+    user-select: none;
+}
+
+@media (hover: hover){
+.user-badge:hover {
+    background: #f7f4ee !important;
+    box-shadow:
+        inset 0  2px 0 rgba(255,255,255,0.95),
+        inset 0 -2px 0 var(--plastic-lo),
+        inset -1px 0 0 var(--plastic-mid),
+        0 3px 5px rgba(0,0,0,0.18);
+}
+}
+
+.user-badge.active {
+    background: var(--bg-body) !important;
+    border-color: var(--primary) !important;
+    box-shadow:
+        inset 0  2px 3px rgba(0,0,0,0.12),
+        inset 0 -1px 0 rgba(255,255,255,0.5);
+}
+
+
+/*  TAB BUTTONS ========================================== */
+
+.tab-button, .data-tab-btn {
+    background: var(--bg-panel) !important;
+    border: 1px solid rgba(0,0,0,0.22) !important;
+    box-shadow:
+        inset 0  2px 0 var(--plastic-hi),
+        inset 0 -2px 0 var(--plastic-lo),
+        inset -1px 0 0 var(--plastic-mid),
+        0 2px 3px rgba(0,0,0,0.15);
+    transition: box-shadow 60ms, transform 60ms, background 60ms;
+    position: relative;
+    top: 0;
+    user-select: none;
+}
+
+@media (hover: hover){
+.tab-button:hover {
+    background: #f7f4ee !important;
+    box-shadow:
+        inset 0  2px 0 rgba(255,255,255,0.95),
+        inset 0 -2px 0 var(--plastic-lo),
+        inset -1px 0 0 var(--plastic-mid),
+        0 3px 5px rgba(0,0,0,0.18);
+}
+}
+
+.tab-button.active, .data-tab-btn.active {
+    background: var(--bg-body) !important;
+    border-color: var(--primary) !important;
+    box-shadow:
+        inset 0  2px 3px rgba(0,0,0,0.12),
+        inset 0 -1px 0 rgba(255,255,255,0.5);
+}
+
+
+/* . UTILITY: .panel — recessed bay ====================== */
+/*
+ * Molded depression in the device casing.
+ * Usage:  <div class="section panel">
+ *     or  <div class="panel">
+ */
+.panel {
+    background: var(--bg-panel);
+    border-radius: 4px;
+    padding: 15px 20px;
+    box-shadow:
+        inset  1px  2px 5px rgba(0,0,0,0.13),
+        inset -1px -1px 2px rgba(255,255,255,0.8),
+        0 1px 0 rgba(255,255,255,0.9),
+        0 -1px 0 rgba(0,0,0,0.05);
+}
+
+
+/* . UTILITY: .raised — lifted card ====================== */
+/*
+ * Component sitting above the surface.
+ * Usage:  <div class="section raised">
+ *     or  <div class="raised">
+ */
+.raised {
+    background: var(--bg-body);
+    border-radius: 4px;
+    padding: 15px 20px;
+    box-shadow:
+        inset 0  2px 0 var(--plastic-hi),
+        inset 0 -2px 0 rgba(0,0,0,0.12),
+        0 3px 7px rgba(0,0,0,0.13),
+        0 1px 2px rgba(0,0,0,0.08);
+}
+
+
+/*  HERO BUTTONS ========================================= */
+
+.hero-btn {
+    background: var(--bg-body);
+    border: 1px solid rgba(0,0,0,0.2);
+    box-shadow:
+        inset 0  2px 0 var(--plastic-hi),
+        inset 0 -3px 0 rgba(0,0,0,0.16),
+        0 3px 6px rgba(0,0,0,0.14);
+    transition: box-shadow 60ms, transform 60ms;
+}
+
+@media (hover: hover){
+.hero-btn:hover {
+    box-shadow:
+        inset 0  2px 0 rgba(255,255,255,0.95),
+        inset 0 -3px 0 rgba(0,0,0,0.18),
+        0 5px 10px rgba(0,0,0,0.16);
+    transform: translateY(-1px);
+}
+}
+
+.hero-btn:active {
+    box-shadow:
+        inset 0 2px 4px rgba(0,0,0,0.18),
+        0 1px 1px rgba(0,0,0,0.08);
+    transform: translateY(1px);
+}
+
+.brigistics-hero::before{
+    
+}
+
+
+/*  ICON BUTTONS ========================================= */
+
+.icon-btn {
+    background: var(--bg-panel);
+    border: 1px solid rgba(0,0,0,0.2);
+    box-shadow:
+        inset 0  1px 0 var(--plastic-hi),
+        inset 0 -2px 0 var(--plastic-lo),
+        0 2px 3px rgba(0,0,0,0.12);
+    transition: box-shadow 60ms, transform 60ms;
+}
+
+@media (hover: hover){
+.icon-btn:hover {
+   
+    box-shadow:
+        inset 0  1px 0 rgba(255,255,255,0.95),
+        inset 0 -2px 0 var(--plastic-lo),
+        0 3px 5px rgba(0,0,0,0.15);
+    transform: translateY(-1px);
+}
+}
+
+.icon-btn:active {
+    box-shadow:
+        inset 0 2px 3px rgba(0,0,0,0.15);
+    transform: translateY(1px);
+}
+
+
+/*  PUNCHCARD MACHINE ==================================== */
+/*
+ * DOM order inside .punchcard-reader-wrapper:
+ *   .punchcard-row.punchcard-top-row   [A] FACEPLATE (label + CLEAR)
+ *   .pc-queue-preview                  [B] PAPER BAY (scrollable buffer)
+ *   .pc-preview-header                 [C] STATUS STRIP
+ *   .punchcard-row (not last)          [D] PRINT ZONE
+ *   div[no class][no id]               [E] SEAM DIVIDER
+ *   label.punchcard-label              [F] IMPORT LABEL
+ *   .punchcard-row:last-child          [G] IMPORT ZONE
+ */
+
+/* ① DEVICE BODY */
+.punchcard-reader-wrapper {
+    background: #eae7e1 !important;
+    padding: 0 !important;
+    overflow: hidden;
+    border: 1px solid rgba(0,0,0,0.30) !important;
+    box-shadow:
+        inset 0  4px 0 rgba(255,255,255,0.55),
+        inset 0 -5px 0 rgba(0,0,0,0.20),
+        inset  4px 0 0 rgba(255,255,255,0.25),
+        inset -4px 0 0 rgba(0,0,0,0.09),
+        0  6px 20px rgba(0,0,0,0.24),
+        0  2px  6px rgba(0,0,0,0.14),
+        0  1px  2px rgba(0,0,0,0.08) !important;
+    transition: background 0.2s ease, box-shadow 0.2s ease !important;
+    border-radius: 6px;
+}
+
+/* Drag-active glow */
+.punchcard-reader-wrapper.drag-active {
+    box-shadow:
+        inset 0  4px 0 rgba(255,255,255,0.3),
+        0  0 0  2px var(--primary),
+        0  0 25px rgba(23,104,218,0.5),
+        0  6px 20px rgba(0,0,0,0.18) !important;
+}
+
+/* Catch-all: give every direct child horizontal padding */
+.punchcard-reader-wrapper > * {
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+
+
+/* [A] FACEPLATE */
+.punchcard-top-row {
+    background: #d0ccc4;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    margin-bottom: 0 !important;
+    border-bottom: 1px solid rgba(0,0,0,0.22);
+    box-shadow:
+        inset 0 3px 0 rgba(255,255,255,0.5),
+        inset 0 -1px 0 rgba(0,0,0,0.12),
+        0 2px 4px rgba(0,0,0,0.12);
+    
+    align-items: center;
+}
+
+.punchcard-top-row .punchcard-label {
+    align-items:center;
+    margin: 0;
+}
+
+/* [B] PAPER OUTPUT BAY
+ *   Margin insets it from the device walls — not full-width.
+ *   Scrollbar overrides the global blue-toned scrollbar.
+ */
+.pc-queue-preview {
+    background: #c5c1b9 !important;
+    border: 1px solid rgba(0,0,0,0.18) !important;
+    border-radius: 3px !important;
+    margin: 10px 15px 0 15px !important;
+    padding: 8px 10px !important;
+    max-height: 120px;
+    overflow-y: auto;
+    scrollbar-color: #9e9a94 #b8b4ac;
+    scrollbar-width: thin;
+    box-shadow:
+        inset 0  4px 8px rgba(0,0,0,0.18),
+        inset 3px 0  3px rgba(0,0,0,0.07),
+        inset -3px 0 3px rgba(0,0,0,0.05),
+        inset 0 -2px 3px rgba(0,0,0,0.06) !important;
+}
+
+.pc-queue-preview::-webkit-scrollbar {
+    width: 6px;
+}
+.pc-queue-preview::-webkit-scrollbar-track {
+    background: #b8b4ac;
+    border-radius: 3px;
+}
+.pc-queue-preview::-webkit-scrollbar-thumb {
+    background: #9e9a94;
+    border-radius: 3px;
+}
+
+/* [C] STATUS STRIP */
+.pc-preview-header {
+    background: #d8d4cc;
+    padding-top: 5px !important;
+    padding-bottom: 6px !important;
+    margin-top: 6px;
+    border-top: 1px solid rgba(0,0,0,0.12);
+    border-bottom: 1px solid rgba(0,0,0,0.12);
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.4),
+        0 2px 3px rgba(0,0,0,0.08);
+}
+
+/* [D] PRINT ZONE */
+.punchcard-top-row ~ .punchcard-row:not(:last-child) {
+    padding-top: 14px !important;
+    padding-bottom: 14px !important;
+    margin-bottom: 0 !important;
+}
+
+/* [E] SEAM DIVIDER — physical groove replacing the dashed inline border */
+.punchcard-reader-wrapper > div:not([class]):not([id]) {
+    height: 0;
+    margin: 0 !important;
+    border: none !important;
+    border-top:    2px solid rgba(0,0,0,0.16) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.55) !important;
+}
+
+/* [F] IMPORT LABEL */
+.punchcard-reader-wrapper > label.punchcard-label {
+    display: block;
+    padding-top: 10px !important;
+    padding-bottom: 4px !important;
+    background: #e0dcd5;
+    margin: 0 !important;
+}
+
+/* [G] IMPORT ZONE */
+.punchcard-row:last-child {
+    background: #e0dcd5;
+    padding-top: 2px !important;
+    padding-bottom: 14px !important;
+    margin-bottom: 0 !important;
+}
+
+/* PUNCHCARD BUTTONS
+ * Single bevel: one inset-bottom stripe + one drop shadow.
+ * No layer stacking — keeps buttons clean, no thick dark bars.
+ */
+.punchcard-btn {
+    border: 1px solid rgba(0,0,0,0.25) !important;
+    box-shadow:
+        inset 0  2px 0 rgba(255,255,255,0.3),
+        inset 0 -2px 0 rgba(0,0,0,0.22),
+        0 3px 5px rgba(0,0,0,0.16) !important;
+    transition: box-shadow 60ms, transform 60ms !important;
+}
+
+@media (hover: hover){
+.punchcard-btn:hover {
+    transform: translateY(-1px);
+    box-shadow:
+        inset 0  2px 0 rgba(255,255,255,0.4),
+        inset 0 -3px 0 rgba(0,0,0,0.24),
+        0 5px 8px rgba(0,0,0,0.18) !important;
+}
+}
+
+.punchcard-btn:active,
+.punchcard-issue-btn:active {
+    transform: translateY(2px) !important;
+    box-shadow:
+        inset 0 2px 4px rgba(0,0,0,0.20),
+        0 1px 1px rgba(0,0,0,0.08) !important;
+}
+
+/* PRINT CARD — slightly deeper bottom bevel */
+.punchcard-issue-btn {
+    border: 1px solid rgba(0,0,0,0.25) !important;
+    box-shadow:
+        inset 0  2px 0 rgba(255,255,255,0.28),
+        inset 0 -3px 0 rgba(0,0,0,0.24),
+        0 4px 7px rgba(0,0,0,0.18) !important;
+        user-select: none;
+}
+
+@media (hover: hover){
+.punchcard-issue-btn:hover {
+    transform: translateY(-1px);
+    box-shadow:
+        inset 0  2px 0 rgba(255,255,255,0.35),
+        inset 0 -4px 0 rgba(0,0,0,0.26),
+        0 6px 10px rgba(0,0,0,0.20) !important;
+}
+}
+
+/* --- MOBILE HARDWARE SHADOW FIX --- */
+@media (max-width: 768px) {
+    /* Pull the hardware chassis inward so its 3D shadow isn't sliced off */
+    .punchcard-reader-wrapper {
+        margin-left: 15px !important;
+        margin-right: 15px !important;
+    }
+}
+
+/* INPUT SLOTS */
+.punchcard-input {
+    background: #bfbbb3 !important;
+    border: 1px solid rgba(0,0,0,0.28) !important;
+    box-shadow:
+        inset 0  3px 5px rgba(0,0,0,0.18),
+        inset 2px 0  2px rgba(0,0,0,0.09),
+        inset 0 -1px 0 rgba(255,255,255,0.2) !important;
+}
+
+
+
+/*  PUNCHCARD PRINT SLOT ======================= */
+/*
+ * The physical ejection slot. Width = cardWidth = maskWidth (300px).
+ * Centered in the machine face via margin: auto.
+ *
+ * The JS aligns maskTop to rect.top of this element.
+ * The mask has overflow:hidden, so the card inside it is invisible
+ * above this line and appears to emerge from the slot as it slides down.
+ *
+ * Height is 6px — a real visible slit, not a hairline.
+ * No ::after chute needed; wrapper overflow:hidden would clip it anyway.
+ */
+.punchcard-print-slot {
+    display: block;
+    width: 300px;
+    height: 6px;
+    margin: 6px auto 14px !important;
+    padding: 0 !important;
+    position: relative;
+
+    /* Dark recessed gap in the machine casing */
+    background: rgba(0,0,0,0.55);
+    border-top:    1px solid rgba(0,0,0,0.70);
+    border-bottom: 1px solid rgba(255,255,255,0.35);
+    border-left:   1px solid rgba(0,0,0,0.40);
+    border-right:  1px solid rgba(0,0,0,0.40);
+    border-radius: 1px;
+
+    box-shadow:
+        inset 0 2px 3px rgba(0,0,0,0.50),
+        0 2px 5px rgba(0,0,0,0.22);
+}
+
+/* Glows blue while printing */
+.punchcard-reader-wrapper.is-printing .punchcard-print-slot {
+   
+    border-top-color:    var(--primary);
+    border-bottom-color: rgba(23,104,218,0.30);
+    border-left-color:   rgba(23,104,218,0.50);
+    border-right-color:  rgba(23,104,218,0.50);
+    box-shadow:
+        inset 0 2px 3px rgba(23,104,218,0.30),
+        0 2px 10px rgba(23,104,218,0.40);
+    transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+
+/*  STAT BOXES =========================================== */
+
+.stat-box {
+    background: var(--bg-panel) !important;
+    box-shadow:
+        inset 0  2px 0 var(--plastic-hi),
+        inset 0 -2px 0 rgba(0,0,0,0.10),
+        0 2px 5px rgba(0,0,0,0.10) !important;
+}
+
+
+/* HIERARCHY COLUMNS ===================================== */
+
+.hierarchy-col.raised .hierarchy-title {
+    /* 1. Pull the element outward to neutralize the parent's 15px/20px padding */
+    margin-top: -15px;
+    margin-left: -20px;
+    margin-right: -20px;
+    
+    /* 2. Put the visual breathing room back *inside* the title itself */
+    padding: 15px 20px 10px 20px;
+    
+    /* 3. Ensure the background color doesn't bleed out of the parent's rounded corners */
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}
+
+.hierarchy-title {
+    background: var(--bg-body);
+}
+
+/*  GLOBAL TRANSPORT ===================================== */
+
+.global-transport {
+    background: #e2dfd8 !important;
+    border-top: 1px solid rgba(0,0,0,0.28) !important;
+    box-shadow:
+        inset 0 3px 0 rgba(255,255,255,0.55),
+        0 -4px 16px rgba(0,0,0,0.20),
+        0 -1px  4px rgba(0,0,0,0.10) !important;
+}
+
+.player-transport-btn, .control-btn {
+    background: var(--bg-panel);
+    box-shadow:
+        inset 0  2px 0 var(--plastic-hi),
+        inset 0 -2px 0 var(--plastic-lo),
+        0 2px 4px rgba(0,0,0,0.14) !important;
+    transition: box-shadow 60ms, transform 60ms !important;
+}
+
+@media (hover: hover){
+.player-transport-btn:hover, .control-btn:hover {
+    transform: translateY(-1px);
+    box-shadow:
+        inset 0  2px 0 rgba(255,255,255,0.95),
+        inset 0 -2px 0 var(--plastic-lo),
+        0 4px 7px rgba(0,0,0,0.16) !important;
+}
+}
+
+.player-transport-btn:active {
+    transform: translateY(1px) !important;
+    box-shadow:
+        inset 0 2px 3px rgba(0,0,0,0.18) !important;
+}
+
+.player-transport-btn-play {
+    background-color: var(--primary);
+    box-shadow:
+        inset 0  3px 0 rgba(255,255,255,0.45),
+        inset 0 -4px 0 rgba(0,0,0,0.22),
+        0 4px 8px rgba(0,0,0,0.18) !important;
+}
+
+.player-transport-btn-play:active {
+    transform: translateY(2px) !important;
+    box-shadow:
+        inset 0 3px 5px rgba(0,0,0,0.22) !important;
+}
+
+.scrubber {
+    background: var(--plastic-lo);
+}
+
+
+/*  CODE MONITOR ========================================= */
+
+.code-monitor {
+    border-top: 1px solid rgba(0,0,0,0.45) !important;
+    box-shadow:
+        inset 0 2px 0 rgba(0,0,0,0.25),
+        0 -2px 8px rgba(0,0,0,0.25) !important;
+}
+
+
+/* TEXT INPUTS ========================================= */
+
+input[type="text"],
+input[type="search"],
+select,
+textarea {
+    background: #ddd9d1 !important;
+    border: 1px solid rgba(0,0,0,0.20) !important;
+    box-shadow:
+        inset 1px 2px 4px rgba(0,0,0,0.14),
+        inset -1px -1px 1px rgba(255,255,255,0.5) !important;
+}
+
+
+/* GAME CONTROLS ======================================= */
+
+.pc-controls-strip {
+    background: #e2dfd8 !important;
+    border: 1px solid rgba(0,0,0,0.22) !important;
+    box-shadow:
+        inset 0  2px 0 rgba(255,255,255,0.55),
+        inset 0 -3px 0 rgba(0,0,0,0.14),
+        0 4px 12px rgba(0,0,0,0.20),
+        0 2px  4px rgba(0,0,0,0.10) !important;
+}
+
+
+/* . ARCHIVE SIDEBAR ===================================== */
+
+.registry-sidebar {
+}
+
+
+/*  EPISODE CARDS ======================================= */
+
+.ep-card, .ep-row, .related-ep-card {
+    background: var(--bg-body) !important;
+    box-shadow:
+        inset 0  2px 0 var(--plastic-hi),
+        inset 0 -2px 0 rgba(0,0,0,0.12),
+        0 3px 7px rgba(0,0,0,0.13),
+        0 1px 2px rgba(0,0,0,0.08);
+    transition: box-shadow 80ms, transform 80ms !important;
+}
+
+.ep-content {
+    background: var(--bg-body)!important;
+}
+
+.ep-actions{
+    background: var(--bg-panel)!important;
+}
+
+@media (hover: hover){
+.ep-card:hover, .ep-row:hover, .related-ep-card:hover {
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.95),
+        inset 0 -1px 0 rgba(0,0,0,0.06),
+        0 4px 10px rgba(0,0,0,0.12) !important;
+    transform: translateY(-1px);
+}
+}
+
+
+/*  INSPECTOR =========================================== */
+
+.inspector-header-card {
+    background: var(--bg-panel) !important;
+    box-shadow:
+        inset  1px  2px 5px rgba(0,0,0,0.12),
+        inset -1px -1px 2px rgba(255,255,255,0.75) !important;
+}
+
+.inspector-action-btn {
+    background: var(--bg-panel);
+    box-shadow:
+        inset 0  1px 0 var(--plastic-hi),
+        inset 0 -2px 0 var(--plastic-lo),
+        0 2px 3px rgba(0,0,0,0.10) !important;
+    transition: box-shadow 60ms, transform 60ms !important;
+}
+
+.inspector-action-btn:active {
+    transform: translateY(1px) !important;
+    box-shadow: inset 0 2px 3px rgba(0,0,0,0.15) !important;
+}
+
+.inspector-action-btn.selected {
+    background: var(--primary-dark);
+    color: var(--bg-panel);
+    border-color: var(--primary-dark);
+}
+
+
+/*  GAME CARDS ========================================== */
+
+.game-card {
+    background: var(--bg-body) !important;
+    box-shadow:
+        inset 0  2px 0 var(--plastic-hi),
+        inset 0 -2px 0 rgba(0,0,0,0.10),
+        0 3px 7px rgba(0,0,0,0.12),
+        0 1px 2px rgba(0,0,0,0.07) !important;
+    transition: box-shadow 0.12s, transform 0.12s !important;
+}
+
+@media (hover: hover){
+.game-card:hover {
+    transform: translateY(-3px) !important;
+    box-shadow:
+        inset 0  2px 0 rgba(255,255,255,0.95),
+        inset 0 -2px 0 rgba(0,0,0,0.12),
+        0 8px 18px rgba(0,0,0,0.16),
+        0 2px  5px rgba(0,0,0,0.08) !important;
+}
+}
