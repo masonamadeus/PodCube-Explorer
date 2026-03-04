@@ -33,34 +33,108 @@
     touch-action: none;
 }
 
+
 .bhs-scene {
     position: relative;
-    /* SHRUNK TO 2/3 SCALE */
-    width: 200px;
-    height: 200px;
+    width: 250px;
+    height: 250px;
     border-radius: 50%;
     perspective: 800px;
-    
-    background-color: var(--bg-panel);
-    background-image: 
-        repeating-radial-gradient(circle at 50% 50%, transparent, transparent 15%, rgba(23, 104, 218, 0.04) 15%, rgba(23, 104, 218, 0.04) 15.5%),
-        repeating-linear-gradient(rgba(23, 104, 218, 0.08), rgba(23, 104, 218, 0.08) 1px, transparent 1px, transparent 20px),
-        repeating-linear-gradient(90deg, rgba(23, 104, 218, 0.08), rgba(23, 104, 218, 0.08) 1px, transparent 1px, transparent 20px);
-    
+    transform-style: preserve-3d;
+    background-color: transparent; /* Keep parent transparent */
     border: 2px solid var(--primary-dim);
-    box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
+    box-shadow: inset 0 0 30px rgba(0,0,0,0.1);
     overflow: hidden;
     cursor: grab;
 }
-.bhs-scene:active { cursor: grabbing; }
 
+.bhs-backdrop {
+    position: absolute;
+    inset: -150px; 
+    background-color: var(--bg-panel); 
+    
+    /* SMALLER, DENSER RADIAL PATTERN */
+    background-image: 
+        /* 1. Center highlight */
+        radial-gradient(circle at center, rgba(255,255,255,0.4) 0%, transparent 60%),
+        
+        /* 2. Dense Rings (Repeats every 15px) */
+        repeating-radial-gradient(circle at center, rgba(23, 104, 218, 0.2) 0, rgba(23, 104, 218, 0.2) 1px, transparent 1px, transparent 15px),
+        
+        /* 3. Dense Spokes (Repeats every 15 degrees) */
+        repeating-conic-gradient(from 0deg at 50% 50%, rgba(23, 104, 218, 0.2) 0deg, rgba(23, 104, 218, 0.2) 1deg, transparent 1deg, transparent 15deg);
+
+    opacity: 1; 
+    
+    /* Lens mask */
+    mask-image: radial-gradient(circle, black 20%, transparent 80%);
+    -webkit-mask-image: radial-gradient(circle, black 20%, transparent 80%);
+    
+    pointer-events: none;
+    will-change: transform;
+}
+
+
+/* --- SPHERE ELEMENTS (Zero Inset) --- */
+
+/* 250px viewport */
+.bhs-ring, 
+.bhs-wireframe-ring, 
+.bhs-scanner-plane {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0; /* Changed from 4px to 0 */
+    border-radius: 50%;
+    pointer-events: none;
+    transform-style: preserve-3d;
+}
+
+.bhs-wireframe-ring { border: 1px solid rgba(23, 104, 218, 0.2); }
+
+/* --- SPHEROID WIREFRAME (Radius = 125px) --- */
+
+/* Latitudes: Recalculated for R=125 using sin/cos of 30° and 60° */
+.rib-lat-1 { transform: rotateX(90deg) translateZ(62.5px) scale(0.866); }   /* +30° */
+.rib-lat-2 { transform: rotateX(90deg) translateZ(108.25px) scale(0.500); } /* +60° */
+.rib-lat-3 { transform: rotateX(90deg) translateZ(-62.5px) scale(0.866); }  /* -30° */
+.rib-lat-4 { transform: rotateX(90deg) translateZ(-108.25px) scale(0.500); }/* -60° */
+
+/* Longitudes: 30° increments (unchanged) */
+.rib-lon-1 { transform: rotateY(30deg); }
+.rib-lon-2 { transform: rotateY(60deg); }
+.rib-lon-3 { transform: rotateY(120deg); }
+.rib-lon-4 { transform: rotateY(150deg); }
+
+/* --- ANIMATED SCANNER PLANE --- */
+
+.bhs-scanner-plane {
+    background: radial-gradient(circle, rgba(241, 135, 1, 0.02) 0%, rgba(241, 135, 1, 0.05) 70%, rgba(241, 135, 1, 0.8) 100%);
+    border: 2px solid rgba(241, 135, 1, 0.1);
+    box-shadow: 0 0 15px rgba(241, 135, 1, 0.3), inset 0 0 15px rgba(241, 135, 1, 0.1);
+    z-index: 10;
+    animation: scanSweep 6s linear infinite; /* Added 'alternate' to bounce back and forth smoothly */
+}
+
+/* Recalculated keyframes for R=125px */
+@keyframes scanSweep {
+    0%   { transform: rotateX(90deg) translateZ(-125px) scale(0.01); opacity: 0; }
+    5%   { opacity: 1; }
+    25%  { transform: rotateX(90deg) translateZ(-88.3px) scale(0.707); } 
+    50%  { transform: rotateX(90deg) translateZ(0px) scale(1.02); }   
+    75%  { transform: rotateX(90deg) translateZ(88.3px) scale(0.707); }
+    95%  { opacity: 1; }
+    100% { transform: rotateX(90deg) translateZ(125px) scale(0.01); opacity: 0; }
+}
+
+/* Update default sphere state to prevent a visual "jump" on load */
 .bhs-sphere {
     width: 100%;
     height: 100%;
     position: absolute;
     transform-style: preserve-3d;
-    transform: translateZ(-100px) rotateX(-15deg) rotateY(0deg); 
+    transform: translateZ(0px) rotateX(-15deg) rotateY(0deg); /* Changed Z to 0px */
 }
+
+.bhs-scene:active { cursor: grabbing; }
 
 /* Holographic Depth Planes */
 .bhs-ring {
@@ -268,6 +342,11 @@
     box-sizing: border-box;
     overflow: hidden; /* Prevents stretching parent */
 }
+
+
+
+
+
 .spacetime-timeline-container {
     /* FIX: display: block restores natural horizontal overflow */
     display: block; 

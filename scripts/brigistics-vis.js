@@ -207,6 +207,25 @@ const BrigisticsViz = (function() {
         if (!scene || !sphere || !window.PodCube) return;
         Array.from(sphere.querySelectorAll('.bhs-node')).forEach(n => n.remove());
 
+        Array.from(sphere.querySelectorAll('.bhs-wireframe-ring, .bhs-scanner-plane')).forEach(el => el.remove());
+
+        // Create the 8 equal-spaced grid lines
+        const ribClasses = [
+            'rib-lat-1', 'rib-lat-2', 'rib-lat-3', 'rib-lat-4',
+            'rib-lon-1', 'rib-lon-2', 'rib-lon-3', 'rib-lon-4'
+        ];
+
+        ribClasses.forEach(cls => {
+            const rib = document.createElement('div');
+            rib.className = `bhs-wireframe-ring ${cls}`;
+            sphere.appendChild(rib);
+        });
+
+        // Create the animated laser plane
+        const scanner = document.createElement('div');
+        scanner.className = 'bhs-scanner-plane';
+        sphere.appendChild(scanner);
+
         const episodes = PodCube.getByChronologicalOrder().filter(ep => ep.date && typeof ep.date.month === 'number');
         episodes.forEach((ep, index) => {
             const doy = Math.floor((Date.UTC(2024, ep.date.month, ep.date.day) - Date.UTC(2024, 0, 0)) / 86400000);
@@ -220,7 +239,7 @@ const BrigisticsViz = (function() {
             node.dataset.ry = angleY;
             node.style.setProperty('--ry', `${angleY}deg`);
             node.style.setProperty('--rx', `${angleX}deg`);
-            node.style.setProperty('--rz', `90px`);
+            node.style.setProperty('--rz', `125px`);
             node.style.backgroundColor = getIntegrityColor(ep.integrityValue || 0);
             
             const size = Math.max(4, Math.min(12, 4 + ((ep.duration || 0) / 3600) * 8));
@@ -272,7 +291,14 @@ const BrigisticsViz = (function() {
         const spinLoop = () => {
             if (isPaused) return;
             currentQ = qSlerp(currentQ, targetQ, LERP_SPEED);
-            sphere.style.transform = `translateZ(-100px) ${qToMatrix3d(currentQ)}`;
+            sphere.style.transform = `translateZ(0px) ${qToMatrix3d(currentQ)}`;
+
+            // FIX: Keep the backdrop stationary deep in the background.
+            // This prevents the flat plane from swinging around and snapping.
+            const backdrop = document.getElementById('bhs-backdrop');
+            if (backdrop) {
+                backdrop.style.transform = `translateZ(-200px)`;
+            }
             
             if (!currentTargetId && !pendingTargetId) {
                 frameCounter++;
@@ -292,23 +318,52 @@ const BrigisticsViz = (function() {
         scene.ontouchstart = (e) => { isDragging = true; pendingTargetId = null; lastMouseX = e.touches[0].clientX; lastMouseY = e.touches[0].clientY; resetScannerTimer(INTERRUPT_DELAY_MS); };
         window.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
-            const dx = e.clientX - lastMouseX; const dy = e.clientY - lastMouseY;
-            const qX = [Math.cos((-dy*0.008)/2), Math.sin((-dy*0.008)/2), 0, 0];
-            const qY = [Math.cos((dx*0.008)/2), 0, Math.sin((dx*0.008)/2), 0];
-            targetQ = qNormalize(qMultiply(qMultiply(qX, qY), targetQ));
-            displayRotY += (dx*0.008) * (180 / Math.PI);
-            lastMouseX = e.clientX; lastMouseY = e.clientY;
+            const dx = e.clientX - lastMouseX; 
+            const dy = e.clientY - lastMouseY;
+            
+            // TRUE TRACKBALL MATH: Eliminates Pole Snapping
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist > 0) {
+                const angle = dist * 0.008;
+                // Determine the exact 2D axis perpendicular to the drag
+                const ax = -dy / dist;
+                const ay = dx / dist;
+                const sinA = Math.sin(angle / 2);
+                
+                const qDrag = [Math.cos(angle / 2), ax * sinA, ay * sinA, 0];
+                targetQ = qNormalize(qMultiply(qDrag, targetQ));
+                displayRotY += (dx*0.008) * (180 / Math.PI);
+            }
+            
+            lastMouseX = e.clientX; 
+            lastMouseY = e.clientY;
         });
+
+       
         window.addEventListener('mouseup', () => isDragging = false);
+
         window.addEventListener('touchmove', (e) => {
             if (!isDragging) return;
-            const dx = e.touches[0].clientX - lastMouseX; const dy = e.touches[0].clientY - lastMouseY;
-            const qX = [Math.cos((-dy*0.008)/2), Math.sin((-dy*0.008)/2), 0, 0];
-            const qY = [Math.cos((dx*0.008)/2), 0, Math.sin((dx*0.008)/2), 0];
-            targetQ = qNormalize(qMultiply(qMultiply(qX, qY), targetQ));
-            displayRotY += (dx*0.008) * (180 / Math.PI);
-            lastMouseX = e.touches[0].clientX; lastMouseY = e.touches[0].clientY;
+            const dx = e.touches[0].clientX - lastMouseX; 
+            const dy = e.touches[0].clientY - lastMouseY;
+            
+            // TRUE TRACKBALL MATH: Eliminates Pole Snapping
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist > 0) {
+                const angle = dist * 0.008;
+                const ax = -dy / dist;
+                const ay = dx / dist;
+                const sinA = Math.sin(angle / 2);
+                
+                const qDrag = [Math.cos(angle / 2), ax * sinA, ay * sinA, 0];
+                targetQ = qNormalize(qMultiply(qDrag, targetQ));
+                displayRotY += (dx*0.008) * (180 / Math.PI);
+            }
+            
+            lastMouseX = e.touches[0].clientX; 
+            lastMouseY = e.touches[0].clientY;
         }, {passive: true});
+
         window.addEventListener('touchend', () => isDragging = false);
 
         steerSphereToNode(episodes[0].nanoId, 0, 0);
