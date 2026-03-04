@@ -692,7 +692,9 @@ class PodCubeEngine {
             const now = Date.now();
             if (now - this.lastSave > 5000) {
                 this._saveSession();
-                this._updateMediaPosition();
+                if (!this._audio.paused) {
+                    this._updateMediaPosition();
+                }
                 this.lastSave = now;
             }
 
@@ -1549,28 +1551,7 @@ class PodCubeEngine {
         // a broken/empty state and reload if necessary before resuming.
         navigator.mediaSession.setActionHandler('play', async () => {
             try {
-                if (!this.nowPlaying) return;
-
-                const needsReload = !this._audio.src
-                    || this._audio.src === window.location.href
-                    || this._audio.error !== null;
-
-                if (needsReload) {
-                    await this._loadAndPlay(true);
-                } else {
-                    // Try to play normally
-                    try {
-                        await this._audio.play();
-                    } catch (playErr) {
-                        // FIX: iOS likely dropped the buffer to save RAM. 
-                        // Force a synchronous reload to immediately bind the OS 
-                        // user-gesture token, then try playing again.
-                        log.warn("Play rejected (buffer drop). Forcing synchronous load.");
-                        this._audio.load();
-                        await this._audio.play();
-                    }
-                }
-                this._updateMediaPosition();
+                this.play();
             } catch (e) {
                 log.error("MediaSession play action unrecoverable:", e);
             }
@@ -1659,7 +1640,6 @@ class PodCubeEngine {
     pause() {
         try {
             this._audio.pause();
-            this._updateMediaPosition();
         } catch (e) {
             log.error("Pause failed:", e);
         }

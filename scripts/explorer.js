@@ -173,16 +173,50 @@ function registerPlaybackListeners() {
 
     // Filter the random pool so radio mode skips already-heard episodes.
     PodCube.setRandomPoolFilter((episodes) => {
-        const history = PodUser.data.history;
-        if (!history || history.length === 0) return episodes;
-        // Build the Set once per call for O(1) lookups.
-        const playedSet = new Set(history);
-        return episodes.filter(ep => !playedSet.has(ep.nanoId));
+        if (!window.PodUser || !window.PodUser.data) return episodes;
+
+        const history = new Set(PodUser.data.history || []);
+        const suppressed = new Set(PodUser.data.suppressed || []);
+        const verified = new Set(PodUser.data.verified || []);
+        
+        // Grab the IDs of everything currently in the queue to prevent repeats
+        const queuedIds = new Set(PodCube.queueItems.map(ep => ep.nanoId));
+
+        // Base pool: NEVER include suppressed episodes.
+        // Try to exclude currently queued episodes so it doesn't immediately repeat a skipped track.
+        let basePool = episodes.filter(ep => !suppressed.has(ep.nanoId) && !queuedIds.has(ep.nanoId));
+        
+        // Failsafe: If the queue is somehow massive or everything is suppressed, drop the queue restriction
+        if (basePool.length === 0) {
+            basePool = episodes.filter(ep => !suppressed.has(ep.nanoId));
+        }
+    
+        // Absolute Failsafe
+        if (basePool.length === 0) basePool = episodes;
+
+        // Tier 1: Completely unplayed & non-suppressed
+        const unplayed = basePool.filter(ep => !history.has(ep.nanoId));
+
+        if (unplayed.length >= 5) {
+            return unplayed;
+        }
+
+        // Tier 2: Unplayed + Played but Elevated (Verified)
+        const unplayedAndElevated = [
+            ...unplayed,
+            ...basePool.filter(ep => history.has(ep.nanoId) && verified.has(ep.nanoId))
+        ];
+
+        if (unplayedAndElevated.length >= 5) {
+            return unplayedAndElevated;
+        }
+
+        // Tier 3: Absolute fallback (All unplayed + All played, excluding suppressed/queued)
+        return basePool;
     });
 }
 
-// Phase 4: Restore persisted volume, then replay the saved session.
-// Listeners from Phase 3 must already be active before this runs.
+// Phase 4: Restore session, volume, user prefs, etc.
 async function restoreSession() {
 
     // Restore volume before session so the first track plays at the right level.
