@@ -1,7 +1,12 @@
 /**
  * degradation.js
- * Handles the temporal fraying of the PodCube Explorer interface.
+ * Handles the temporal fraying and physical degradation of the PodCube Explorer interface.
  */
+
+// --- STATE ---
+let smudgeCanvas = null;
+let smudgeCtx = null;
+let smudges = [];
 
 function initDegradation(visits) {
     // 1. Inject CSS if it doesn't exist
@@ -14,13 +19,14 @@ function initDegradation(visits) {
                 --deg-sepia: 0;
                 --deg-chromatic: 0px;
                 --deg-scanline-opacity: 0;
+                --global-grime: 0; /* Controls physical dirt accumulation */
+                
                 /* Base PodCube Blue: hsla(215, 81%, 47%, 1.00) */
                 --deg-hue: 215;
                 --deg-sat: 81%;
                 --deg-light: 47%;
             }
 
-            /* Override the base primary color with our dynamic HSL variables */
             body {
                 --primary: hsl(var(--deg-hue), var(--deg-sat), var(--deg-light));
                 --border: hsl(var(--deg-hue), var(--deg-sat), var(--deg-light));
@@ -31,6 +37,31 @@ function initDegradation(visits) {
                 text-shadow: 
                     calc(var(--deg-chromatic) * -1) 0 0 rgba(255, 0, 0, 0.2),
                     var(--deg-chromatic) 0 0 rgba(0, 255, 255, 0.2);
+            }
+
+            /* --- PHYSICAL PANEL GUNK --- */
+            /* Simulates dirt gathering in the edges/corners of the plastic casing */
+            .panel, .registry-sidebar, .inspector-report-body, .bhs-readout-panel {
+                position: relative;
+            }
+            
+            .panel::after, .registry-sidebar::after, .inspector-report-body::after, .bhs-readout-panel::after {
+                content: '';
+                position: absolute;
+                inset: 0;
+                pointer-events: none;
+                border-radius: inherit;
+                
+                /* The dirt gathers heavier in the corners as grime increases */
+                box-shadow: inset 0 0 calc(var(--global-grime) * 40px) calc(var(--global-grime) * 10px) rgba(35, 25, 10, calc(var(--global-grime) * 0.5));
+                
+                /* A raw SVG fractal noise texture injected as a data URI to give the grime physical grain */
+                background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+                background-blend-mode: multiply;
+                
+                /* Only becomes visible as the terminal ages */
+                opacity: calc(var(--global-grime) * 0.4);
+                z-index: 50; 
             }
 
             /* --- THE OVERLAY STACK --- */
@@ -47,50 +78,34 @@ function initDegradation(visits) {
                 pointer-events: none;
             }
 
-            /* 1. Yellowing/Sepia */
             #temporal-sepia {
                 background-color: #c4b687; 
                 opacity: var(--deg-sepia);
                 mix-blend-mode: multiply;
             }
 
-            /* 2. Grain */
             #temporal-noise {
                 opacity: var(--deg-noise);
                 mix-blend-mode: multiply;
             }
 
-            /* 3. Rolling CRT Scanlines */
             #temporal-scanlines {
-                /* 1. The tight, static 4px horizontal CRT lines stay put on the main div */
                 background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.10) 50%);
                 background-size: 100% 4px;
                 opacity: var(--deg-scanline-opacity);
-
-                /* Keep the moving band from creating scrollbars when it goes off-screen */
                 overflow: hidden;
             }
 
-            /* 2. The large, slow-rolling dark band gets its own layer */
             #temporal-scanlines::before {
                 content: '';
                 position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-
-                /* Set the size of the band */
+                top: 0; left: 0; right: 0;
                 height: 15vh;
                 background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.35) 50%, transparent 100%);
-
-                /* GPU-accelerated transform animation */
                 animation: scanlineScroll 8s linear infinite;
-
-                /* Tell the browser to prioritize this element for hardware acceleration */
                 will-change: transform;
             }
 
-            /* 3. Slide the element using the GPU instead of redrawing the background */
             @keyframes scanlineScroll {
                 0%   { transform: translateY(-15vh); }
                 100% { transform: translateY(100vh); }
@@ -99,7 +114,7 @@ function initDegradation(visits) {
         document.head.appendChild(style);
     }
 
-    // 2. Inject Overlay Divs (Separated layers for independent opacity)
+    // 2. Inject Screen Overlays
     if (!document.getElementById('temporal-overlay')) {
         const overlay = document.createElement('div');
         overlay.id = 'temporal-overlay';
@@ -118,7 +133,8 @@ function initDegradation(visits) {
         document.body.appendChild(overlay);
     }
 
-    updateDegradation(visits)
+    initScreenGrime();
+    updateDegradation(visits);
 }
 
 function updateDegradation(visits) {
@@ -132,7 +148,8 @@ function applyTemporalMetrics(visits) {
     const maxVisits = 100;
     const severity = Math.max(0, Math.min((visits - 10) / (maxVisits - 10), 1));
 
-    // Static Grain & Sepia Overlay
+    // Map severity to the physical CSS variables
+    root.style.setProperty('--global-grime', severity.toFixed(3));
     root.style.setProperty('--deg-noise', (severity * 0.15).toFixed(3));
     root.style.setProperty('--deg-sepia', (severity * 0.2).toFixed(3));
 
@@ -160,6 +177,98 @@ function applyTemporalMetrics(visits) {
     root.style.setProperty('--deg-scanline-opacity', scanlineOp.toFixed(2));
 }
 
+// --- PHYSICAL FINGER GREASE SYSTEM ---
+function initScreenGrime() {
+    if (document.getElementById('grime-canvas')) return;
+
+    smudgeCanvas = document.createElement('canvas');
+    smudgeCanvas.id = 'grime-canvas';
+    
+    // Position exactly behind the temporal overlay, but above everything else
+    Object.assign(smudgeCanvas.style, {
+        position: 'fixed',
+        inset: '0',
+        width: '100vw',
+        height: '100vh',
+        pointerEvents: 'none',
+        zIndex: '999998', 
+        mixBlendMode: 'multiply',
+        // The smudges are always tracked, but only become visible as the screen degrades
+        opacity: 'calc(var(--global-grime) * 0.65)' 
+    });
+    
+    document.body.appendChild(smudgeCanvas);
+
+    // Handle screen resizing
+    const resize = () => {
+        smudgeCanvas.width = window.innerWidth;
+        smudgeCanvas.height = window.innerHeight;
+        redrawSmudges();
+    };
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Load existing smudges from local storage
+    try {
+        const stored = localStorage.getItem('podcube_smudges');
+        if (stored) smudges = JSON.parse(stored);
+    } catch(e) {}
+    redrawSmudges();
+
+    // Track every tap/click as a physical smudge
+    const addSmudge = (clientX, clientY) => {
+        // Save as screen percentages so the grease stays in the right spot when you resize the window!
+        const x = clientX / window.innerWidth;
+        const y = clientY / window.innerHeight;
+        
+        // Add micro-jitter so hitting the exact same pixel spreads the grease out over time
+        const jx = x + (Math.random() * 0.015 - 0.0075);
+        const jy = y + (Math.random() * 0.015 - 0.0075);
+
+        smudges.push([jx, jy]);
+        
+        // Limit to 400 smudges to keep performance perfect
+        if (smudges.length > 400) smudges.shift(); 
+
+        drawSingleSmudge(jx, jy);
+        
+        // Debounce the save to prevent hammering localStorage
+        clearTimeout(window._smudgeSave);
+        window._smudgeSave = setTimeout(() => {
+            localStorage.setItem('podcube_smudges', JSON.stringify(smudges));
+        }, 1500);
+    };
+
+    document.addEventListener('mousedown', (e) => addSmudge(e.clientX, e.clientY), {passive: true});
+    document.addEventListener('touchstart', (e) => addSmudge(e.touches[0].clientX, e.touches[0].clientY), {passive: true});
+}
+
+function drawSingleSmudge(xPct, yPct) {
+    if (!smudgeCtx) smudgeCtx = smudgeCanvas.getContext('2d');
+    
+    const cx = xPct * smudgeCanvas.width;
+    const cy = yPct * smudgeCanvas.height;
+    const radius = Math.random() * 15 + 20; // Smudge is 20-35px wide
+    
+    // Create a sickly, yellowish-brown skin oil gradient
+    const grad = smudgeCtx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+    grad.addColorStop(0, 'rgba(60, 45, 20, 0.04)');
+    grad.addColorStop(0.5, 'rgba(60, 45, 20, 0.015)');
+    grad.addColorStop(1, 'rgba(60, 45, 20, 0)');
+    
+    smudgeCtx.fillStyle = grad;
+    smudgeCtx.beginPath();
+    smudgeCtx.arc(cx, cy, radius, 0, Math.PI*2);
+    smudgeCtx.fill();
+}
+
+function redrawSmudges() {
+    if (!smudgeCtx) smudgeCtx = smudgeCanvas.getContext('2d');
+    smudgeCtx.clearRect(0, 0, smudgeCanvas.width, smudgeCanvas.height);
+    smudges.forEach(s => drawSingleSmudge(s[0], s[1]));
+}
+
+
 function startTemporalTextGlitches(visits) {
     if (window._temporalGlitchInterval) {
         clearInterval(window._temporalGlitchInterval);
@@ -168,8 +277,7 @@ function startTemporalTextGlitches(visits) {
 
     if (visits < 50) return;
 
-    // --- NEW: Global Epoch Tracking ---
-    // This allows us to instantly invalidate all hanging timeouts when De-Gauss fires.
+    // Epoch tracking allows us to instantly invalidate hanging timeouts on De-Gauss
     window._glitchEpoch = (window._glitchEpoch || 0) + 1;
     const currentEpoch = window._glitchEpoch;
 
@@ -203,13 +311,10 @@ function startTemporalTextGlitches(visits) {
         for (let i = 0; i < Math.min(simultaneousGlitches, validTargets.length); i++) {
             const target = validTargets[Math.floor(Math.random() * validTargets.length)];
 
-            // --- NEW: Backup pristine text securely ---
-            // Only captures the text the very first time the node is targeted
             if (!target.hasAttribute('data-true-text')) {
                 target.setAttribute('data-true-text', target.textContent);
             }
 
-            // Capture whatever the CURRENT text is (allowing glitches to stack and permanently corrupt!)
             const originalText = target.textContent;
 
             let charIdx;
@@ -230,69 +335,56 @@ function startTemporalTextGlitches(visits) {
             const holdDuration = 50 + Math.random() * 400;
 
             setTimeout(() => {
-                // --- NEW: The Kill Switch ---
-                // If a Defrigulation advanced the epoch while we were waiting, abort!
                 if (window._glitchEpoch !== currentEpoch) return;
-
                 if (target.textContent !== originalText) {
                     target.textContent = originalText;
                 }
             }, holdDuration);
         }
-
     }, intervalTime);
 }
 
 window.repairTerminal = async function () {
-    // 1. Create a blinding white flash element
     const flash = document.createElement('div');
     flash.style.position = 'fixed';
     flash.style.inset = '0';
     flash.style.backgroundColor = '#ffffff';
-    flash.style.zIndex = '99999999'; // Above absolutely everything
+    flash.style.zIndex = '99999999'; 
     flash.style.opacity = '0';
-    flash.style.pointerEvents = 'none'; // Let clicks pass through while it fades
-    flash.style.transition = 'opacity 0.1s ease-out'; // Fast, aggressive snap to white
+    flash.style.pointerEvents = 'none'; 
+    flash.style.transition = 'opacity 0.1s ease-out'; 
     document.body.appendChild(flash);
 
-    // 2. Force browser to register the element before animating
     void flash.offsetWidth;
-
-    // 3. Trigger the visual flash
     flash.style.opacity = '1';
 
-    // 4. Trigger the audio flash
     try {
         const buzz = new Audio('./poduser/Buzz-3.mp3');
         buzz.volume = 0.2;
         buzz.play().catch(e => console.warn('Audio play blocked:', e));
-    } catch (e) {
-        console.warn('Failed to load de-gauss audio:', e);
-    }
+    } catch (e) {}
 
-    // 5. Wait a fraction of a second at peak brightness, then reset data and fade out
     setTimeout(async () => {
-
-
-        // Advance the global epoch to neutralize all pending text glitch timeouts.
         window._glitchEpoch = (window._glitchEpoch || 0) + 1;
 
-        // Safely sweep the live DOM and restore pristine text
         document.querySelectorAll('[data-true-text]').forEach(el => {
             el.textContent = el.getAttribute('data-true-text');
             el.removeAttribute('data-true-text');
         });
 
-        // Reset the data behind the blinding flash
+        // 1. Reset Internal Degradation
         PodUser.data.degradation = 0;
         await PodUser.save();
         updateDegradation(0);
+        
+        // 2. Wipe the screen with a microfiber cloth!
+        smudges = [];
+        localStorage.removeItem('podcube_smudges');
+        redrawSmudges();
 
-        // Change to a slower, smoother transition for the fade-out
         flash.style.transition = 'opacity 1.5s ease-in';
         flash.style.opacity = '0';
 
-        // 6. Remove the element from the DOM ONLY after the 1.5s fade finishes
         setTimeout(() => {
             if (document.body.contains(flash)) {
                 document.body.removeChild(flash);

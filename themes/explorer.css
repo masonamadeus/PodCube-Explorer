@@ -1461,13 +1461,6 @@ html.dark-theme .ep-card.is-verified {
     justify-content: center;
 }
 
-/* Radio section alignment */
-.player-radio-section {
-    padding: 5px 15px;
-    background: var(--primary-dim);
-    border-right: 3px double var(--primary);
-
-}
 
 /* Mobile logic: Force the Radio Mode to a new row */
 @media (max-width: 768px) {
@@ -1609,7 +1602,6 @@ html.dark-theme .ep-card.is-verified {
 .player-radio-section {
     padding: 5px 15px;
     background: var(--primary-dim);
-    border-right: 3px double var(--primary);
     margin-left: auto;
 }
 
@@ -5093,6 +5085,33 @@ html.dark-theme .defrig-screw:hover {
     right: 6px;
     transform: rotate(-25deg);
 }
+
+/* ── PREVENT NATIVE TOUCH HIJACKING IN SCROLL CONTAINERS ── */
+
+.achievement-gallery, 
+.notifications-scroll, 
+.player-queue-list, 
+.pc-queue-preview {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+}
+
+.ach-card,
+.notification-card {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: pan-y;
+}
+
+.ach-reward-media-wrapper img,
+.ach-reward-media-wrapper video {
+    pointer-events: none;
+    -webkit-user-drag: none;
+}
+
+
 
 /* =========================================
    DARK MODE OVERRIDES

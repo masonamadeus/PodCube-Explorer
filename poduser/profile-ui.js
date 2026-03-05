@@ -1,8 +1,3 @@
-/**
- * profile-ui.js — Profile Tab Rendering
- */
-
-
 // ─────────────────────────────────────────────────────────────────
 // MODULE STATE
 // ─────────────────────────────────────────────────────────────────
@@ -30,9 +25,6 @@ function setAchFilter(filter) {
     _achFilter = filter;
     _renderAchievements(PodUser.data);
 }
-
-
-// --- NEW MEMORY CARD LOGIC ---
 
 function _refreshLoginCode() {
     const container = document.getElementById('prof-qr-container');
@@ -150,7 +142,7 @@ setTimeout(() => {
     });
 }, 1000); // Small delay to ensure DOM is ready
 
-/** Open the Achievement Fullscreen Lightbox */
+// Open the Achievement Fullscreen Lightbox
 window.openAchLightbox = function(type, url, caption) {
     let overlay = document.getElementById('ach-lightbox');
     
@@ -200,13 +192,24 @@ window.openAchLightbox = function(type, url, caption) {
     overlay.classList.add('active');
 };
 
-/** Close Lightbox and pause video */
+// Close Lightbox and destroy video to release Media Session
 window.closeAchLightbox = function() {
     const overlay = document.getElementById('ach-lightbox');
     if (overlay) {
         overlay.classList.remove('active');
+        
         const vid = overlay.querySelector('video');
-        if (vid) vid.pause();
+        if (vid) {
+            vid.pause();
+            vid.removeAttribute('src'); // Strip the source
+            vid.load(); // Force iOS to dump the video buffer and release the hardware lock
+        }
+
+        // Wait for the CSS fade-out transition to finish (0.25s), then nuke the DOM
+        setTimeout(() => {
+            const body = document.getElementById('ach-lightbox-body');
+            if (body) body.innerHTML = '';
+        }, 300);
     }
 };
 
@@ -242,7 +245,7 @@ function _renderProfileHero(userData) {
     }
 }
 
-window.renameUser = function() {
+function renameUser() {
     const nameEl = document.getElementById('prof-name-text');
     if (!nameEl) return;
 
@@ -577,7 +580,7 @@ function _buildRewardHtml(ach) {
 let _defrigScrewsRemoved = 0;
 let _defrigSwitches = [false, false, false];
 
-window.removeScrew = function(element) {
+function removeScrew(element) {
     if (element.classList.contains('removed')) return;
     
     element.classList.add('removed');
@@ -595,7 +598,7 @@ window.removeScrew = function(element) {
     }
 };
 
-window.toggleDefrigSwitch = function(element, index) {
+function toggleDefrigSwitch(element, index) {
     const isOn = element.classList.toggle('on');
     _defrigSwitches[index - 1] = isOn;
     
@@ -614,7 +617,7 @@ window.toggleDefrigSwitch = function(element, index) {
     }
 };
 
-window.executeDefrigulate = function() {
+function executeDefrigulate() {
     if (!_defrigSwitches.every(Boolean)) return;
     
     // 1. Call the original white-flash sequence from degradation.js
@@ -644,7 +647,7 @@ window.executeDefrigulate = function() {
 
 
 // CLICK HANDLER FOR NOTIFICATIONS
-window.handleNotificationClick = function(id) {
+function handleNotificationClick(id) {
     const n = PodUser.data.notifications.find(x => x.id === id);
     if (!n) return;
 
@@ -656,7 +659,7 @@ window.handleNotificationClick = function(id) {
     // Mark as read
     PodUser.markNotificationRead(id);
 
-    // --- SCENARIO A: ACHIEVEMENT CLICK ---
+    // --- ACHIEVEMENT CLICK ---
     if (payload && payload.type === 'achievement') {
         if (typeof switchTab !== 'undefined') switchTab('profile', true);
         
@@ -681,7 +684,8 @@ window.handleNotificationClick = function(id) {
             }
         }, 100);
     } 
-    // --- SCENARIO B: MAINTENANCE (DE-GAUSS) CLICK ---
+
+    // --- MAINTENANCE (DE-FRIGULATION) CLICK ---
     else if (payload && payload.type === 'maintenance') {
         if (typeof switchTab !== 'undefined') switchTab('profile', true);
         renderUserUI(PodUser.data);
@@ -713,6 +717,7 @@ window.handleNotificationClick = function(id) {
             }
         }, 100);
     } 
+
     else if (payload && payload.type === 'new_episode') {
         const ep = window.PodCube.findEpisode(payload.id);
         if (ep) {
@@ -727,7 +732,7 @@ window.handleNotificationClick = function(id) {
         }
         renderUserUI(PodUser.data);
     }
-    // --- SCENARIO D: STANDARD ALERT ---
+    // --- STANDARD ALERT ---
     else {
         renderUserUI(PodUser.data);
     }

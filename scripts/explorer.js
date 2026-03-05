@@ -266,10 +266,11 @@ function initUIControls() {
     initBufferDragAndDrop();
     enableScrubbing('scrubber');
     enableScrubbing('playerScrubber');
-    refreshSessionInspector();
-    initPasteHandler();
-    initPunchcardDragDrop();
-    initNavigation(); // Handles tab nav, history, and preference restoration.
+    refreshSessionInspector(); 
+    initPasteHandler(); 
+    initPunchcardDragDrop(); 
+    initPunchcardTitleCache(); 
+    initNavigation();
     startPodChatMonitor();
 }
 
@@ -697,6 +698,12 @@ function initArchiveControls() {
     populate('arcZone', PodCube.zones);
     populate('arcPlanet', PodCube.planets);
     populate('arcLocale', PodCube.locales);
+
+    const savedSort = localStorage.getItem('podcube_archive_sort');
+    const sortDropdown = document.getElementById('arcSort');
+    if (savedSort && sortDropdown) {
+        sortDropdown.value = savedSort;
+    }
     
     updateYearOptions();
 }
@@ -787,8 +794,13 @@ function _performUpdateArchive() {
     }
 
     // Gather Sort State
-    const sortMode = document.getElementById('arcSort')?.value || 'release_desc';
-
+    const sortDropdown = document.getElementById('arcSort');
+    const sortMode = sortDropdown?.value || 'release_asc';
+    
+    if (sortDropdown) {
+        localStorage.setItem('podcube_archive_sort', sortMode);
+    }
+    
     // Execute API Call
     // Now passing 'filters' AND 'sortMode' to the improved where()
     let results = PodCube.where(filters, sortMode);
@@ -1500,60 +1512,60 @@ function updatePlayerVolume(value, noSave = false) {
     
     const volValLabel = document.getElementById('transportVolumeValue');
     if (volValLabel) volValLabel.textContent = `${value}%`;
+
+    // Instantly sync the value of both DOM sliders so they never drift apart
+    ['transportVolume', 'playerVolume'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.value !== value) el.value = value;
+    });
 }
 
 function updatePlayerSpeed(value) {
     run(`PodCube.setPlaybackRate(${value})`, true);
 }
 
+let _globalScrubberBound = false;
+
 function enableScrubbing(elementId) {
     const el = document.getElementById(elementId);
     if (!el) return;
 
-    let isDragging = false;
-
-    // Extract clientX from either a MouseEvent or a TouchEvent
-    const getClientX = (e) => e.touches ? e.touches[0].clientX : e.clientX;
-
-    const seekToPoint = (e) => {
-        const rect = el.getBoundingClientRect();
-        const relativeX = getClientX(e) - rect.left;
-        const percent = Math.max(0, Math.min(1, relativeX / rect.width));
-
-        if (PodCube.status.duration) {
-            const time = percent * PodCube.status.duration;
-            run(`PodCube.seek(${time.toFixed(2)})`, true);
-        }
-    };
-
-    // ── Mouse ────────────────────────────────────────────
     el.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        seekToPoint(e);
+        window._activeScrubber = el;
+        seekToPoint(e, el);
     });
-    document.addEventListener('mousemove', (e) => {
-        if (isDragging) {
-            e.preventDefault();
-            seekToPoint(e);
-        }
-    });
-    document.addEventListener('mouseup', () => { isDragging = false; });
-
-    // ── Touch ────────────────────────────────────────────
     el.addEventListener('touchstart', (e) => {
-        isDragging = true;
-        seekToPoint(e);
+        window._activeScrubber = el;
+        seekToPoint(e, el);
     }, { passive: true });
 
-    document.addEventListener('touchmove', (e) => {
-        if (!isDragging) return;
-        // cancelable guard required — passive listeners can't preventDefault
-        if (e.cancelable) e.preventDefault();
-        seekToPoint(e);
-    }, { passive: false });
+    if (!_globalScrubberBound) {
+        _globalScrubberBound = true;
+        const getClientX = (e) => e.touches ? e.touches[0].clientX : e.clientX;
+        
+        window.seekToPoint = (e, targetEl) => {
+            if (!targetEl || !PodCube.status.duration) return;
+            const rect = targetEl.getBoundingClientRect();
+            const relativeX = getClientX(e) - rect.left;
+            const percent = Math.max(0, Math.min(1, relativeX / rect.width));
+            run(`PodCube.seek(${(percent * PodCube.status.duration).toFixed(2)})`, true);
+        };
 
-    document.addEventListener('touchend', () => { isDragging = false; });
-    document.addEventListener('touchcancel', () => { isDragging = false; });
+        const moveHandler = (e) => {
+            if (window._activeScrubber) {
+                if (e.cancelable) e.preventDefault();
+                window.seekToPoint(e, window._activeScrubber);
+            }
+        };
+
+        const endHandler = () => { window._activeScrubber = null; };
+
+        document.addEventListener('mousemove', moveHandler);
+        document.addEventListener('mouseup', endHandler);
+        document.addEventListener('touchmove', moveHandler, { passive: false });
+        document.addEventListener('touchend', endHandler);
+        document.addEventListener('touchcancel', endHandler);
+    }
 }
 
 function updatePunchcardPreview() {
@@ -1614,8 +1626,22 @@ function updatePunchcardPreview() {
     }
 }
 
+function initPunchcardTitleCache() {
+    const input = document.getElementById('playlistNameInput');
+    if (!input) return;
+
+    // Load saved value on boot
+    const savedName = localStorage.getItem('podcube_draft_punchcard_title');
+    if (savedName) input.value = savedName;
+
+    // Save on input (using our existing debounce utility)
+    input.addEventListener('input', debounce((e) => {
+        localStorage.setItem('podcube_draft_punchcard_title', e.target.value);
+    }, 400));
+}
+
 // UI Hook: Arrow Buttons
-window.moveBufferItem = async function(index, dir) {
+async function moveBufferItem(index, dir) {
     if (!window.PodUser) return;
     const newIndex = index + dir;
     await window.PodUser.moveInPrintBuffer(index, newIndex);
@@ -1623,7 +1649,7 @@ window.moveBufferItem = async function(index, dir) {
 };
 
 // UI Hook: Remove Button
-window.removeBufferItem = async function(index) {
+async function removeBufferItem(index) {
     if (!window.PodUser) return;
     await window.PodUser.removeFromPrintBufferIndex(index);
     syncArchiveUI(); // Ensures Archive highlighting turns off if it was the last instance
@@ -2160,7 +2186,10 @@ function saveBufferAsPlaylist() {
     const playlist = PodCube.savePlaylist(finalName, bufferEps);
     logCommand(`PodCube.savePlaylist("${finalName}", ...)`);
     
-    if (input) input.value = '';
+    if (input) {
+        input.value = '';
+        localStorage.removeItem('podcube_draft_punchcard_title');
+    }
 
     if (window.PodUser) {
         window.PodUser.logPunchcardPrinted();
@@ -2666,8 +2695,10 @@ function renderTransportState(status) {
 
     // Volume / Speed (Only if changed)
     if (status.volume !== UI_CACHE.lastVolume) {
+        const volInt = Math.round(status.volume);
+        
+        // Only update the actual input knob if the user isn't currently dragging it
         if (document.activeElement.id !== 'transportVolume' && document.activeElement.id !== 'playerVolume') {
-            const volInt = Math.round(status.volume);
             ['transportVolume', 'playerVolume'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = volInt;
@@ -3466,108 +3497,6 @@ function playHistorySong() {
     // Play it
     PodCube.play(validEpisode);
     logCommand('// Playing internal history song');
-}
-
-// PODCHAT EASTER EGGS
-const PRIC_CHAT_POOL = [
-    { s: "Jaspert", m: "Tanner! Did you bring any chicken with you today????? I brought a salad and I regret it." },
-    { s: "Jaspert", m: "Tanner…..chicken??? I neeeeeeeed itttttt please!!!" },
-    { s: "Jaspert", m: "Are you still mad about last week??" },
-    { s: "Jaspert", m: "We were joking!! I thought we were cool???" },
-    { s: "Jaspert", m: "It’s just a mustard stain, Tanner. It wasn’t a HUGE deal" },
-    { s: "Jaspert", m: "Tanner. r u ok? Chicken?" },
-    { s: "Jaspert", m: "……chicken?" },
-    { s: "Jaspert", m: "Are you even here???" },
-    { s: "Jaspert", m: "I’m texting you" },
-    { s: "Leslie", m: "Hey Tanner! Are you doing the vegan chili cookoff thing?" },
-    { s: "Leslie", m: "Grehg in pSEC just brags and brags and bragggssssssss about his 4 consecutive wins and it’s exhausting" },
-    { s: "Leslie", m: "Tanner? Chili?" },
-    { s: "Leslie", m: "I’ll message you later" },
-    { s: "Prabot", m: "Tanner! Hey! Can you stop by my idea pod sometime today? Stove and I want to ask you a few questions." },
-    { s: "Prabot", m: "You’re not in trouble! LOL!! We want to ask you about consumer data, etc. blah blah blah" },
-    { s: "Prabot", m: "….wait….it this NOT Tanner?" },
-    { s: "Stove", m: "Hey, Tanner! Did you watch Monochrome’s Analysis last night?? They’re getting so desperate for viewers haha" },
-    { s: "Stove", m: "Uh oh……did I spoilers?" },
-    { s: "Stove", m: "Sorry if I did a spoilers!!" },
-    { s: "Stove", m: "Are you coming to our idea pod?" },
-    { s: "Stove", m: "OOPS! HELLO NEW PERSON AND NOT TANNER!! SORRY!" },
-    { s: "D. Blakely", m: "Greetings, Tanner! How was your weekend? Are you doing the vegan chili thing? -Dick" },
-    { s: "D. Blakely", m: "Do you need jackfruit? Are you using tempeh? Just beans? -Dick" },
-    { s: "D. Blakely", m: "Let me know because I have to get rid of the beans I told you about. -Dick" },
-    { s: "D. Blakely", m: "600lbs of beans I need to get rid of can you use them for Vegan Chili? -Dick" },
-    { s: "D. Blakely", m: "URGENT! Tanner. Do you need my beans? I have 600lbs of them and I'm in hot water. -Dick" },
-    { s: "D. Blakely", m: "Tanner. Beans. -Dick" },
-    { s: "D. Blakely", m: "Tanner beans please do you need them are you here today -Dick" },
-    { s: "D. Blakely", m: "Earth to Tanner. I sincerely need your help. 500lbs of beans are yours for free. -Dick" },
-    { s: "HR", m: "Hello and welcome to the PodCube ThinkWing! We’re excited to have a new PodCube Passenger on our team!" },
-    { s: "HR", m: "Stop by our office during “PodCube Passenger Hours”: 3:30 - 3:45pm each Tuesday. Make an appointment!" },
-    { s: "HR", m: "Feeling tired? Take a 5 minute stretch and grab a complimentary Sprot. Yummm-o!" },
-    { s: "HR", m: "Interested in signing up for the PodCube 20th Annual Vegan Chili Cookoff? Stop by on Tuesdays!" },
-    { s: "PodBot", m: "Thanks" },
-    { s: "PodBot", m: "*** test…..{{{{...lol…PODCCCCCC ****" },
-    { s: "PodBot", m: "Hope you’re feeling good! I know I am! ROFL" },
-    { s: "PodBot", m: "Have some down time? Proactively e-enable scalable solutions until your next “big idea” strikes" },
-    { s: "PodBot", m: "Do you like listening to music? That’s awesome! ROFL" },
-    { s: "PodBot", m: "**** PODBUTLER STUCK IN 3rd floor visitor restroom ****" },
-    { s: "PodBot", m: "Have you been holistically redefining your department’s highly efficient 'outside the cube' thinking?" },
-    { s: "PodBot", m: "Our Galileo Drones effectively negotiate and navigate on-demand methods of delivery. Did you know that?" },
-    { s: "PodBot", m: "suh dude? ROFL. Remember that funny video?" },
-    { s: "PodBot", m: "SPROT!" },
-    { s: "PodBot", m: "**** bandwidthhhh4hh4h{{4hh4hh44hhhh44}} ****" },
-    { s: "PodBot", m: "What’s your favorite PodCube Transmission Era? I like 1848 in the hat store! ROFL" },
-    { s: "PodBot", m: "The Departments in the Brain Tower efficiently orchestrate vertical leadership skills. Isn’t that cool?" },
-    { s: "PodBot", m: "Do you ever watch livestreams on twitch when you’re not working? ROFL." },
-    { s: "PodBot", m: "**** PODBUTLER STUCK IN 1st floor visitor restroom ****" },
-    { s: "PodBot", m: "**** PODBUTLER STUCK IN PodCube gift store ****" },
-    { s: "PodBot", m: "**** PODBUTLER STUCK IN pSEC annex stairwell ****" },
-    { s: "PodBot", m: "**** PODBUTLER STUCK IN unauthorized ****" },
-    { s: "PodBot", m: "**** PODBUTLER STUCK IN on top of Lindsey’s desk galileo department ****" },
-    { s: "PodBot", m: "**** PODBUTLER STUCK IN beryllium dorsal drive sail ****" },
-    { s: "PodBot", m: "**** PODBUTLER STUCK IN caesium straighteners ****" },
-    { s: "PodBot", m: "**** PODBUTLER STUCK IN beryllium dorsal drive boron rubidium spore-housing ****" },
-    { s: "PodBot", m: "**** PODBUTLER STUCK IN mycellium annex ****" },
-    { s: "PodBot", m: "skateboarding!" },
-    { s: "PodBot", m: "backward-compatible outsourcing" },
-    { s: "PodBot", m: "unique results. ROFL" },
-    { s: "PodBot", m: "I’m PodBot. Isn’t that cool?" },
-    { s: "PodBot", m: "BRB = be right back or bring real butter?" },
-    { s: "PodBot", m: "There's an anomalous power signature in the rear Galileo hyper-sensitive FTL driver. ROFL" }
-];
-
-function startPodChatMonitor() {
-    let lastChatTime = 0;
-    
-    setInterval(() => {
-        const now = Date.now();
-        const idleTime = now - (AppState.lastCommandTime || now);
-        
-        // Threshold: 120,000ms (2 minutes)
-        if (idleTime > 60000) {
-            // Frequency: Only post a new chat every 20 seconds while idle
-            if (now - lastChatTime > 20000) {
-                const chat = PRIC_CHAT_POOL[Math.floor(Math.random() * PRIC_CHAT_POOL.length)];
-
-                const currentName = PodUser?.data?.username || "Passenger";
-                
-                // Replace all instances of "Tanner" (case-insensitive) with the current user's name
-                const personalizedMessage = chat.m.replace(/Tanner/gi, currentName);
-                
-                const formattedMessage = `// ${chat.s.toUpperCase()}: ${personalizedMessage}`;
-                
-                // Update the monitor text visually
-                const monitorText = document.getElementById('monitorText');
-                const timestampEl = document.getElementById('monitorTimestamp');
-                
-                if (monitorText) {
-                    monitorText.textContent = formattedMessage;
-                }
-                
-                if (timestampEl) timestampEl.textContent = new Date().toLocaleTimeString();
-                
-                lastChatTime = now;
-            }
-        }
-    }, 5000); // Check every 5 seconds
 }
 
 // --- PWA INSTALLATION LOGIC ---

@@ -1461,7 +1461,6 @@ window.addEventListener('PodCube:Ready', () => {
         reward: {
             type: 'image',
             url: './poduser/assets/images/PodCube%20Fact%20(1).webp',
-            caption: 'Do not look directly at the condensation.',
         }
     });
 

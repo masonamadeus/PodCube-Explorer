@@ -51,6 +51,8 @@
     <script src="./poduser/achievements.js"></script>
 
     <!-- EXPLORER FEATURE SCRIPTS-->
+    <script src="./scripts/podchat.js"></script>
+    <script src="./scripts/popups.js"></script>
     <script src="./scripts/explorer.js"></script>
     <script src="./scripts/degradation.js"></script>
     <script src="./scripts/playlist-sharing.js"></script>
@@ -293,7 +295,7 @@
                         <label>Sort By</label>
                         <select id="arcSort" onchange="updateArchive()">
                             <option value="release_desc">Release Date (Newest)</option>
-                            <option value="release_asc">Release Date (Oldest)</option>
+                            <option value="release_asc" selected>Release Date (Oldest)</option>
                             <option value="lore_desc">Origin Date (Newest)</option>
                             <option value="lore_asc">Origin Date (Oldest)</option>
                             <option value="integrity_desc">Integrity (High → Low)</option>
@@ -468,9 +470,14 @@
                             </svg></button>
                     </div>
 
-                    <div class="player-radio-section">
-                        <label class="player-radio-toggle">
-                            <input type="checkbox" id="autoplayRandom" onchange="toggleAutoplayMode(this.checked)">
+                    <div class="player-radio-section panel">
+                        <label class="player-radio-toggle" style="display:flex; align-items:center; gap:12px; cursor:pointer;">
+                            <div class="plastic-switch-wrapper">
+                                <input type="checkbox" id="autoplayRandom" onchange="toggleAutoplayMode(this.checked)" style="display:none;">
+                                <div class="plastic-switch-track">
+                                    <div class="plastic-switch-knob"></div>
+                                </div>
+                            </div>
                             <span class="player-radio-label">
                                 <strong>Radio Mode</strong>
                                 <span class="player-radio-desc">Continuous playback</span>
@@ -1666,9 +1673,9 @@
             </svg>
         </button>
         <div class="transport-main">
-            <button class="control-btn" onclick="run('PodCube.prev()')"  title="Previous">
+            <button class="control-btn" onclick="run('PodCube.skipBack()')"  title="Skip Back">
                 <svg viewBox="0 0 24 24" class="icon-svg">
-                    <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+                    <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z" />
                 </svg>
             </button>
             <button class="control-btn control-btn-play" id="playBtn" onclick="togglePlayback()"
@@ -1677,14 +1684,21 @@
                     <path d="M8 5v14l11-7z" />
                 </svg>
             </button>
-            <button class="control-btn" onclick="run('PodCube.next()')"  title="Next">
-                <svg viewBox="0 0 24 24" class="icon-svg">
-                    <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+            <button class="control-btn" onclick="run('PodCube.skipForward()')"  title="Skip Forward">
+                <svg viewBox="0 0 24 24" class="icon-svg" style="transform: scaleX(-1);">
+                    <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z" />
                 </svg>
             </button>
             <div class="transport-info" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
                 <div style="min-width:0; flex:1;">
-                    <div class="transport-title" id="transTitle">Select a transmission...</div>
+                    <div class="transport-title" id="transTitle" 
+                         style="cursor: pointer; transition: color 0.2s;" 
+                         title="Inspect Transmission" 
+                         onmouseover="if(PodCube.nowPlaying) this.style.textDecoration='underline';" 
+                         onmouseout="this.style.textDecoration='none';" 
+                         onclick="if(PodCube.nowPlaying) { loadEpisodeInspector(PodCube.nowPlaying); switchTab('inspector', true); }">
+                        Select a transmission...
+                    </div>
                     <div class="meta" id="transTime" style="font-size:var(--fs-sm); color:#888;">0:00 / 0:00</div>
                 </div>
                 

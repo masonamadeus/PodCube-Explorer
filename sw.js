@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'podcube-explorer-v6.FAAAAAART';
+const CACHE_NAME = 'podcube-explorer-v7.toot';
 
 // Detect if we are running locally
 const isLocalhost = Boolean(
@@ -24,6 +24,7 @@ self.addEventListener('install', (event) => {
                     './scripts/explorer.js',
                     './scripts/playlist-sharing.js',
                     './scripts/brigistics-vis.js',
+                    './scripts/podchat.js',
 
                     // STYLES/THEMES
                     './themes/explorer.css',

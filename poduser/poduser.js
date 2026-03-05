@@ -486,7 +486,7 @@ class PodUserEngine {
             const body = 'Terminal has reached standard maintenance interval. Please initiate a DEFRIGULATION sequence to maintain connection integrity.';
             
             // 1. Use the synchronous push so it gets safely bundled into the save below
-            this._pushNotification(title, body);
+            this._pushNotification(title, body, {type: 'maintenance', target: 'btn-degauss'});
             
             // 2. Fire the OS-level notification so the user actually sees it happen
             this._triggerOSNotification(title, body);

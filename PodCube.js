@@ -77,7 +77,7 @@ function fnv1aHash(str) {
 
 
 // ===========================================
-// PODCUBE CUSTOM DATE OBJECT
+// #region PODCUBE DATE
 // ===========================================
 
 class PodCubeDate {
@@ -190,7 +190,7 @@ class PodCubeDate {
 }
 
 // ==========================================
-// FEED NORMALIZATION
+// #region FEED NORMALIZATION
 // ==========================================
 
 /**
@@ -418,7 +418,7 @@ class FeedNormalizer {
 }
 
 // ==========================================
-// EPISODE DATA MODEL
+// #region EPISODE DATA
 // ==========================================
 
 class Episode {
@@ -571,7 +571,7 @@ class Episode {
 }
 
 // ==========================================
-// THE ENGINE (Singleton API)
+// #region PODCUBE API
 // ==========================================
 /**
  * Centralized Event Registry for the PodCube Engine.
@@ -645,6 +645,8 @@ class PodCubeEngine {
         this._loadingToken = 0;
         this._isLoading = false;
         this._hasPreloadedNext = false;
+        this._lastKnownTime = 0;
+        this._lastKnownTrackId = null;
 
         // Queue and playback state
         this._queue = [];
@@ -691,21 +693,30 @@ class PodCubeEngine {
             this._emit('pause', this.nowPlaying);
         });
         
-        // Throttled save + position sync for timeupdate (every ~5 seconds).
-        // _updateMediaPosition() MUST be called here - without regular position
-        // state updates the OS considers playback stale and disables lock-screen
-        // resume controls, which is the root cause of "cannot unpause on mobile".
+
         this._audio.addEventListener('timeupdate', () => {
+
+            // LOG ACTIVE TRACK & TIME
+            if (this._audio.currentTime > 0 && this.nowPlaying) {
+                if (this._lastKnownTrackId !== this.nowPlaying.id) {
+                    this._lastKnownTime = 0;
+                    this._lastKnownTrackId = this.nowPlaying.id;
+                }
+                this._lastKnownTime = this._audio.currentTime;
+            }
+
+            // THROTTLED SESSION SAVE (every 5 seconds)
             const now = Date.now();
             if (now - this.lastSave > 5000) {
                 this._saveSession();
                 if (!this._audio.paused) {
+                    // This should keep iOS lock screen from detaching??
                     this._updateMediaPosition();
                 }
                 this.lastSave = now;
             }
 
-            // Emit status as usual
+            // EMIT STATUS
             const ct = this._audio.currentTime;
             const dur = this._audio.duration || 0;
             this._emit('timeupdate', {
@@ -718,11 +729,11 @@ class PodCubeEngine {
                 durationFormatted: this._formatTime(dur),
             });
 
-            // Only run if we haven't preloaded yet
+            // PRELOAD NEXT (not implemented yet)
             if (this._audio.duration && !this._hasPreloadedNext) {
                 const remaining = this._audio.duration - this._audio.currentTime;
 
-                // Trigger Preload once we hit the threshold
+                // Trigger Preload once we hit 5 seconds before the end
                 if (remaining <= 5) {
                     this._preloadNext();
                     this._hasPreloadedNext = true;
@@ -1471,15 +1482,18 @@ class PodCubeEngine {
             this._isLoading = true;
             this._hasPreloadedNext = false;
 
+            // Flush the audio source HARDER
+            this._audio.removeAttribute('src');
+            this._audio.load();
+
             // Direct stream assignment
             this._audio.src = ep.audioUrl;
+            this._audio.load();
             this._audio.volume = this._volume;
             
-            // We do not await 'canplay' here to keep the UI responsive.
-            // HTML5 audio handles buffering automatically.
 
             if ('mediaSession' in navigator && ep) {
-                // Determine artwork: use feed image if parsed, otherwise fallback to local asset
+                // Determine artwork using feed image if parsed, otherwise fallback to local asset
                 const fallbackUrl = new URL('./PODCUBE.png', window.location.href).href;
                 const artworkUrl = this.logo || fallbackUrl;
 
@@ -1494,6 +1508,7 @@ class PodCubeEngine {
                 });
             }
 
+            // Autoplay the loaded track if desired
             if (autoPlay) {
                 try {
                     await this._audio.play();
@@ -1503,7 +1518,7 @@ class PodCubeEngine {
                 }
             }
 
-            // Check token 
+            // Check & reset loading token
             if (token !== this._loadingToken){
                 this._isLoading = false;
                 return;
@@ -1611,12 +1626,15 @@ class PodCubeEngine {
 
     async play(episode) {
         try {
+
+            // If we're passed a specific episode to play, add to queue.
+            // That will handle triggering a play on it's own, hence the return.
             if (episode) {
                 this.addToQueue(episode, true);
                 return;
             }
 
-            // If empty but in Radio Mode, fetch a track before failing
+            // If empty but in Radio Mode, fetch a track and add to queue (which triggers a play), return.
             if (!this.nowPlaying && this._radioMode) {
                 const nextTrack = this.random;
                 if (nextTrack) {
@@ -1625,21 +1643,72 @@ class PodCubeEngine {
                 }
             }
 
+            // If nothing is here we can't play it, dipshit.
             if (!this.nowPlaying) {
                 log.warn("Cannot play: Queue is empty.");
                 return;
             }
 
-            // Guard: If we have a track but audio isn't loaded yet (e.g. stopped state)
-            if (!this._audio.src || this._audio.src === '' || this._audio.src === window.location.href) {
-                await this._loadAndPlay();
+            // Re-assert lock screen metadata. Maybe THIS will make iOS happy (kill me)
+            if ('mediaSession' in navigator) {
+                const fallbackUrl = new URL('./PODCUBE.png', window.location.href).href;
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: this.nowPlaying.title,
+                    artist: this.nowPlaying.location || 'Unknown Origin',
+                    album: this.nowPlaying.model || 'PodCube™ Transmission',
+                    artwork: [{ src: this.logo || fallbackUrl, sizes: '512x512', type: 'image/png' }]
+                });
+            }
+
+            // Detect if the OS crashed the pipeline or silently dumped the buffer
+            const isDead = !this._audio.src || 
+                           this._audio.src === '' || 
+                           this._audio.src === window.location.href || 
+                           this._audio.error !== null || 
+                           (this._audio.readyState === 0 && !this._isLoading);
+
+            if (isDead) {
+                log.info("Audio pipeline empty or severed. Rebuilding...");
+                const savedTime = this._lastKnownTime || 0;
+                
+                await this._loadAndPlay(true);
+                
+                // Attempt to restore the position
+                if (savedTime > 0) {
+                    const restore = () => { 
+                        this._audio.currentTime = savedTime; 
+                        this._updateMediaPosition();
+                    };
+                    if (this._audio.readyState >= 1) restore();
+                    else this._audio.addEventListener('loadedmetadata', restore, { once: true });
+                }
+
             } else {
-                await this._audio.play();
+
+                // Maybe THIS will force the mediasession to stay connected.
+                try {
+                    await this._audio.play();
+                    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing'; // Tell it that it's playing
+                } catch (playErr) {
+                    log.warn("Play rejected (buffer drop). Executing seamless recovery.", playErr);
+                    const savedTime = this._lastKnownTime || 0;
+                    
+                    await this._loadAndPlay(true);
+                    
+                    if (savedTime > 0) {
+                        const restore = () => { 
+                            this._audio.currentTime = savedTime; 
+                            this._updateMediaPosition();
+                        };
+                        if (this._audio.readyState >= 1) restore();
+                        else this._audio.addEventListener('loadedmetadata', restore, { once: true });
+                    }
+                }
             }
 
             this._updateMediaPosition();
         } catch (e) {
-            log.error("Play failed:", e);
+            log.error("Play failed and recovery exhausted:", e);
             this._emit('error', { episode: this.nowPlaying, error: e });
         }
     }
@@ -1992,6 +2061,8 @@ class PodCubeEngine {
     clearQueue() {
         this._queue = [];
         this._queueIndex = -1;
+        this._lastKnownTime = 0;
+        this._lastKnownTrackId = null;
         
         this._cancelPreload();
         this._stopAfterCurrent = false;
@@ -2816,9 +2887,15 @@ async restoreSession() {
                 
                 // Now safe to set currentTime
                 if (state.currentTime && state.currentTime > 0) {
+
                     // Ensure we don't exceed duration
                     const safeTime = Math.min(state.currentTime, audio.duration || state.currentTime);
                     audio.currentTime = safeTime;
+
+                    // Sync our cached trackId and position
+                    this._lastKnownTime = safeTime;
+                    this._lastKnownTrackId = currentEp.id;
+
                     log.info(`Session: Restored playback position to ${safeTime.toFixed(2)}s`);
                 }
                 

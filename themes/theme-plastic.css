@@ -516,7 +516,51 @@ body {
     background: var(--bg-body);
 }
 
-/*  GLOBAL TRANSPORT ===================================== */
+/* PLAYBACK && GLOBAL TRANSPORT ===================================== */
+
+/* Radio Mode toggle switch */
+
+.plastic-switch-wrapper {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.plastic-switch-track {
+    position: absolute;
+    inset: 0;
+    background: var(--bg-body);
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3), 
+                inset 0 -1px 2px rgba(255, 255, 255, 0.6);
+    transition: background 0.3s ease;
+}
+
+.plastic-switch-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background: #d4d0c8;
+    border-radius: 50%;
+    /* Layered shadows make it pop out of the recessed track */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4), 
+                inset 0 2px 2px rgba(255, 255, 255, 0.9), 
+                inset 0 -2px 2px rgba(0, 0, 0, 0.15);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Checked State Logic */
+input[type="checkbox"]:checked + .plastic-switch-track {
+    background: var(--success);
+}
+
+input[type="checkbox"]:checked + .plastic-switch-track .plastic-switch-knob {
+    transform: translateX(20px);
+}
 
 .global-transport {
     background: #e2dfd8 !important;
@@ -626,12 +670,10 @@ textarea {
     transition: box-shadow 80ms, transform 80ms !important;
 }
 
-.ep-content {
-    background: var(--bg-body)!important;
-}
 
 .ep-actions{
     background: var(--bg-panel)!important;
+    border-left: var(--plastic-lo)!important;
 }
 
 @media (hover: hover){
@@ -696,4 +738,123 @@ textarea {
         0 8px 18px rgba(0,0,0,0.16),
         0 2px  5px rgba(0,0,0,0.08) !important;
 }
+}
+
+
+/* ── PHYSICAL SLIDERS & SCRUBBERS ── */
+
+/* 1. Native Range Inputs (Volume Controls) */
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+    width: 100%;
+}
+
+/* Range Track: A thin, dark trench cut into the plastic */
+input[type="range"]::-webkit-slider-runnable-track {
+    background: #a5a197; /* Darker, recessed shadow color */
+    border-radius: 2px;
+    height: 4px; /* Very thin line */
+    border: none;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.5), inset 0 -1px 1px rgba(255,255,255,0.4);
+}
+input[type="range"]::-moz-range-track {
+    background: #a5a197;
+    border-radius: 2px;
+    height: 4px;
+    border: none;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.5), inset 0 -1px 1px rgba(255,255,255,0.4);
+}
+
+/* Range Knob: Raised plastic button */
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    margin-top: -6px; /* Centers the 16px knob perfectly on the 4px track */
+    background: #d4d0c8;
+    height: 16px;
+    width: 16px;
+    border-radius: 3px;
+    border: 1px solid rgba(0,0,0,0.25);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4),
+                inset 0 2px 2px rgba(255, 255, 255, 0.9),
+                inset 0 -2px 2px rgba(0, 0, 0, 0.15);
+    transition: transform 0.1s;
+}
+input[type="range"]::-webkit-slider-thumb:active {
+    transform: scale(0.9); /* Physically depresses when clicked */
+}
+input[type="range"]::-moz-range-thumb {
+    background: #d4d0c8;
+    height: 16px;
+    width: 16px;
+    border-radius: 3px;
+    border: 1px solid rgba(0,0,0,0.25);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4),
+                inset 0 2px 2px rgba(255, 255, 255, 0.9),
+                inset 0 -2px 2px rgba(0, 0, 0, 0.15);
+    transition: transform 0.1s;
+}
+input[type="range"]::-moz-range-thumb:active {
+    transform: scale(0.9);
+}
+
+/* 2. Main Player Tab Scrubber */
+.playback-scrubber {
+    background: var(--bg-body);
+    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.3), inset 0 -1px 2px rgba(255,255,255,0.6);
+    height: 10px; 
+    position: relative;
+}
+
+/* Gives the blue progress bar a tubular, liquid-crystal look */
+.playback-scrubber-fill {
+    background: var(--primary);
+    border-radius: 8px;
+    box-shadow: inset 0 2px 2px rgba(255,255,255,0.3), inset 0 -2px 2px rgba(0,0,0,0.2);
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.playback-scrubber-handle {
+    background: #d4d0c8;
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    border: 1px solid rgba(0,0,0,0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4), 
+                inset 0 2px 2px rgba(255, 255, 255, 0.9), 
+                inset 0 -2px 2px rgba(0, 0, 0, 0.15);
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    transition: transform 0.1s;
+    cursor: grab;
+    
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.playback-scrubber-handle:active {
+    transform: translate(-50%, -50%) scale(0.9);
+    cursor: grabbing;
+}
+
+/* 3. Global Transport Edge Scrubber (The thin line at the bottom) */
+.scrubber {
+    background: #b5b1a9; /* Darker to look like a recessed trench cut into the bezel */
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3), inset 0 -1px 1px rgba(255,255,255,0.4);
+    height: 6px;
+}
+
+.scrubber-fill {
+    background: var(--primary);
+    box-shadow: inset 0 1px 2px rgba(255,255,255,0.4), inset 0 -1px 1px rgba(0,0,0,0.2);
+    border-right: 2px solid rgba(255,255,255,0.6); /* Creates a hard 'cap' at the leading edge of the bar */
 }

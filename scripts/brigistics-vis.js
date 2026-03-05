@@ -1,17 +1,36 @@
 /**
  * brigistics-viz.js
  * Unified Hardware Scanner (Quaternion Trackball Engine)
+ * * This engine renders an interactive 3D sphere using HTML/CSS transforms driven
+ * by a custom JavaScript quaternion mathematics engine. This completely prevents 
+ * "gimbal lock" and allows for perfectly smooth panning.
  */
 
 const BrigisticsViz = (function() {
     
-    // --- TUNING VARIABLES ---
+    // --- MASSIVE GLOBE TUNING VARIABLES ---
+    const SPHERE_RADIUS = 200;     // The physical size of the globe (pushes nodes far apart)
+    const SPHERE_Z_OFFSET = -100;  // Pushes the giant globe deep into the monitor so it fits the porthole
+    
     const LERP_SPEED = 0.05;         
     const DWELL_TIME_MS = 4000;      
-    const INTERRUPT_DELAY_MS = 6000; 
+    const INTERRUPT_DELAY_MS = 15000; 
+    
+    // Ultra-Precise Hitbox Tuning (Recalibrated for a massive 400px radius)
+    const SNAP_THRESHOLD = 0.996;    // Magnetic pull: triggers if dropped within ~35px of a node
+    const LOCK_THRESHOLD = 0.999;   // Crosshair engage: triggers when dead center (~10px)
+    const UNLOCK_THRESHOLD = 0.9997; // Deadzone to prevent UI flickering on the edges
+    
+    // Dynamically calculate how fast the trackball should spin based on its massive size
+    const DRAG_SPEED = 1 / SPHERE_RADIUS; 
     // ------------------------
 
-    // --- QUATERNION MATH ENGINE ---
+    
+
+    // --- QUATERNION MATHEMATICS ENGINE ---
+    // Quaternions represent 3D rotations as 4D vectors [w, x, y, z].
+    // They allow us to combine arbitrary dragging gestures into a perfectly stable state.
+
     function qMultiply(q1, q2) {
         return [
             q1[0]*q2[0] - q1[1]*q2[1] - q1[2]*q2[2] - q1[3]*q2[3],
@@ -27,6 +46,7 @@ const BrigisticsViz = (function() {
         return [q[0]/len, q[1]/len, q[2]/len, q[3]/len];
     }
 
+    // Spherical Linear Interpolation (SLERP)
     function qSlerp(qa, qb, t) {
         let dot = qa[0]*qb[0] + qa[1]*qb[1] + qa[2]*qb[2] + qa[3]*qb[3];
         let qb2 = [...qb];
@@ -66,27 +86,38 @@ const BrigisticsViz = (function() {
         )`;
     }
 
-    function getIntegrityColor(integrity) {
-        if (integrity < 30) return 'var(--danger)';   
-        if (integrity < 80) return 'var(--warning)';  
-        return 'var(--primary)';                      
+    function getNodeColor(nanoId, history, verified, suppressed) {
+        if (suppressed.has(nanoId)) return 'var(--danger)';   // Red for Suppressed
+        if (verified.has(nanoId)) return 'var(--green)';    // Green for Elevated
+        if (history.has(nanoId)) return 'var(--text-dim)'; // Dimmed Blue for Played
+        return 'var(--primary)';                             // Bright Blue for Unplayed
     }
 
+    // --- ENGINE STATE ---
     let currentQ = [1, 0, 0, 0]; 
     let targetQ = [1, 0, 0, 0];
     
+    // Interaction Flags
     let isDragging = false;
+    let isUserInteracting = false; 
     let lastMouseX = 0;
     let lastMouseY = 0;
+    let dragDistance = 0; 
+
+    // Visibility & Performance
+    let isVisible = true;
+    let observer = null;
     
+    // Core Timers and Memory
     let autoSpinReq = null;
     let scannerTimeout = null;
     let currentTargetId = null;
-    let pendingTargetId = null; // TRACKS TARGET REGARDLESS OF VISIBILITY
     
+    // Rich Data Array
     let sortedNodes = [];
     let currentScanIndex = 0;
     
+    // UI Toggles
     let isPaused = false; 
     let isAutoScan = true; 
     
@@ -94,7 +125,7 @@ const BrigisticsViz = (function() {
     let scanYear = 2024;
     let frameCounter = 0;
 
-    // --- REUSABLE UI UPDATER ---
+    // --- USER INTERFACE UPDATER ---
     function updateReadout(epId) {
         if (currentTargetId === epId) return;
 
@@ -106,6 +137,7 @@ const BrigisticsViz = (function() {
         }
         
         currentTargetId = epId;
+        
         const crosshair = document.getElementById('bhs-crosshair');
         const readoutEmpty = document.querySelector('.bhs-readout-empty');
         const readoutContent = document.querySelector('.bhs-readout-content');
@@ -119,6 +151,7 @@ const BrigisticsViz = (function() {
                 
                 const btnPlay = document.getElementById('bhs-btn-play');
                 const btnInspect = document.getElementById('bhs-btn-inspect');
+                
                 btnPlay.onclick = () => { if (typeof run === 'function') run(`PodCube.play(PodCube.findEpisode('${ep.id}'))`); };
                 btnInspect.onclick = () => {
                     if (typeof loadEpisodeInspector === 'function') loadEpisodeInspector(ep);
@@ -127,6 +160,7 @@ const BrigisticsViz = (function() {
 
                 const targetNode = document.querySelector(`.bhs-node[data-ep-id="${epId}"]`);
                 if (targetNode) targetNode.classList.add('targeted');
+                
                 const newSpike = document.querySelector(`.st-spike[data-ep-id="${epId}"]`);
                 if (newSpike) {
                     newSpike.classList.add('active');
@@ -151,82 +185,173 @@ const BrigisticsViz = (function() {
         }
     }
 
-    function steerSphereToNode(epId, angleX, angleY) {
-        pendingTargetId = epId; 
+    // --- ANTI-WHIRL TRACKING ENGINE ---
+    function steerSphereToNode(epId) {
+        const node = sortedNodes.find(n => n.id === epId);
+        if (!node) return;
         
-        updateReadout(null);
+        updateReadout(epId);
 
-        const radX = (-angleX * Math.PI) / 180;
-        const radY = (-angleY * Math.PI) / 180;
+        // 1. Calculate where the node currently sits in 3D world space
+        const w = currentQ[0], x = currentQ[1], y = currentQ[2], z = currentQ[3];
+        const vx = node.vx, vy = node.vy, vz = node.vz;
         
-        const qX = [Math.cos(radX/2), Math.sin(radX/2), 0, 0];
-        const qY = [Math.cos(radY/2), 0, Math.sin(radY/2), 0];
+        const ix =  w * vx + y * vz - z * vy;
+        const iy =  w * vy + z * vx - x * vz;
+        const iz =  w * vz + x * vy - y * vx;
+        const iw = -x * vx - y * vy - z * vz;
         
-        targetQ = qNormalize(qMultiply(qX, qY));
+        const worldX = ix * w + iw * -x + iy * -z - iz * -y;
+        const worldY = iy * w + iw * -y + iz * -x - ix * -z;
+        const worldZ = iz * w + iw * -z + ix * -y - iy * -x;
+
+        // 2. Create a quaternion representing the shortest arc from its current spot to the camera [0, 0, 1]
+        const dot = worldZ; 
         
-        let diff = -angleY - displayRotY;
-        diff = Math.atan2(Math.sin(diff * Math.PI/180), Math.cos(diff * Math.PI/180)) * 180 / Math.PI;
-        displayRotY += diff;
+        let qDiff;
+        if (dot < -0.9999) {
+            // Edge case: Node is exactly on the opposite side of the sphere (180 deg away)
+            qDiff = [0, 0, 1, 0]; 
+        } else {
+            qDiff = qNormalize([1 + dot, worldY, -worldX, 0]);
+        }
+
+        // 3. Append the shortest arc to the current orientation
+        targetQ = qNormalize(qMultiply(qDiff, currentQ));
         
         resetScannerTimer(INTERRUPT_DELAY_MS);
     }
 
     function resetScannerTimer(delay = DWELL_TIME_MS) {
         clearTimeout(scannerTimeout);
-        if (!isPaused && isAutoScan) {
-            scannerTimeout = setTimeout(scanNext, delay);
-        }
+        if (isUserInteracting || isDragging || isPaused || !isAutoScan) return;
+        scannerTimeout = setTimeout(scanNext, delay);
     }
 
+    // Jumps to a random node
     function scanNext() {
-        if (isDragging || sortedNodes.length === 0 || isPaused || !isAutoScan) {
+        if (isUserInteracting || isDragging || sortedNodes.length === 0 || isPaused || !isAutoScan) {
             resetScannerTimer(DWELL_TIME_MS);
             return;
         }
 
-        // AUTO-SCAN PAUSE: ONLY PAUSES THE AUTOMATIC HOPPING
-        const scene = document.getElementById('bhs-scene');
-        if (scene) {
-            const rect = scene.getBoundingClientRect();
-            if (rect.bottom < 0 || rect.top > window.innerHeight) {
-                resetScannerTimer(DWELL_TIME_MS);
-                return; 
+        // Battery Saver: Only auto-hop if the sphere is actually visible on the user's screen
+        if (!isVisible) {
+            resetScannerTimer(DWELL_TIME_MS);
+            return; 
+        }
+
+        let nextIndex;
+        if (sortedNodes.length > 1) {
+            do {
+                nextIndex = Math.floor(Math.random() * sortedNodes.length);
+            } while (nextIndex === currentScanIndex);
+        } else {
+            nextIndex = 0;
+        }
+        
+        currentScanIndex = nextIndex;
+        steerSphereToNode(sortedNodes[currentScanIndex].id);
+    }
+
+    // --- 3D VECTOR PROJECTION (Hit Detection) ---
+    function getClosestNode() {
+        let bestZ = -Infinity;
+        let bestNode = null;
+
+        // Deconstruct the current Quaternion into the 3rd row of its Rotation Matrix
+        const w = currentQ[0], x = currentQ[1], y = currentQ[2], z = currentQ[3];
+        const m31 = 2*x*z - 2*w*y;
+        const m32 = 2*y*z + 2*w*x;
+        const m33 = 1 - 2*x*x - 2*y*y;
+
+        for (const node of sortedNodes) {
+            const worldZ = m31 * node.vx + m32 * node.vy + m33 * node.vz;
+            if (worldZ > bestZ) {
+                bestZ = worldZ;
+                bestNode = node;
             }
         }
 
-        currentScanIndex = (currentScanIndex + 1) % sortedNodes.length;
-        const nextNode = sortedNodes[currentScanIndex];
-        steerSphereToNode(nextNode.dataset.epId, parseFloat(nextNode.dataset.rx), parseFloat(nextNode.dataset.ry));
+        return { node: bestNode, dot: bestZ };
     }
 
+    // --- INITIALIZATION ---
     function initSpheroid3D() {
         const scene = document.getElementById('bhs-scene');
         const sphere = document.getElementById('bhs-sphere');
         const crosshair = document.getElementById('bhs-crosshair');
         
         if (!scene || !sphere || !window.PodCube) return;
+        
         Array.from(sphere.querySelectorAll('.bhs-node')).forEach(n => n.remove());
-
         Array.from(sphere.querySelectorAll('.bhs-wireframe-ring, .bhs-scanner-plane')).forEach(el => el.remove());
 
-        // Create the 8 equal-spaced grid lines
-        const ribClasses = [
-            'rib-lat-1', 'rib-lat-2', 'rib-lat-3', 'rib-lat-4',
-            'rib-lon-1', 'rib-lon-2', 'rib-lon-3', 'rib-lon-4'
-        ];
+        // Physically scale the sphere container to the MASSIVE globe size
+        // This forces the static XYZ rings in the HTML to expand naturally
+        sphere.style.width = `${SPHERE_RADIUS * 2}px`;
+        sphere.style.height = `${SPHERE_RADIUS * 2}px`;
+        sphere.style.top = '50%';
+        sphere.style.left = '50%';
+        sphere.style.marginTop = `-${SPHERE_RADIUS}px`;
+        sphere.style.marginLeft = `-${SPHERE_RADIUS}px`;
 
-        ribClasses.forEach(cls => {
+        // Inject math variables into CSS for the animated scanner
+        sphere.style.setProperty('--r', `${SPHERE_RADIUS}px`);
+        sphere.style.setProperty('--r-neg', `-${SPHERE_RADIUS}px`);
+        sphere.style.setProperty('--r-sin45', `${SPHERE_RADIUS * 0.7071}px`);
+        sphere.style.setProperty('--r-sin45-neg', `-${SPHERE_RADIUS * 0.7071}px`);
+
+        // Dynamically generate Longitude rings (Vertical slices)
+        // Every 15 degrees for a dense, high-tech grid
+        const lonAngles = [0, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165];
+        lonAngles.forEach(angle => {
             const rib = document.createElement('div');
-            rib.className = `bhs-wireframe-ring ${cls}`;
+            rib.className = 'bhs-wireframe-ring';
+            rib.style.width = '100%';
+            rib.style.height = '100%';
+            rib.style.position = 'absolute';
+            rib.style.transform = `rotateY(${angle}deg)`;
             sphere.appendChild(rib);
         });
 
-        // Create the animated laser plane
+        // Dynamically generate Latitude rings (Horizontal slices)
+        // Every 15 degrees (excluding 90/-90 because those are microscopic poles)
+        const latAngles = [15, 30, 45, 60, 75, -15, -30, -45, -60, -75];
+        latAngles.forEach(angle => {
+            const rib = document.createElement('div');
+            rib.className = 'bhs-wireframe-ring';
+            rib.style.width = '100%';
+            rib.style.height = '100%';
+            rib.style.position = 'absolute';
+            
+            // Calculate exact Z-depth and Scale using Trigonometry
+            const rad = angle * Math.PI / 180;
+            const zOffset = SPHERE_RADIUS * Math.sin(rad);
+            const scale = Math.cos(rad);
+            
+            rib.style.transform = `rotateX(90deg) translateZ(${zOffset}px) scale(${scale})`;
+            sphere.appendChild(rib);
+        });
+
+        // Scale the scanning laser plane to match
         const scanner = document.createElement('div');
         scanner.className = 'bhs-scanner-plane';
+        scanner.style.width = '110%';  // Slight overhang
+        scanner.style.height = '110%';
+        scanner.style.position = 'absolute';
+        scanner.style.top = '-5%';
+        scanner.style.left = '-5%';
         sphere.appendChild(scanner);
 
         const episodes = PodCube.getByChronologicalOrder().filter(ep => ep.date && typeof ep.date.month === 'number');
+        sortedNodes = []; 
+
+        const uData = (window.PodUser && window.PodUser.data) ? window.PodUser.data : { history: [], verified: [], suppressed: [] };
+        const history = new Set(uData.history);
+        const verified = new Set(uData.verified);
+        const suppressed = new Set(uData.suppressed);
+
         episodes.forEach((ep, index) => {
             const doy = Math.floor((Date.UTC(2024, ep.date.month, ep.date.day) - Date.UTC(2024, 0, 0)) / 86400000);
             const angleY = (doy / 365) * 360; 
@@ -235,21 +360,49 @@ const BrigisticsViz = (function() {
             const node = document.createElement('div');
             node.className = 'bhs-node';
             node.dataset.epId = ep.nanoId; 
-            node.dataset.rx = angleX;
-            node.dataset.ry = angleY;
             node.style.setProperty('--ry', `${angleY}deg`);
             node.style.setProperty('--rx', `${angleX}deg`);
-            node.style.setProperty('--rz', `125px`);
-            node.style.backgroundColor = getIntegrityColor(ep.integrityValue || 0);
             
-            const size = Math.max(4, Math.min(12, 4 + ((ep.duration || 0) / 3600) * 8));
+            // Color the nodes based on userdata
+            node.style.backgroundColor = getNodeColor(ep.nanoId, history, verified, suppressed);
+            
+            // Push nodes out to the radius
+            node.style.setProperty('--rz', `${SPHERE_RADIUS+2}px`);
+            
+            // Keep dots reasonably sized so they don't block the screen
+            const size = Math.max(6, Math.min(14, 6 + ((ep.duration || 0) / 3600) * 8));
             node.style.width = `${size}px`;
             node.style.height = `${size}px`;
-            node.onclick = () => steerSphereToNode(ep.nanoId, angleX, angleY);
-            sphere.appendChild(node);
-        });
+            
+            node.onclick = (e) => {
+                if (dragDistance > 10) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                }
+                steerSphereToNode(ep.nanoId);
+            };
 
-        sortedNodes = Array.from(sphere.querySelectorAll('.bhs-node')).sort((a, b) => parseFloat(a.dataset.ry) - parseFloat(b.dataset.ry));
+            sphere.appendChild(node);
+
+            // Mathematical vector representation
+            const radX = (angleX * Math.PI) / 180;
+            const radY = (angleY * Math.PI) / 180;
+
+            const vx = Math.sin(radY) * Math.cos(radX);
+            const vy = -Math.sin(radX);
+            const vz = Math.cos(radY) * Math.cos(radX);
+
+            sortedNodes.push({
+                element: node,
+                id: ep.nanoId,
+                rx: angleX,
+                ry: angleY,
+                vx: vx,
+                vy: vy,
+                vz: vz
+            });
+        });
 
         const toggleBtn = document.getElementById('bhs-scan-toggle');
         if (toggleBtn) {
@@ -258,49 +411,46 @@ const BrigisticsViz = (function() {
                 isAutoScan = !isAutoScan;
                 const b = document.getElementById('bhs-scan-toggle');
                 b.textContent = isAutoScan ? 'AUTO-SCAN: ON' : 'AUTO-SCAN: OFF';
-                b.style.color = isAutoScan ? 'var(--success)' : 'var(--text-muted)';
-                b.style.borderColor = isAutoScan ? 'var(--success)' : 'var(--text-muted)';
+                b.style.color = isAutoScan ? 'var(--primary)' : 'var(--text-muted)';
+                b.style.borderColor = isAutoScan ? 'var(--primary)' : 'var(--text-muted)';
                 if (isAutoScan) resetScannerTimer(1000); else clearTimeout(scannerTimeout);
             };
         }
 
-        const checkCrosshair = () => {
-            const sceneRect = scene.getBoundingClientRect();
-            const centerX = sceneRect.left + sceneRect.width / 2;
-            const centerY = sceneRect.top + sceneRect.height / 2;
-            
-            // OFFSCREEN CHECK: Bypasses raycaster if sphere is not visible
-            const isOffScreen = (centerX < 0 || centerX > window.innerWidth || centerY < 0 || centerY > window.innerHeight);
-            
-            // 1. ARRIVAL CHECK: If math engine finished its LERP, force the lock
-            let dot = currentQ[0]*targetQ[0] + currentQ[1]*targetQ[1] + currentQ[2]*targetQ[2] + currentQ[3]*targetQ[3];
-            if (Math.abs(dot) > 0.998 && pendingTargetId) {
-                updateReadout(pendingTargetId);
-                pendingTargetId = null;
-            }
-
-            // 2. RAYCASTER: Only runs if sphere is visible and not actively steering
-            if (!isOffScreen && !pendingTargetId) {
-                const elements = document.elementsFromPoint(centerX, centerY) || [];
-                const target = Array.from(elements).find(el => el.classList && el.classList.contains('bhs-node'));
-                if (target) updateReadout(target.dataset.epId);
-                else if (Math.abs(dot) > 0.995) updateReadout(null);
-            }
-        };
-
+        // --- ANIMATION & LOGIC LOOP ---
         const spinLoop = () => {
-            if (isPaused) return;
+            if (isPaused || !isVisible) return;
+            
             currentQ = qSlerp(currentQ, targetQ, LERP_SPEED);
-            sphere.style.transform = `translateZ(0px) ${qToMatrix3d(currentQ)}`;
+            
+            // Push the massive sphere back into the porthole!
+            sphere.style.transform = `translateZ(${SPHERE_Z_OFFSET}px) ${qToMatrix3d(currentQ)}`;
 
-            // FIX: Keep the backdrop stationary deep in the background.
-            // This prevents the flat plane from swinging around and snapping.
+            // Push the background glow even deeper so it doesn't clip
             const backdrop = document.getElementById('bhs-backdrop');
             if (backdrop) {
-                backdrop.style.transform = `translateZ(-200px)`;
+                backdrop.style.transform = `translateZ(${SPHERE_Z_OFFSET - 400}px) scale(3)`;
             }
             
-            if (!currentTargetId && !pendingTargetId) {
+            const { node, dot } = getClosestNode();
+
+            if (node && dot > LOCK_THRESHOLD) {
+                updateReadout(node.id);
+            } else if (dot < UNLOCK_THRESHOLD) {
+                updateReadout(null);
+            }
+
+            // Sync decorative date scanner
+            if (currentTargetId) {
+                const activeNode = sortedNodes.find(n => n.id === currentTargetId);
+                if (activeNode) {
+                    let diff = -activeNode.ry - displayRotY;
+                    diff = Math.atan2(Math.sin(diff * Math.PI/180), Math.cos(diff * Math.PI/180)) * 180 / Math.PI;
+                    displayRotY += diff * LERP_SPEED;
+                }
+            }
+
+            if (!currentTargetId) {
                 frameCounter++;
                 if (frameCounter % 8 === 0) scanYear = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
                 const dateEl = document.getElementById('bhs-scan-date');
@@ -310,99 +460,173 @@ const BrigisticsViz = (function() {
                     dateEl.textContent = `SCANNING: ${d.toLocaleString('default', { month: 'short' }).toUpperCase()} ${d.getDate().toString().padStart(2, '0')} ${scanYear}`;
                 }
             }
-            checkCrosshair(); 
+            
             autoSpinReq = requestAnimationFrame(spinLoop);
         };
 
-        scene.onmousedown = (e) => { isDragging = true; pendingTargetId = null; lastMouseX = e.clientX; lastMouseY = e.clientY; resetScannerTimer(INTERRUPT_DELAY_MS); };
-        scene.ontouchstart = (e) => { isDragging = true; pendingTargetId = null; lastMouseX = e.touches[0].clientX; lastMouseY = e.touches[0].clientY; resetScannerTimer(INTERRUPT_DELAY_MS); };
-        window.addEventListener('mousemove', (e) => {
+        // --- INPUT EVENT HANDLERS (DYNAMIC BINDING) ---
+        
+        // Define isolated wrappers so we can cleanly add/remove them by reference
+        const onMouseMove = (e) => handleInteractionMove(e.clientX, e.clientY);
+        const onTouchMove = (e) => handleInteractionMove(e.touches[0].clientX, e.touches[0].clientY);
+
+        const handleInteractionMove = (x, y) => {
             if (!isDragging) return;
-            const dx = e.clientX - lastMouseX; 
-            const dy = e.clientY - lastMouseY;
+            const dx = x - lastMouseX; 
+            const dy = y - lastMouseY;
             
-            // TRUE TRACKBALL MATH: Eliminates Pole Snapping
+            dragDistance += Math.abs(dx) + Math.abs(dy);
+            
             const dist = Math.sqrt(dx*dx + dy*dy);
             if (dist > 0) {
-                const angle = dist * 0.008;
-                // Determine the exact 2D axis perpendicular to the drag
+                const angle = dist * DRAG_SPEED;
                 const ax = -dy / dist;
                 const ay = dx / dist;
                 const sinA = Math.sin(angle / 2);
                 
                 const qDrag = [Math.cos(angle / 2), ax * sinA, ay * sinA, 0];
                 targetQ = qNormalize(qMultiply(qDrag, targetQ));
-                displayRotY += (dx*0.008) * (180 / Math.PI);
+                displayRotY += (dx * DRAG_SPEED) * (180 / Math.PI);
             }
             
-            lastMouseX = e.clientX; 
-            lastMouseY = e.clientY;
-        });
+            lastMouseX = x; 
+            lastMouseY = y;
+        };
 
-       
-        window.addEventListener('mouseup', () => isDragging = false);
-
-        window.addEventListener('touchmove', (e) => {
-            if (!isDragging) return;
-            const dx = e.touches[0].clientX - lastMouseX; 
-            const dy = e.touches[0].clientY - lastMouseY;
+        const handleInteractionEnd = () => {
+            if (!isUserInteracting) return; 
             
-            // TRUE TRACKBALL MATH: Eliminates Pole Snapping
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            if (dist > 0) {
-                const angle = dist * 0.008;
-                const ax = -dy / dist;
-                const ay = dx / dist;
-                const sinA = Math.sin(angle / 2);
+            isDragging = false;
+            const didDrag = dragDistance > 10;
+
+            // Instantly sever the global window listeners
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', handleInteractionEnd);
+            window.removeEventListener('touchmove', onTouchMove);
+            window.removeEventListener('touchend', handleInteractionEnd);
+            
+            setTimeout(() => {
+                isUserInteracting = false;
                 
-                const qDrag = [Math.cos(angle / 2), ax * sinA, ay * sinA, 0];
-                targetQ = qNormalize(qMultiply(qDrag, targetQ));
-                displayRotY += (dx*0.008) * (180 / Math.PI);
-            }
+                if (didDrag) {
+                    const { node, dot } = getClosestNode();
+                    if (node && dot > SNAP_THRESHOLD) {
+                        steerSphereToNode(node.id);
+                    } else {
+                        resetScannerTimer(INTERRUPT_DELAY_MS);
+                    }
+                } else {
+                    resetScannerTimer(INTERRUPT_DELAY_MS);
+                }
+            }, 50);
+        };
+
+        const handleInteractionStart = (x, y) => {
+            isUserInteracting = true; 
+            isDragging = true; 
+            activeSteering = false; 
+            dragDistance = 0; 
+            lastMouseX = x; 
+            lastMouseY = y; 
+            clearTimeout(scannerTimeout); 
+
+            // CAREFUL BINDING: We only listen to global window events *while* // the user is actively holding down on the sphere.
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', handleInteractionEnd);
+            window.addEventListener('touchmove', onTouchMove, {passive: true});
+            window.addEventListener('touchend', handleInteractionEnd);
+        };
+
+        // We only permanently bind the START triggers to the specific 3D scene element.
+        // We use assignment (.onmousedown) instead of addEventListener so that if init() 
+        // runs twice, we overwrite the old function rather than stacking duplicates.
+        scene.onmousedown = (e) => handleInteractionStart(e.clientX, e.clientY);
+        scene.ontouchstart = (e) => handleInteractionStart(e.touches[0].clientX, e.touches[0].clientY);
+
+        if (sortedNodes.length > 0) {
+            currentScanIndex = Math.floor(Math.random() * sortedNodes.length);
+            const startNode = sortedNodes[currentScanIndex];
             
-            lastMouseX = e.touches[0].clientX; 
-            lastMouseY = e.touches[0].clientY;
-        }, {passive: true});
+            steerSphereToNode(startNode.id);
+            currentQ = [...targetQ]; 
+        }
 
-        window.addEventListener('touchend', () => isDragging = false);
+        if (observer) observer.disconnect();
+        
+        observer = new IntersectionObserver((entries) => {
+            const wasVisible = isVisible;
+            isVisible = entries[0].isIntersecting;
+            
+            // If it just scrolled back onto the screen, reboot the animation loop!
+            if (isVisible && !wasVisible && !isPaused) {
+                spinLoop();
+            }
+        }, { rootMargin: '100px' }); // 100px buffer so it boots up just before entering view
+        
+        observer.observe(scene);
 
-        steerSphereToNode(episodes[0].nanoId, 0, 0);
-        isPaused = false; spinLoop(); resetScannerTimer(2000); 
+        
+        isPaused = false; 
+        spinLoop(); 
+        resetScannerTimer(2000);
     }
 
+    // --- TIMELINE BAY RENDERING ---
     function renderTimeline() {
         const container = document.getElementById('spacetime-timeline');
         if (!container || !window.PodCube) return;
+        
         container.innerHTML = '';
+
         const trackEl = document.createElement('div');
         trackEl.className = 'st-track';
-        const today = new Date(); let todayPlaced = false;
+        const today = new Date(); 
+        let todayPlaced = false;
+
+        const uData = (window.PodUser && window.PodUser.data) ? window.PodUser.data : { history: [], verified: [], suppressed: [] };
+        const history = new Set(uData.history);
+        const verified = new Set(uData.verified);
+        const suppressed = new Set(uData.suppressed);
 
         PodCube.getByChronologicalOrder().forEach((ep, index) => {
+            
             if (!todayPlaced && (ep.date.year > today.getFullYear() || (ep.date.year === today.getFullYear() && ep.date.month >= today.getMonth()))) {
-                const t = document.createElement('div'); t.className = 'st-today-marker';
+                const t = document.createElement('div'); 
+                t.className = 'st-today-marker';
                 t.innerHTML = `<div class="st-today-tick"></div><div class="st-today-label">TODAY™</div>`;
-                trackEl.appendChild(t); todayPlaced = true;
+                trackEl.appendChild(t); 
+                todayPlaced = true;
             }
-            const node = document.createElement('div'); node.className = 'st-node';
-            const spike = document.createElement('div'); spike.className = 'st-spike';
-            spike.dataset.epId = ep.nanoId; spike.style.height = `${Math.max(8, Math.min(60, (ep.duration || 0) / 60 * 3))}px`;
-            spike.style.backgroundColor = getIntegrityColor(ep.integrityValue || 0);
-            spike.onclick = () => {
-                const targetNode = document.querySelector(`.bhs-node[data-ep-id="${ep.nanoId}"]`);
-                if (targetNode) steerSphereToNode(ep.nanoId, parseFloat(targetNode.dataset.rx), parseFloat(targetNode.dataset.ry));
-            };
+            
+            const node = document.createElement('div'); 
+            node.className = 'st-node';
+            
+            const spike = document.createElement('div'); 
+            spike.className = 'st-spike';
+            spike.dataset.epId = ep.nanoId; 
+            
+            spike.style.height = `${Math.max(8, Math.min(60, (ep.duration || 0) / 60 * 3))}px`;
+
+            
+            spike.style.backgroundColor = getNodeColor(ep.nanoId, history, verified, suppressed);
+            
+            spike.onclick = () => steerSphereToNode(ep.nanoId);
+            
             node.appendChild(spike);
+            
             if (ep.date.year !== null && (index % 10 === 0)) {
-                const label = document.createElement('div'); label.className = 'st-axis-label';
-                if (index === 0) {
-                    label.classList.add('st-label-first');
-                }
-                label.textContent = ep.date.displayYear; node.appendChild(label);
+                const label = document.createElement('div'); 
+                label.className = 'st-axis-label';
+                if (index === 0) label.classList.add('st-label-first');
+                label.textContent = ep.date.displayYear; 
+                node.appendChild(label);
             }
+            
             trackEl.appendChild(node);
         });
+        
         container.appendChild(trackEl);
+        
         setTimeout(() => { container.scrollLeft = container.scrollWidth; }, 100);
     }
 
