@@ -95,8 +95,10 @@ function registerPlaybackListeners() {
         // Only count deltas that look like normal playback (0–1.5s).
         // Anything outside that range is a scrub or seek — ignore it.
         const delta = status.time - trackState.lastTime;
+        const maxDelta = 1.5 * (PodCube.status.playbackRate || 1);
+
         trackState.lastTime = status.time;
-        if (delta > 0 && delta < 1.5) {
+        if (delta > 0 && delta < maxDelta) {
             trackState.accumulated += delta;
         }
 
@@ -121,9 +123,13 @@ function registerPlaybackListeners() {
         updateQueueList();
         syncArchiveUI();
 
-        const inspectorTab = document.getElementById('inspector');
-        if (ep && inspectorTab && !inspectorTab.classList.contains('active')) {
-            loadEpisodeInspector(ep);
+        if (!ep) {
+            loadEpisodeInspector(null);
+        } else {
+            const inspectorTab = document.getElementById('inspector');
+            if (inspectorTab && !inspectorTab.classList.contains('active')) {
+                loadEpisodeInspector(ep);
+            }
         }
     });
 
@@ -179,18 +185,10 @@ function registerPlaybackListeners() {
         const suppressed = new Set(PodUser.data.suppressed || []);
         const verified = new Set(PodUser.data.verified || []);
         
-        // Grab the IDs of everything currently in the queue to prevent repeats
-        const queuedIds = new Set(PodCube.queueItems.map(ep => ep.nanoId));
 
-        // Base pool: NEVER include suppressed episodes.
-        // Try to exclude currently queued episodes so it doesn't immediately repeat a skipped track.
-        let basePool = episodes.filter(ep => !suppressed.has(ep.nanoId) && !queuedIds.has(ep.nanoId));
+        // Exclude suppressed episodes.
+        let basePool = episodes.filter(ep => !suppressed.has(ep.nanoId));
         
-        // Failsafe: If the queue is somehow massive or everything is suppressed, drop the queue restriction
-        if (basePool.length === 0) {
-            basePool = episodes.filter(ep => !suppressed.has(ep.nanoId));
-        }
-    
         // Absolute Failsafe
         if (basePool.length === 0) basePool = episodes;
 
@@ -954,6 +952,7 @@ function syncArchiveUI() {
         if (printBtn) printBtn.classList.toggle('staged', printBufferIds.has(nanoId));
 
         card.classList.toggle('selected', id === playingId);
+
         if (nanoId) {
             card.classList.toggle('is-played', historyIds.has(nanoId));
             card.classList.toggle('is-verified', verifiedIds.has(nanoId));
@@ -1034,24 +1033,24 @@ function resetArchive() {
 function playFilteredResults() {
     if (AppState.filteredResults.length === 0) return;
     
-    // Clear queue and add all results
-    run('PodCube.clearQueue()', true);
-    AppState.filteredResults.forEach((ep, i) => {
-        run(`PodCube.addToQueue(PodCube.all[${PodCube.getEpisodeIndex(ep)}])`, i > 0);
-    });
+    // Clear the queue, then batch-add the entire array at once
+    PodCube.clearQueue();
+    PodCube.addToQueue(AppState.filteredResults);
     
-    // Play first
-    if (PodCube.queueItems.length > 0) {
-        run('PodCube.next()');
-    }
+    // Start playback from the beginning
+    PodCube.play();
+    
+    // Log a clean summary to the console instead of 200 individual lines
+    logCommand(`// Cleared queue and playing ${AppState.filteredResults.length} filtered results`);
 }
 
 function queueFilteredResults() {
     if (AppState.filteredResults.length === 0) return;
     
-    AppState.filteredResults.forEach((ep, i) => {
-        run(`PodCube.addToQueue(PodCube.all[${PodCube.getEpisodeIndex(ep)}])`, i > 0);
-    });
+    // Batch-add the entire array at once
+    PodCube.addToQueue(AppState.filteredResults);
+    
+    logCommand(`// Appended ${AppState.filteredResults.length} filtered results to queue`);
 }
 
 // --- EPISODE INSPECTOR (COMPREHENSIVE) ---
@@ -1466,6 +1465,18 @@ function clearInspector() {
 }
 
 // --- PLAYBACK TAB ---
+
+function togglePlayback() {
+    // If a track is active or the queue is populated, defer to the engine.
+    if (PodCube.nowPlaying || PodCube.queueItems.length > 0) {
+        run('PodCube.toggle()');
+    } 
+    // If queue is empty force Radio Mode ON and start playing.
+    else {
+        
+        run('PodCube.setRadioMode(true); PodCube.play();');
+    }
+}
 
 function toggleAutoplayMode(enabled) {
     PodCube.setRadioMode(enabled);

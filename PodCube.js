@@ -656,6 +656,13 @@ class PodCubeEngine {
         this._randomPoolFilter = null; // Track filters to be applied to random selection
         this._listeners = {};
 
+        // Put the audio element on the DOM so that PWAs don't cause me any more fucking headaches ( i fucking hope )
+        if (typeof document !== 'undefined') {
+            this._audio.id = 'podcube-audio-engine';
+            this._audio.style.display = 'none';
+            document.body.appendChild(this._audio);
+        }
+
         this._audio.addEventListener('ended', () => {
             const finishedEp = this.nowPlaying;
 
@@ -1782,7 +1789,7 @@ class PodCubeEngine {
         log.info("Soft stop cancelled");
     }
 
-    setRadioMode(enabled, silent = false) {
+    setRadioMode(enabled, dontQueue = false) {
         this._radioMode = !!enabled;
         log.info(`Radio Mode set to: ${this._radioMode}`);
 
@@ -1794,7 +1801,7 @@ class PodCubeEngine {
                                 (this._queueIndex >= this._queue.length - 1) && 
                                 this._audio.ended;
 
-        if (!silent && this._radioMode && (isQueueEmpty || isQueueFinished)) {
+        if (!dontQueue && this._radioMode && (isQueueEmpty || isQueueFinished)) {
             const nextTrack = this.random;
             
             if (nextTrack) {
@@ -1998,6 +2005,18 @@ class PodCubeEngine {
             navigator.mediaSession.metadata = null;
             navigator.mediaSession.playbackState = 'none'; // Dismiss from lock screen
         }
+
+        this._emit('track', null);
+        
+        this._emit('timeupdate', {
+            playing: false,
+            time: 0,
+            duration: 0,
+            percent: 0,
+            episodeId: null,
+            currentTimeFormatted: "0:00",
+            durationFormatted: "0:00"
+        });
 
         this._emit('queue:changed', {queue: [], index: -1});
 
