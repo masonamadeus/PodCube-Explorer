@@ -7,8 +7,8 @@ const BrigisticsViz = (function() {
     
     // --- TUNING VARIABLES ---
     const LERP_SPEED = 0.05;         
-    const DWELL_TIME_MS = 4000;      
-    const INTERRUPT_DELAY_MS = 6000; 
+    const DWELL_TIME_MS = 6000;      
+    const INTERRUPT_DELAY_MS = 15000; 
     // ------------------------
 
     // --- QUATERNION MATH ENGINE ---
