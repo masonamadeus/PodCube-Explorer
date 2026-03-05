@@ -150,7 +150,7 @@ function startPodChatMonitor() {
             
             // Dynamic Delay: If they're in a back-and-forth conversation, they type faster (8 seconds).
             // If it's a random passing thought, it takes longer (20 seconds).
-            const chatDelay = (activePoolIndex !== -1) ? 8000 : 20000;
+            const chatDelay = (activePoolIndex !== -1) ? 8000 : 15000;
 
             if (now - lastChatTime > chatDelay) {
                 let chat = null;
