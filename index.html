@@ -285,24 +285,27 @@
                     </button>
                 </div>
 
+                <div>
+                    <label>Full-Text Search</label>
+                        <input type="text" id="arcSearch" placeholder="Title, description, tags..."
+                        oninput="updateArchive()">
+                </div>
+
+                <div>
+                    <label>Passenger Catalog</label>
+                        <select id="arcPassenger" onchange="updateArchive()">
+                        </select>
+                </div>
+
+
+                
+
                 <div style="border-top:1px solid var(--primary-dim); padding-top:12px; margin-top:12px;"></div>
 
                 <input type="checkbox" id="filter-toggle" class="filter-toggle-cb"><!--hidden toggle-->
 
                 <div class="sidebar-content">
-                    <div>
-                        <label>Passenger Catalog</label>
-                        <select id="arcPassenger" onchange="updateArchive()">
-                        </select>
-                    </div>
-
-                    <div style="border-top:1px solid var(--primary-dim); padding-top:12px; margin-top:12px;"></div>
-
-                    <div>
-                        <label>Full-Text Search</label>
-                        <input type="text" id="arcSearch" placeholder="Title, description, tags..."
-                            oninput="updateArchive()">
-                    </div>
+                    
 
                     <div>
                         <label>Sort By</label>

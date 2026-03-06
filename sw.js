@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'podcube-explorer-v7.tootsies';
+const CACHE_NAME = 'podcube-explorer-v7.sowwy';
 
 // Detect if we are running locally
 const isLocalhost = Boolean(
