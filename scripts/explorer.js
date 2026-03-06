@@ -266,6 +266,7 @@ function initUIControls() {
     initBufferDragAndDrop();
     enableScrubbing('scrubber');
     enableScrubbing('playerScrubber');
+    enableScrubbing('badgeScrubber');
     refreshSessionInspector(); 
     initPasteHandler(); 
     initPunchcardDragDrop(); 
@@ -940,7 +941,7 @@ function syncArchiveUI() {
     const suppressedIds = window.PodUser ? new Set(window.PodUser.data.suppressed) : new Set();
     const printBufferIds = window.PodUser ? new Set(window.PodUser.data.printBuffer) : new Set();
 
-    // 1. Sync Archive List Cards
+    // Sync Archive List Cards
     const cards = document.querySelectorAll('#archiveList .ep-card, #inspectorRelated .related-ep-card');
     cards.forEach(card => {
         const id = card.dataset.epId; // Long UUID
@@ -972,7 +973,7 @@ function syncArchiveUI() {
         }
     });
 
-    // 2. Sync Inspector Dashboard Buttons
+    // Sync Inspector Dashboard Buttons
     if (AppState.selectedEpisode) {
         const epId = AppState.selectedEpisode.id;
         const nanoId = AppState.selectedEpisode.nanoId;
@@ -999,7 +1000,7 @@ function syncArchiveUI() {
         }
     }
 
-    // 3. Sync Global Transport Catalog Buttons
+    // Sync Global Transport Catalog Buttons
     const playingEp = PodCube.nowPlaying;
     const transActions = document.getElementById('transportCatalogActions');
     const transBtnOk = document.getElementById('transBtnOk');
@@ -1018,6 +1019,35 @@ function syncArchiveUI() {
             transBtnNo.onclick = async () => await PodUser.toggleSuppressed(nid);
         } else {
             transActions.style.display = 'none';
+        }
+    }
+
+    // Sync IU Browser Badge Catalog Buttons
+    const badgeBtnOk = document.getElementById('badgeBtnOk');
+    const badgeBtnNo = document.getElementById('badgeBtnNo');
+    
+    if (badgeBtnOk && badgeBtnNo) {
+        // Only show active up/down votes for actual Lore Transmissions
+        if (playingEp && window.PodUser && playingEp.episodeType !== 'none' && playingEp.episodeType !== 'twibbie_ondemand') {
+            const nid = playingEp.nanoId;
+            badgeBtnOk.disabled = false;
+            badgeBtnNo.disabled = false;
+            badgeBtnOk.style.opacity = '1';
+            badgeBtnNo.style.opacity = '1';
+            
+            badgeBtnOk.classList.toggle('active-catalog', verifiedIds.has(nid));
+            badgeBtnNo.classList.toggle('active-catalog', suppressedIds.has(nid));
+            
+            badgeBtnOk.onclick = async () => await PodUser.toggleVerified(nid);
+            badgeBtnNo.onclick = async () => await PodUser.toggleSuppressed(nid);
+        } else {
+            // Dim them out if the track is system audio or missing
+            badgeBtnOk.classList.remove('active-catalog');
+            badgeBtnNo.classList.remove('active-catalog');
+            badgeBtnOk.disabled = true;
+            badgeBtnNo.disabled = true;
+            badgeBtnOk.style.opacity = '0.3';
+            badgeBtnNo.style.opacity = '0.3';
         }
     }
 }
@@ -2664,13 +2694,15 @@ function renderTimeDisplays(status) {
 
     // Scrubbers (CSS Transform is cheaper than width, but width is fine here)
     const pct = `${status.percent}%`;
-    ['scrubberFill', 'playerScrubberFill'].forEach(id => {
+    ['scrubberFill', 'playerScrubberFill', 'badgeScrubberFill'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.width = pct;
     });
 
-    const handle = document.getElementById('playerScrubberHandle');
-    if (handle) handle.style.left = pct;
+    ['playerScrubberHandle', 'badgeScrubberHandle'].forEach(id => {
+        const handle = document.getElementById(id);
+        if (handle) handle.style.left = pct;
+    });
 
     UI_CACHE.lastTime = status.currentTimeFormatted;
 }
@@ -2682,7 +2714,7 @@ function renderTransportState(status) {
     if (status.playing !== UI_CACHE.lastPlayState) {
         const playIcon = status.playing ? ICONS.pause : ICONS.play;
         
-        ['playBtn', 'playerPlayBtn'].forEach(id => {
+        ['playBtn', 'playerPlayBtn', 'badgePlayBtn'].forEach(id => {
             const el = document.getElementById(id);
             if (el && el.innerHTML !== playIcon) el.innerHTML = playIcon;
         });
@@ -2718,12 +2750,10 @@ function renderTrackMetadata(ep) {
     const titleText = ep ? ep.title : 'Select a transmission...';
 
     // Global Title
-    const transTitle = document.getElementById('transTitle');
-    if (transTitle) transTitle.textContent = titleText;
-
-    // Player Tab Title
-    const playerTitle = document.getElementById('playerNowPlayingTitle');
-    if (playerTitle) playerTitle.textContent = titleText;
+    ['transTitle', 'playerNowPlayingTitle', 'badgeTitle'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = titleText;
+    });
 
     // Rich Metadata
     const playerMeta = document.getElementById('playerNowPlayingMeta');
@@ -3498,6 +3528,35 @@ function playHistorySong() {
     PodCube.play(validEpisode);
     logCommand('// Playing internal history song');
 }
+
+
+// --- IN-UNIVERSE BROWSER LOGIC ---
+function openBrowser(url) {
+    const overlay = document.getElementById('in-universe-browser');
+    const iframe = document.getElementById('iu-iframe');
+    if (overlay && iframe) {
+        iframe.src = url;
+        overlay.style.display = 'block';
+        logCommand(`// INTRANET: Routing connection to ${url}...`);
+    }
+}
+
+function closeBrowser() {
+    const overlay = document.getElementById('in-universe-browser');
+    const iframe = document.getElementById('iu-iframe');
+    if (overlay && iframe) {
+        overlay.style.display = 'none';
+        iframe.src = ''; // Clear memory
+        logCommand(`// INTRANET: Connection severed. Returning to Explorer.`);
+    }
+}
+
+function toggleIUBadge() {
+    const badge = document.getElementById('iu-badge');
+    if (badge) badge.classList.toggle('collapsed');
+}
+
+
 
 // --- PWA INSTALLATION LOGIC ---
 let deferredPrompt;

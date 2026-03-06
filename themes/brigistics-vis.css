@@ -148,14 +148,14 @@
     transform-style: preserve-3d;
     backface-visibility: hidden; 
     cursor: crosshair;
-    box-shadow: 0 0 3px var(--primary);
+    box-shadow: 0 0 3px currentColor;
     border: 1px solid var(--bg-body);
     transform: translate(-50%, -50%) rotateY(var(--ry)) rotateX(var(--rx)) translateZ(var(--rz));
     transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .bhs-node.targeted {
-    box-shadow: 0 0 0 2px var(--bg-body), 0 0 0 4px var(--primary);
+    box-shadow: 0 0 0 2px var(--bg-body), 0 0 0 4px currentColor;
     transform: translate(-50%, -50%) rotateY(var(--ry)) rotateX(var(--rx)) translateZ(var(--rz)) scale(2);
     z-index: 100;
 }

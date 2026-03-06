@@ -6,12 +6,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, viewport-fit=cover">
     <title>PodCube™ Explorer</title>
-    <meta name="description" content="The Future, is Yesterday™. Listen to audio transmissions from anywhere in space, or time, or place. With high-definition 4-D adiabatic q-bit streaming audio, PodCube™ is the Universal Leader in Time-Agnostic Podcasting™">
+    <meta name="description"
+        content="The Future, is Yesterday™. Listen to audio transmissions from anywhere in space, or time, or place. With high-definition 4-D adiabatic q-bit streaming audio, PodCube™ is the Universal Leader in Time-Agnostic Podcasting™">
     <meta name="theme-color" content="#1768da">
-    
+
     <link rel="icon" type="image/png" href="./favicon.png">
     <link rel="manifest" href="./manifest.json">
-    
+
     <!-- APPLE SPECIFIC BULLSHIT -->
     <link rel="apple-touch-icon" href="./CLEAN-LOGO.png">
     <link rel="apple-touch-icon" sizes="152x152" href="./CLEAN-LOGO.png">
@@ -21,21 +22,24 @@
     <!-- OPENGRAPH BULLSHIT -->
     <meta property="og:type" content="website">
     <meta property="og:title" content="PodCube™ Explorer">
-    <meta property="og:description" content="The Future, is Yesterday™. Listen to audio transmissions from anywhere in space, or time, or place. With high-definition 4-D adiabatic q-bit streaming audio, PodCube™ is the Universal Leader in Time-Agnostic Podcasting™">
-    <meta property="og:image" content="https://poweredbypodcube.com/podcubeogimg.jpg"> 
+    <meta property="og:description"
+        content="The Future, is Yesterday™. Listen to audio transmissions from anywhere in space, or time, or place. With high-definition 4-D adiabatic q-bit streaming audio, PodCube™ is the Universal Leader in Time-Agnostic Podcasting™">
+    <meta property="og:image" content="https://poweredbypodcube.com/podcubeogimg.jpg">
     <meta property="og:url" content="https://poweredbypodcube.com/">
 
     <!-- TWITTER CARDS (the last remaining piece of twitter's legacy lol)-->
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="PodCube™ Explorer">
-    <meta name="twitter:description" content="The Future, is Yesterday™. Listen to audio transmissions from anywhere in space, or time, or place. With high-definition 4-D adiabatic q-bit streaming audio, PodCube™ is the Universal Leader in Time-Agnostic Podcasting™">
+    <meta name="twitter:description"
+        content="The Future, is Yesterday™. Listen to audio transmissions from anywhere in space, or time, or place. With high-definition 4-D adiabatic q-bit streaming audio, PodCube™ is the Universal Leader in Time-Agnostic Podcasting™">
     <meta name="twitter:image" content="https://poweredbypodcube.com/podcubeogimg.jpg">
 
     <!-- STYLESHEETS -->
     <link rel="stylesheet" href="./themes/explorer.css">
     <link rel="stylesheet" href="./themes/theme-plastic.css">
     <link rel="stylesheet" href="./interactive/interactive.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fustat:wght@400;600;700&family=Libertinus+Math&display=swap">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Fustat:wght@400;600;700&family=Libertinus+Math&display=swap">
 
     <!-- OTHER PEOPLES' CODE -->
     <script src="./libraries/qrcode.min.js"></script><!-- QR CODE GENERATOR FOR SHARING PLAYLISTS -->
@@ -65,9 +69,10 @@
     <script src="./interactive/interactive.js"></script>
 
 </head>
+
 <body>
 
-<!-- SPLASH SCREEN -->
+    <!-- SPLASH SCREEN -->
     <div id="startup-splash"
         style="position: fixed; inset: 0; z-index: 9999999; background: #fdfdfc; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s ease;">
         <img src="./PODCUBE.png" alt="PodCube™ Logo"
@@ -100,7 +105,7 @@
         </style>
     </div>
 
-<!-- NAV BAR AND HEADER -->
+    <!-- NAV BAR AND HEADER -->
     <div class="sticky-top">
         <header>
             <div style="display:flex; align-items:center;">
@@ -110,12 +115,13 @@
                     <div class="subtitle">The Future, is Yesterday™</div>
                 </div>
             </div>
-        
+
             <div style="display:flex; gap: 5px;justify-content:space-between;">
                 <!--<div id="statusIndicator" class="meta" style="color: #888;">Initializing...</div>-->
                 <div id="userBadge" class="user-badge" onclick="switchTab('profile', true)">
                     <span class="text-muted" style="font-family:'Fustat'; font-size:var(--fs-xs)">LOGGED IN: </span>
-                    <strong id="ub-name" style="font-family:'Fustat'; font-size:var(--fs-sm); color:var(--primary);">---</strong>
+                    <strong id="ub-name"
+                        style="font-family:'Fustat'; font-size:var(--fs-sm); color:var(--primary);">---</strong>
                     <span id="ub-notif" class="notif-dot" style="display:none;">0</span>
                 </div>
                 <!--<button id="themeToggleBtn" class="icon-btn" onclick="toggleTheme()" style="padding: 4px 8px; font-size: var(--fs-md); color: transparent; text-shadow: 0 0 var(--primary);" title="Toggle Night Mode">🌙</button>-->
@@ -136,11 +142,12 @@
         </div>
     </div>
 
-<!-- BRIGISTICS TAB -->
+    <!-- BRIGISTICS TAB -->
     <div id="overview" class="tab-content active">
         <div class="section">
             <h3>Welcome to the PodCube Explorer. </h3>
-            <p class="meta mb-10 text-muted">Use this interface to intercept, review, and catalog 4D audio transmissions from across spacetime.</p>
+            <p class="meta mb-10 text-muted">Use this interface to intercept, review, and catalog 4D audio transmissions
+                from across spacetime.</p>
         </div>
 
         <div class="section brigistics-hero panel">
@@ -177,15 +184,19 @@
             <img src="./CLEAN-LOGO.png" class="hero-logo" alt="PodCube™ Logo">
         </div>
 
-       <!-- BHS SCANNER MODULE -->
+        <!-- BHS SCANNER MODULE -->
         <div class="section no-indent" style="margin-top: 30px; margin-bottom: 30px;">
             <div class="punchcard-reader-wrapper" id="brigistics-scanner-hardware">
-                
-                <div class="punchcard-row punchcard-top-row" style="margin-bottom: 0 !important; border-bottom: 1px solid rgba(0,0,0,0.22); align-items: center;">
-                    <label class="punchcard-label" style="margin-bottom: 0; font-size: var(--fs-base);">BLAKELY-HUFFMAN SPHEROID SCANNER</label>
-                    <button id="bhs-scan-toggle" class="icon-btn" style="font-size: var(--fs-xs); padding: 4px 8px; margin-right: 15px; color: var(--success); border-color: var(--success); background: var(--bg-panel); font-weight: bold; width: 120px;">AUTO-SCAN: ON</button>
+
+                <div class="punchcard-row punchcard-top-row"
+                    style="margin-bottom: 0 !important; border-bottom: 1px solid rgba(0,0,0,0.22); align-items: center;">
+                    <label class="punchcard-label" style="margin-bottom: 0; font-size: var(--fs-base);">BLAKELY-HUFFMAN
+                        SPHEROID SCANNER</label>
+                    <button id="bhs-scan-toggle" class="icon-btn"
+                        style="font-size: var(--fs-xs); padding: 4px 8px; margin-right: 15px; color: var(--success); border-color: var(--success); background: var(--bg-panel); font-weight: bold; width: 120px;">AUTO-SCAN:
+                        ON</button>
                 </div>
-    
+
                 <div class="bhs-layout-wrapper">
                     <div class="bhs-screen-bezel">
                         <div id="bhs-scene" class="bhs-scene">
@@ -198,7 +209,7 @@
                             </div>
                         </div>
                     </div>
-            
+
                     <div id="bhs-readout" class="bhs-readout-panel">
                         <div class="bhs-readout-empty">
                             <div class="bhs-empty-title">AWAITING TEMPORAL LOCK...</div>
@@ -221,16 +232,18 @@
                         </div>
                     </div>
                 </div>
-    
-                <div style="height: 0; margin: 0; border-top: 2px solid rgba(0,0,0,0.16); border-bottom: 1px solid rgba(255,255,255,0.55);"></div>
-    
+
+                <div
+                    style="height: 0; margin: 0; border-top: 2px solid rgba(0,0,0,0.16); border-bottom: 1px solid rgba(255,255,255,0.55);">
+                </div>
+
                 <div class="bhs-timeline-bay">
                     <label class="punchcard-label" style="margin-bottom: 8px;">CHRONOLOGICAL RELATIVE TO NOW™</label>
                     <div id="spacetime-timeline" class="spacetime-timeline-container"></div>
                 </div>
             </div>
         </div>
-        
+
         <div class="section raised">
             <h3>Brigistics Overview</h3>
             <p class="meta mb-10 text-muted">Aggregate analysis of the connected PodCube™ feeds</p>
@@ -238,24 +251,24 @@
         </div>
 
         <div class="panel">
-        <div class="section">
-            <h3>Temporal Analysis</h3>
-            <p class="text-muted meta mb-10">
-                Scroll for more • Click any item to filter
-            </p>
-            <div id="loreOutput" class=""></div>
-        </div>
-        <div class="section">
-            <h3>Geographic Distribution</h3>
-            <p class="text-muted meta mb-10">
-                Scroll for more • Click any item to filter
-            </p>
-            <div id="geoDistribution"></div>
-        </div>
+            <div class="section">
+                <h3>Temporal Analysis</h3>
+                <p class="text-muted meta mb-10">
+                    Scroll for more • Click any item to filter
+                </p>
+                <div id="loreOutput" class=""></div>
+            </div>
+            <div class="section">
+                <h3>Geographic Distribution</h3>
+                <p class="text-muted meta mb-10">
+                    Scroll for more • Click any item to filter
+                </p>
+                <div id="geoDistribution"></div>
+            </div>
         </div>
     </div>
 
-<!-- BROWSE & SEARCH TAB -->
+    <!-- BROWSE & SEARCH TAB -->
     <div id="archive" class="tab-content">
         <div class="registry-container">
             <div class="registry-sidebar raised">
@@ -277,10 +290,10 @@
                 <input type="checkbox" id="filter-toggle" class="filter-toggle-cb"><!--hidden toggle-->
 
                 <div class="sidebar-content">
-                     <div>
+                    <div>
                         <label>Passenger Catalog</label>
                         <select id="arcPassenger" onchange="updateArchive()">
-                            </select>
+                        </select>
                     </div>
 
                     <div style="border-top:1px solid var(--primary-dim); padding-top:12px; margin-top:12px;"></div>
@@ -388,7 +401,7 @@
         </div>
     </div>
 
-<!-- EPISODE INSPECTOR TAB -->
+    <!-- EPISODE INSPECTOR TAB -->
     <div id="inspector" class="tab-content">
         <!-- Header Card -->
         <div class="section">
@@ -396,7 +409,8 @@
                 <div class="inspector-header-card raised">
                     <div class="inspector-empty-state">
                         <h3>Transmission Data Inspector</h3>
-                        <p class="text-muted">Select a file from the Transmissions tab to view complete metadata and analysis.</p>
+                        <p class="text-muted">Select a file from the Transmissions tab to view complete metadata and
+                            analysis.</p>
                     </div>
                 </div>
             </div>
@@ -421,7 +435,7 @@
         </div>
     </div>
 
-<!-- PLAYBACK CONTROL TAB -->
+    <!-- PLAYBACK CONTROL TAB -->
     <div id="player" class="tab-content">
         <div class="section player-now-playing-card panel">
             <div>
@@ -471,9 +485,11 @@
                     </div>
 
                     <div class="player-radio-section panel">
-                        <label class="player-radio-toggle" style="display:flex; align-items:center; gap:12px; cursor:pointer;">
+                        <label class="player-radio-toggle"
+                            style="display:flex; align-items:center; gap:12px; cursor:pointer;">
                             <div class="plastic-switch-wrapper">
-                                <input type="checkbox" id="autoplayRandom" onchange="toggleAutoplayMode(this.checked)" style="display:none;">
+                                <input type="checkbox" id="autoplayRandom" onchange="toggleAutoplayMode(this.checked)"
+                                    style="display:none;">
                                 <div class="plastic-switch-track">
                                     <div class="plastic-switch-knob"></div>
                                 </div>
@@ -521,38 +537,41 @@
         </div>
     </div>
 
-<!-- PUNCHCARDS TAB -->
+    <!-- PUNCHCARDS TAB -->
     <div id="punchcards" class="tab-content">
 
         <div class="section">
             <div id="punchcardReader" class="punchcard-reader-wrapper">
                 <div class="punchcard-row punchcard-top-row">
                     <label class="punchcard-label">PODCUBE™ PUNCHCARD MACHINE</label>
-                    <button class="punchcard-btn punchcard-btn-clr" onclick="PodUser.clearPrintBuffer().then(() => updatePunchcardPreview())"
+                    <button class="punchcard-btn punchcard-btn-clr"
+                        onclick="PodUser.clearPrintBuffer().then(() => updatePunchcardPreview())"
                         style="color:var(--danger); border-color:var(--text-dim); background-color:var(--bg-body);"
                         title="Clear Write Buffer">CLEAR</button>
                 </div>
 
-                
+
 
                 <div class="pc-queue-preview" id="pcQueuePreview">
-                    
+
                     <div id="pcPreviewList">
                         <div class="pc-preview-empty">Buffer empty. Stage transmissions from the Inspector.</div>
                     </div>
                 </div>
 
                 <div class="pc-preview-header">
-                        <span>Print Buffer</span>
-                        <span>
-                            <span id="pcPreviewDuration">0:00</span>
-                            <span style="opacity: 0.5; margin: 0 4px;">•</span>
-                            <span id="pcPreviewCount">0 Items</span>
-                        </span>
-                    </div>
+                    <span>Print Buffer</span>
+                    <span>
+                        <span id="pcPreviewDuration">0:00</span>
+                        <span style="opacity: 0.5; margin: 0 4px;">•</span>
+                        <span id="pcPreviewCount">0 Items</span>
+                    </span>
+                </div>
 
                 <div class="punchcard-row">
-                    <button class="punchcard-btn punchcard-issue-btn" onkeydown="if(event.key === 'Enter') saveBufferAsPlaylist()" onclick="saveBufferAsPlaylist()">PRINT
+                    <button class="punchcard-btn punchcard-issue-btn"
+                        onkeydown="if(event.key === 'Enter') saveBufferAsPlaylist()"
+                        onclick="saveBufferAsPlaylist()">PRINT
                         CARD</button>
 
                     <input type="text" id="playlistNameInput" class="punchcard-input" placeholder="NAME THIS PUNCHCARD">
@@ -566,7 +585,8 @@
                 <div class="punchcard-row">
                     <input type="text" id="playlistImportInput" class="punchcard-input"
                         placeholder="PASTE PUNCH CARD IMAGE OR CODE HERE">
-                    <button class="punchcard-btn" onkeydown="if(event.key === 'Enter') importPlaylistFromInput()" onclick="importPlaylistFromInput()">READ</button>
+                    <button class="punchcard-btn" onkeydown="if(event.key === 'Enter') importPlaylistFromInput()"
+                        onclick="importPlaylistFromInput()">READ</button>
                 </div>
             </div>
         </div>
@@ -577,7 +597,7 @@
         </div>
     </div>
 
-<!-- ABOUT TAB (we should get jordan to record words from this so we can make them clickable and hear it-->
+    <!-- ABOUT TAB (we should get jordan to record words from this so we can make them clickable and hear it-->
     <div id="about" class="tab-content">
         <div class="section doubleborder about-hero panel" data-label="About PodCube™">
             <div class="hero-actions" style="max-width: 100%;">
@@ -615,14 +635,15 @@
             </div>
             <img src="./CLEAN-LOGO.png" class="hero-logo" alt="PodCube™ Logo">
         </div>
-    
+
         <div class="section no-indent">
             <h3>Our Visionary Beginnings</h3>
             <p class="mb-10">
                 The origins of PodCube™ lie in the joint discovery of the Blakely-Huffman Spheroid (BHS), a
                 revolutionary eleven-dimensional model of spacetime first presented in 2027 by founders Dick Blakely and
                 Jimley
-                Huffman at their eigth grade science fair. They won no awards that year, but their shared realization that
+                Huffman at their eigth grade science fair. They won no awards that year, but their shared realization
+                that
                 "if time were real, it would be a sphere" would change the world in 2048.
             </p>
             <p class="mb-10">
@@ -630,7 +651,7 @@
                 and actively preventing others from doing so.
             </p>
         </div>
-    
+
         <div class="section">
             <h3>State-of-the-Art Technology</h3>
             <p class="mb-10">
@@ -657,8 +678,8 @@
                 Exporation Experience Journey" which you can access here, or your via podcast application of choice.
             </p>
         </div>
-    
-    
+
+
         <div class="section raised">
             <h3>The P.R.I.C. Headquarters</h3>
             <p class="mb-10">
@@ -673,71 +694,86 @@
                 names as the gators they supervise.
             </p>
         </div>
-    
+
         <div class="section panel">
             <h3>Campus Departments</h3>
-    
+
             <h4 style="margin-top: 15px; margin-bottom: 5px;">Brigistics</h4>
             <p class="mb-10">
-                The Brigistics Department is the analytical heart of our operation, responsible for monitoring and tracking
+                The Brigistics Department is the analytical heart of our operation, responsible for monitoring and
+                tracking
                 every single deployed PodCube™ across the multiverse. Our specialists receive and process incoming
-                transmissions using 4D Adiabatic q-Bit Streaming Technology, which allows us to pass data across time at a
+                transmissions using 4D Adiabatic q-Bit Streaming Technology, which allows us to pass data across time at
+                a
                 highly compressed bit depth of 8 q-Bits.
             </p>
-    
+
             <h4 style="margin-top: 15px; margin-bottom: 5px;">Galileo Drone Deployment</h4>
             <p class="mb-10">
-                This department manages our fleet of Galileo Delivery Drones, the spherical workhorses that transport units
+                This department manages our fleet of Galileo Delivery Drones, the spherical workhorses that transport
+                units
                 to their target coordinates in space-time. Our marketing materials describe these twelve-ton drones as
-                "quiet" and "unintrusive". They are constructed out of rugged metal polymers capable of withstanding up to 2
-                quattuordecillion years of travel. With our proprietary onboard CoreN-Core fuel cells, they are capable of
+                "quiet" and "unintrusive". They are constructed out of rugged metal polymers capable of withstanding up
+                to 2
+                quattuordecillion years of travel. With our proprietary onboard CoreN-Core fuel cells, they are capable
+                of
                 enough sustained power output to utilize the wormhole method for past retrieval and the pinch method for
                 future delivery, cocooning themselves in a "completely ethical" regenerative maintenance shell for the
                 duration of the journey.
             </p>
-    
+
             <h4 style="margin-top: 15px; margin-bottom: 5px;">Alignment</h4>
             <p class="mb-10">
-                Currently staffed exclusively by Lead Astral Guide Dandelion Whoelf Ouedes, the Alignment Department ensures
+                Currently staffed exclusively by Lead Astral Guide Dandelion Whoelf Ouedes, the Alignment Department
+                ensures
                 the PRIC remains in sync with the universe's natural vibrations. This department focuses on daily
-                affirmations and the discovery of dualiscopes, our proprietary weekend-specific horoscopes. The office is
+                affirmations and the discovery of dualiscopes, our proprietary weekend-specific horoscopes. The office
+                is
                 optimized for spiritual intake with a high density of pillows, incense, and tapestries.
             </p>
-    
+
             <h4 style="margin-top: 15px; margin-bottom: 5px;">pSEC</h4>
             <p class="mb-10">
-                The Pseudolinear Electronic Cryptography (pSEC) department is led by Dr. Rickelodeon Velveetus and handles
+                The Pseudolinear Electronic Cryptography (pSEC) department is led by Dr. Rickelodeon Velveetus and
+                handles
                 all aspects of PodCube™ security. Protecting the campus’s most dangerous secrets and hardware, the
                 department is secured behind a massive door requiring three separate keycards—a protocol known as the
                 "buddy-buddy-buddy system". For maximum security, Director Velveetus maintains a master record of every
                 campus login password on a single napkin kept in his desk drawer.
             </p>
-    
+
             <h4 style="margin-top: 15px; margin-bottom: 5px;">F.L.U.R.C.H.</h4>
             <p class="mb-10">
                 Standing for Finite Linearity Under Research Conditions Heuristics, the F.L.U.R.C.H. department is
-                responsible for PodCube’s inter-timeline expansion. By architecting actualization anomalies, this team sends
-                drones to the past in every timeline where our founders exist, allowing the company to move forward through
+                responsible for PodCube’s inter-timeline expansion. By architecting actualization anomalies, this team
+                sends
+                drones to the past in every timeline where our founders exist, allowing the company to move forward
+                through
                 time down entirely different paths of existence (ISWORMS).
             </p>
-    
+
             <h4 style="margin-top: 15px; margin-bottom: 5px;">R&D&R&P</h4>
             <p class="mb-10">
-                Our R&D&R&P team is the source of our most cutting-edge and experimental innovations. Beyond the standard
-                PodCube™ technology, this department is responsible for the HORUS Pineal Implant, a line of teleporters that
+                Our R&D&R&P team is the source of our most cutting-edge and experimental innovations. Beyond the
+                standard
+                PodCube™ technology, this department is responsible for the HORUS Pineal Implant, a line of teleporters
+                that
                 "don't quite work," and the specialized laser gun required to neutralize campus-level threats.
             </p>
-    
+
             <h4 style="margin-top: 15px; margin-bottom: 5px;">PodCube™ Passengers</h4>
             <p class="mb-10">
-                The PodCube™ Passenger Program is a specialized training and developmental track within the PRIC. While most
+                The PodCube™ Passenger Program is a specialized training and developmental track within the PRIC. While
+                most
                 participants graduate the program within six months, dedicated individuals (such as our former colleague
-                Dongle) have been known to remain in the program for up to four years. The program is vital for the training
-                and orientation of our staff, and transmissions are frequently recorded to assist in passenger education.
+                Dongle) have been known to remain in the program for up to four years. The program is vital for the
+                training
+                and orientation of our staff, and transmissions are frequently recorded to assist in passenger
+                education.
             </p>
         </div>
-    
-    
+
+
         <div class="section">
             <h3>Corporate Life and Culture</h3>
             <p class="mb-10">
@@ -750,7 +786,7 @@
                 55,000 vitamins and minerals.
             </p>
         </div>
-    
+
         <div class="section">
             <div class="doubleborder raised" data-label="ARCHIVAL RECORDING" style="padding: 20px;">
                 <p class="mb-10 text-muted">
@@ -766,7 +802,7 @@
                 </button>
             </div>
         </div>
-    
+
         <div class="section panel">
             <p class="text-muted" style="text-align: center;">
                 Whether you are listening through a PodCube™ Pocket Pal, the PodCube™ Explorer Web-Application, or our
@@ -779,8 +815,8 @@
         </div>
     </div>
 
-<!-- INTERACTIVE TAB -->
-    
+    <!-- INTERACTIVE TAB -->
+
     <div id="interactive" class="tab-content">
 
         <div id="pc-menu-view" class="section">
@@ -870,9 +906,9 @@
 
     </div>
 
-<!-- USER PROFILE TAB -->
+    <!-- USER PROFILE TAB -->
     <div id="profile" class="tab-content">
-    
+
         <!-- ── HERO / HEADER ──────────────────────────────────────── -->
         <div class="profile-hero panel">
             <div>
@@ -896,7 +932,7 @@
             <h3>Terminal Statistics</h3>
             <div class="stat-grid profile-stat-grid" id="prof-stats-grid"></div>
         </div>
-    
+
         <!-- ── SYSTEM ALERTS ──────────────────────────────────────── -->
         <div class="section">
             <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;">
@@ -905,16 +941,16 @@
                     Mark All Read
                 </button>
             </div>
-            
+
             <div id="prof-notifications" class="notifications-scroll panel">
 
             </div>
         </div>
-    
-    
-        
-    
-    
+
+
+
+
+
         <!-- ── ACHIEVEMENTS ───────────────────────────────────────── -->
         <div class="section">
             <div
@@ -929,48 +965,55 @@
             </div>
             <div id="prof-achievements"></div>
         </div>
-    
-    
-    
+
+
+
         <!-- MEMORY CARD -->
         <div class="section">
             <div class="memory-card-section">
                 <span style="font-family: Fustat; color: var(--text-dim)">MEMORY CARD - BACKUP AND RESTORE</span>
-                <p style="font-family:'Fustat'; font-size:var(--fs-sm); text-transform:uppercase; color:#888; line-height:1.6; margin-bottom:16px; letter-spacing:0.03em;">
-                    Your progress, scores, and unlocked content are stored locally. Save this Memory Card QR code to back up or restore your profile.
+                <p
+                    style="font-family:'Fustat'; font-size:var(--fs-sm); text-transform:uppercase; color:#888; line-height:1.6; margin-bottom:16px; letter-spacing:0.03em;">
+                    Your progress, scores, and unlocked content are stored locally. Save this Memory Card QR code to
+                    back up or restore your profile.
                 </p>
-    
+
                 <div style="display:flex; flex-wrap:wrap; gap:20px; justify-content:center; align-items:flex-start;">
-                    
+
                     <div style="display:flex; flex-direction:column; align-items:center; gap:10px;">
-                        <div id="prof-qr-container" style="background:#fff; border:3px double var(--primary); padding:10px; width:160px; height:160px; display:flex; justify-content:center; align-items:center;">
+                        <div id="prof-qr-container"
+                            style="background:#fff; border:3px double var(--primary); padding:10px; width:160px; height:160px; display:flex; justify-content:center; align-items:center;">
                             <span class="text-muted" style="font-size:var(--fs-xs);">GENERATING...</span>
                         </div>
                         <button class="hero-btn" onclick="downloadMemoryCard()" style="padding: 8px 12px; width:100%;">
-                            <span class="hero-btn-icon" style="font-size:1.2em;color:transparent;text-shadow: 0 0 var(--primary);">📇</span>
+                            <span class="hero-btn-icon"
+                                style="font-size:1.2em;color:transparent;text-shadow: 0 0 var(--primary);">📇</span>
                             <span class="hero-btn-text">
                                 <strong style="font-size:var(--fs-base);">SAVE CARD</strong>
                                 <span style="font-size:var(--fs-xs);">Download Image</span>
                             </span>
                         </button>
                     </div>
-    
+
                     <div style="flex:1; display:flex; flex-direction:column; gap:10px;">
                         <label class="punchcard-label" style="margin-bottom:0;">RESTORE FROM IMAGE</label>
-                        <div class="punchcard-reader-wrapper" id="memCardReader" 
-                             style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:20px; cursor:pointer; min-height: 160px;" 
-                             onclick="document.getElementById('memCardUpload').click()">
-                            <span style="font-family:'Fustat'; font-size:var(--fs-sm); font-weight:bold; color:var(--primary);">CLICK TO BROWSE OR DROP IMAGE</span>
-                            <input type="file" id="memCardUpload" accept="image/*" style="display:none;" onchange="handleMemoryCardUpload(event)">
+                        <div class="punchcard-reader-wrapper" id="memCardReader"
+                            style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:20px; cursor:pointer; min-height: 160px;"
+                            onclick="document.getElementById('memCardUpload').click()">
+                            <span
+                                style="font-family:'Fustat'; font-size:var(--fs-sm); font-weight:bold; color:var(--primary);">CLICK
+                                TO BROWSE OR DROP IMAGE</span>
+                            <input type="file" id="memCardUpload" accept="image/*" style="display:none;"
+                                onchange="handleMemoryCardUpload(event)">
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    
+
         <div class="section no-indent" id="btn-degauss" style="transition: all 0.4s ease;">
             <div style="display: flex; flex-direction: column; align-items: center;">
-                
+
                 <div class="defrig-container">
                     <div class="defrig-inner">
                         <div class="defrig-switches">
@@ -978,11 +1021,12 @@
                             <div class="defrig-switch" onclick="toggleDefrigSwitch(this, 2)"></div>
                             <div class="defrig-switch" onclick="toggleDefrigSwitch(this, 3)"></div>
                         </div>
-                        <button id="btn-defrigulate" class="icon-btn defrig-btn" disabled onclick="executeDefrigulate()">
+                        <button id="btn-defrigulate" class="icon-btn defrig-btn" disabled
+                            onclick="executeDefrigulate()">
                             INITIATE DE-FRIGULATION
                         </button>
                     </div>
-    
+
                     <div class="defrig-plate" id="defrig-plate">
                         <div class="defrig-screw topleft" onclick="removeScrew(this)"></div>
                         <div class="defrig-screw topright" onclick="removeScrew(this)"></div>
@@ -992,10 +1036,10 @@
                 </div>
             </div>
         </div>
-    
+
     </div>
 
-<!-- API REFERENCE TAB -->
+    <!-- API REFERENCE TAB -->
     <div id="api" class="tab-content">
 
         <div class="section">
@@ -1064,7 +1108,7 @@
             </div>
         </div>
 
-<!-- COMPLETE PODCUBE API REFERENCE -->
+        <!-- COMPLETE PODCUBE API REFERENCE -->
         <div class="section">
             <h3>Complete API Reference</h3>
             <!-- Episode Access & Filtering -->
@@ -1081,11 +1125,15 @@
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.random</code>
-                        <p>Returns a random episode from the collection. If a random pool filter is set, it is applied first; if the filter yields no results, falls back to the full episode list.</p>
+                        <p>Returns a random episode from the collection. If a random pool filter is set, it is applied
+                            first; if the filter yields no results, falls back to the full episode list.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.setRandomPoolFilter(callback)</code>
-                        <p>Provide a callback to restrict which episodes are eligible for random selection. The callback receives the full episodes array and must return a filtered array. Pass <code>null</code> to clear the filter. Used by Radio Mode's auto-queue logic as well as direct calls to <code>PodCube.random</code>.</p>
+                        <p>Provide a callback to restrict which episodes are eligible for random selection. The callback
+                            receives the full episodes array and must return a filtered array. Pass <code>null</code> to
+                            clear the filter. Used by Radio Mode's auto-queue logic as well as direct calls to
+                            <code>PodCube.random</code>.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.where(filters, sort)</code>
@@ -1119,8 +1167,10 @@
                     <div class="api-method">
                         <code class="api-signature">PodCube.findRelated(episode, limit)</code>
                         <p>Find episodes related to the given episode using weighted scoring: model matching (12 points
-                            exact, 4 points prefix), origin (10 points), locale (6), region (4), zone (2, but the value <code>"USA"</code> is explicitly excluded to prevent overly broad matches), shared tags
-                            (3 each), and same lore year (5). Planet is not scored. Minimum threshold: 7 points. Default limit is 10.</p>
+                            exact, 4 points prefix), origin (10 points), locale (6), region (4), zone (2, but the value
+                            <code>"USA"</code> is explicitly excluded to prevent overly broad matches), shared tags
+                            (3 each), and same lore year (5). Planet is not scored. Minimum threshold: 7 points. Default
+                            limit is 10.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.getNearestToToday()</code>
@@ -1152,7 +1202,8 @@
                         <code class="api-signature">PodCube.regions</code>
                         <code class="api-signature">PodCube.zones</code>
                         <code class="api-signature">PodCube.planets</code>
-                        <p>Arrays containing all unique values for the respective metadata fields across the entire feed. Sorted alphabetically.</p>
+                        <p>Arrays containing all unique values for the respective metadata fields across the entire
+                            feed. Sorted alphabetically.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.getDistribution()</code>
@@ -1210,7 +1261,8 @@
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.getByIntegrity(reverse)</code>
-                        <p>Episodes sorted by integrity value (lowest first by default). Pass true for highest first.</p>
+                        <p>Episodes sorted by integrity value (lowest first by default). Pass true for highest first.
+                        </p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.sortBy(field, reverse)</code>
@@ -1226,7 +1278,9 @@
                 <div class="api-methods">
                     <div class="api-method">
                         <code class="api-signature">PodCube.play(episode)</code>
-                        <p>Play a specific episode (adds to queue with playNow=true). If no episode provided, resumes current track. If queue is empty and Radio Mode is active, automatically picks a random track and plays it. If queue is empty and Radio Mode is off, this does nothing.</p>
+                        <p>Play a specific episode (adds to queue with playNow=true). If no episode provided, resumes
+                            current track. If queue is empty and Radio Mode is active, automatically picks a random
+                            track and plays it. If queue is empty and Radio Mode is off, this does nothing.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.pause()</code>
@@ -1260,7 +1314,8 @@
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.setVolume(level)</code>
-                        <p>Set volume (0 to 100). Values are clamped to valid range. Returns clamped value. (Internally normalizes to 0.0-1.0 for HTML Audio Element)</p>
+                        <p>Set volume (0 to 100). Values are clamped to valid range. Returns clamped value. (Internally
+                            normalizes to 0.0-1.0 for HTML Audio Element)</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.getVolume()</code>
@@ -1285,8 +1340,11 @@
                     <div class="api-method">
                         <code class="api-signature">PodCube.setRadioMode(enabled)</code>
                         <p>Enable/disable Radio Mode. When enabled, automatically queues a random track when reaching
-                            the end of the queue, creating infinite playback. If enabled while the queue is empty or exhausted,
-                            immediately loads the next random track into position — but does <strong>not</strong> auto-play it (user must call <code>play()</code>). Respects any active random pool filter.</p>
+                            the end of the queue, creating infinite playback. If enabled while the queue is empty or
+                            exhausted,
+                            immediately loads the next random track into position — but does <strong>not</strong>
+                            auto-play it (user must call <code>play()</code>). Respects any active random pool filter.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -1325,7 +1383,8 @@
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.clearQueue()</code>
-                        <p>Remove all tracks from queue, cancel preload, stop playback, clear session, remove audio src, and dismiss OS media session controls.</p>
+                        <p>Remove all tracks from queue, cancel preload, stop playback, clear session, remove audio src,
+                            and dismiss OS media session controls.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.removeFromQueue(index)</code>
@@ -1339,7 +1398,8 @@
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.skipTo(index)</code>
-                        <p>Jump directly to a specific index in the queue and begin playback. Does nothing if the index is out of bounds.</p>
+                        <p>Jump directly to a specific index in the queue and begin playback. Does nothing if the index
+                            is out of bounds.</p>
                     </div>
                 </div>
             </div>
@@ -1350,7 +1410,8 @@
                     <div class="api-method">
                         <code class="api-signature">PodCube.savePlaylist(name, episodes)</code>
                         <p>Save array of episodes as a named playlist to localStorage. Returns playlist object with
-                            <code>{name, created, episodes, totalDuration}</code>.</p>
+                            <code>{name, created, episodes, totalDuration}</code>.
+                        </p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.loadPlaylist(name)</code>
@@ -1361,7 +1422,8 @@
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.getPlaylists()</code>
-                        <p>Get all saved playlists. Returns array of fully-loaded playlist objects, each with name, created timestamp, totalDuration, and rehydrated episode arrays.</p>
+                        <p>Get all saved playlists. Returns array of fully-loaded playlist objects, each with name,
+                            created timestamp, totalDuration, and rehydrated episode arrays.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.deletePlaylist(name)</code>
@@ -1384,11 +1446,13 @@
                     <div class="api-method">
                         <code class="api-signature">PodCube.exportPlaylist(name)</code>
                         <p>Export playlist for sharing using Nano-GUID v7 compression (20-bit ID stream + plaintext
-                            title). Returns <code>{name, episodes, code, totalDuration, url}</code> or null on error.</p>
+                            title). Returns <code>{name, episodes, code, totalDuration, url}</code> or null on error.
+                        </p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.importPlaylist(code)</code>
-                        <p>Import a playlist from a share code. Returns <code>{name, episodes, totalDuration, missingCount}</code> or null if
+                        <p>Import a playlist from a share code. Returns
+                            <code>{name, episodes, totalDuration, missingCount}</code> or null if
                             invalid. Uses fuzzy matching via nanoId.</p>
                     </div>
                 </div>
@@ -1444,7 +1508,8 @@
                     <code class="api-signature">play</code>
                     <p><strong>Payload:</strong> <code>Episode</code> - The episode that started playing</p>
                     <p><strong>Example:</strong>
-                        <code>PodCube.on('play', (ep) => console.log(`Playing: ${ep.title}`))</code></p>
+                        <code>PodCube.on('play', (ep) => console.log(`Playing: ${ep.title}`))</code>
+                    </p>
                 </div>
 
                 <div class="api-method">
@@ -1463,7 +1528,9 @@
                 <div class="api-method">
                     <code class="api-signature">ended</code>
                     <p><strong>Payload:</strong> <code>Episode</code> - The episode that just finished playing</p>
-                    <p><strong>Note:</strong> Fires when a track reaches its natural end. In Radio Mode, this fires before the next random track is auto-queued. Does not fire when playback is manually stopped or skipped.</p>
+                    <p><strong>Note:</strong> Fires when a track reaches its natural end. In Radio Mode, this fires
+                        before the next random track is auto-queued. Does not fire when playback is manually stopped or
+                        skipped.</p>
                 </div>
 
                 <div class="api-method">
@@ -1542,15 +1609,19 @@
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.isReady</code>
-                        <p>Boolean — true once <code>init()</code> has completed successfully. False before initialization or if init threw an error.</p>
+                        <p>Boolean — true once <code>init()</code> has completed successfully. False before
+                            initialization or if init threw an error.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.logo</code>
-                        <p>Feed logo URL string extracted during <code>init()</code> (from the RSS <code>&lt;image&gt;</code> tag or JSON <code>icon</code> field). Null before initialization or if the feed provides no logo.</p>
+                        <p>Feed logo URL string extracted during <code>init()</code> (from the RSS
+                            <code>&lt;image&gt;</code> tag or JSON <code>icon</code> field). Null before initialization
+                            or if the feed provides no logo.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.Episode</code>
-                        <p>Reference to the Episode class itself. Useful for <code>instanceof</code> checks: <code>ep instanceof PodCube.Episode</code>.</p>
+                        <p>Reference to the Episode class itself. Useful for <code>instanceof</code> checks:
+                            <code>ep instanceof PodCube.Episode</code>.</p>
                     </div>
                 </div>
             </div>
@@ -1564,7 +1635,8 @@
                     </div>
                     <div class="api-method">
                         <code class="api-signature">episode.nanoId</code>
-                        <p>5-character hex string (20 bits) computed from the full episode GUID via FNV-1a hash. Used as the compressed identifier in playlist share codes.</p>
+                        <p>5-character hex string (20 bits) computed from the full episode GUID via FNV-1a hash. Used as
+                            the compressed identifier in playlist share codes.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">episode.title</code>
@@ -1618,15 +1690,24 @@
                     </div>
                     <div class="api-method">
                         <code class="api-signature">episode.anniversary</code>
-                        <p>Distance from the episode's lore date to today. Returns <code>"today"</code> on an exact date match, a human-readable string otherwise (e.g., <code>"2 years ago"</code>, <code>"3 months from now"</code>, <code>"500 years from now"</code>, <code>"4 days ago"</code>), or <code>null</code> if the episode has no lore date. Resolution cascades: years → months → weeks → days.</p>
+                        <p>Distance from the episode's lore date to today. Returns <code>"today"</code> on an exact date
+                            match, a human-readable string otherwise (e.g., <code>"2 years ago"</code>,
+                            <code>"3 months from now"</code>, <code>"500 years from now"</code>,
+                            <code>"4 days ago"</code>), or <code>null</code> if the episode has no lore date. Resolution
+                            cascades: years → months → weeks → days.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">episode.integrity</code>
-                        <p>Raw integrity string from feed metadata (e.g., <code>"94.7"</code>). Never null — defaults to <code>"0.0"</code> for TWIBBIE/NONE episodes, or <code>"0"</code> for TRANSMISSION/HQ episodes without metadata. Described in-universe as a fake transmission quality percentage.</p>
+                        <p>Raw integrity string from feed metadata (e.g., <code>"94.7"</code>). Never null — defaults to
+                            <code>"0.0"</code> for TWIBBIE/NONE episodes, or <code>"0"</code> for TRANSMISSION/HQ
+                            episodes without metadata. Described in-universe as a fake transmission quality percentage.
+                        </p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">episode.integrityValue</code>
-                        <p>Numeric float parsed from integrity metadata. Never null — defaults to <code>0</code> if metadata is missing, invalid, or the episode type is TWIBBIE/NONE. No upper bound is enforced; value is whatever the feed provides.</p>
+                        <p>Numeric float parsed from integrity metadata. Never null — defaults to <code>0</code> if
+                            metadata is missing, invalid, or the episode type is TWIBBIE/NONE. No upper bound is
+                            enforced; value is whatever the feed provides.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">episode.tags</code>
@@ -1646,11 +1727,16 @@
                     </div>
                     <div class="api-method">
                         <code class="api-signature">episode.timestamp</code>
-                        <p>Duration formatted as M:SS (e.g., <code>"62:05"</code>). Minutes are not zero-padded; seconds are. Returns <code>"0:00"</code> if duration is unavailable. Note: for HH:MM:SS formatting use <code>status.durationFormatted</code> instead.</p>
+                        <p>Duration formatted as M:SS (e.g., <code>"62:05"</code>). Minutes are not zero-padded; seconds
+                            are. Returns <code>"0:00"</code> if duration is unavailable. Note: for HH:MM:SS formatting
+                            use <code>status.durationFormatted</code> instead.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">episode.weirdDuration</code>
-                        <p>Duration formatted with a randomly selected whimsical suffix. The format is <code>M.FF&lt;suffix&gt;</code> where M is whole minutes and FF is fractional minutes. Example outputs: <code>"5.42ish minutes"</code>, <code>"12.8 minutes (+/- a bit)"</code>, <code>"30.5 or so minutes"</code>. Returns "IDK?" if duration is unavailable.</p>
+                        <p>Duration formatted with a randomly selected whimsical suffix. The format is
+                            <code>M.FF&lt;suffix&gt;</code> where M is whole minutes and FF is fractional minutes.
+                            Example outputs: <code>"5.42ish minutes"</code>, <code>"12.8 minutes (+/- a bit)"</code>,
+                            <code>"30.5 or so minutes"</code>. Returns "IDK?" if duration is unavailable.</p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">episode.sizeBytes</code>
@@ -1665,7 +1751,7 @@
         </div>
     </div>
 
-<!-- GLOBAL TRANSPORT -->
+    <!-- GLOBAL TRANSPORT -->
     <div id="global-transport" class="global-transport">
         <button class="transport-toggle-btn" id="transportToggleBtn" onclick="toggleTransport()">
             <svg viewBox="0 0 24 24" class="icon-svg">
@@ -1673,38 +1759,39 @@
             </svg>
         </button>
         <div class="transport-main">
-            <button class="control-btn" onclick="run('PodCube.skipBack()')"  title="Skip Back">
+            <button class="control-btn" onclick="run('PodCube.skipBack()')" title="Skip Back">
                 <svg viewBox="0 0 24 24" class="icon-svg">
-                    <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z" />
+                    <path
+                        d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z" />
                 </svg>
             </button>
-            <button class="control-btn control-btn-play" id="playBtn" onclick="togglePlayback()"
-                title="Play/Pause">
+            <button class="control-btn control-btn-play" id="playBtn" onclick="togglePlayback()" title="Play/Pause">
                 <svg viewBox="0 0 24 24" class="icon-svg">
                     <path d="M8 5v14l11-7z" />
                 </svg>
             </button>
-            <button class="control-btn" onclick="run('PodCube.skipForward()')"  title="Skip Forward">
+            <button class="control-btn" onclick="run('PodCube.skipForward()')" title="Skip Forward">
                 <svg viewBox="0 0 24 24" class="icon-svg" style="transform: scaleX(-1);">
-                    <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z" />
+                    <path
+                        d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z" />
                 </svg>
             </button>
-            <div class="transport-info" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+            <div class="transport-info"
+                style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
                 <div style="min-width:0; flex:1;">
-                    <div class="transport-title" id="transTitle" 
-                         style="cursor: pointer; transition: color 0.2s;" 
-                         title="Inspect Transmission" 
-                         onmouseover="if(PodCube.nowPlaying) this.style.textDecoration='underline';" 
-                         onmouseout="this.style.textDecoration='none';" 
-                         onclick="if(PodCube.nowPlaying) { loadEpisodeInspector(PodCube.nowPlaying); switchTab('inspector', true); }">
+                    <div class="transport-title" id="transTitle" style="cursor: pointer; transition: color 0.2s;"
+                        title="Inspect Transmission"
+                        onmouseover="if(PodCube.nowPlaying) this.style.textDecoration='underline';"
+                        onmouseout="this.style.textDecoration='none';"
+                        onclick="if(PodCube.nowPlaying) { loadEpisodeInspector(PodCube.nowPlaying); switchTab('inspector', true); }">
                         Select a transmission...
                     </div>
                     <div class="meta" id="transTime" style="font-size:var(--fs-sm); color:#888;">0:00 / 0:00</div>
                 </div>
-                
+
             </div>
             <div class="transport-controls">
-                
+
                 <div class="transport-control-group">
                     <label class="transport-label">Vol:</label>
                     <input type="range" id="transportVolume" min="0" max="100" value="100"
@@ -1724,7 +1811,8 @@
 
                         <button id="transBtnNo" class="icon-btn insp-btn-no" title="Suppress Transmission"
                             style="padding:4px 8px; font-size:10px; font-weight:bold; display: flex; align-items: center; justify-content: center;">
-                            <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor; transform: rotate(180deg);">
+                            <svg viewBox="0 0 24 24"
+                                style="width: 16px; height: 16px; fill: currentColor; transform: rotate(180deg);">
                                 <path d="M12 6l-8 12h16z" />
                             </svg>
                         </button>
@@ -1738,8 +1826,8 @@
             <div class="scrubber-fill" id="scrubberFill"></div>
         </div>
     </div>
-    
-<!-- CODE MONITOR -->
+
+    <!-- CODE MONITOR -->
     <div class="code-monitor">
         <span class="monitor-prompt">>></span>
         <div class="monitor-text-wrapper">
@@ -1749,7 +1837,7 @@
     </div>
 
 
-<!-- ========  TEMPLATES  ========= -->
+    <!-- ========  TEMPLATES  ========= -->
     <template id="tmpl-stat-box">
         <div class="stat-box">
             <div class="stat-num"></div>
@@ -1768,13 +1856,14 @@
             <span class="hi-count"></span>
         </div>
     </template>
-    
+
     <!-- EPISODE CARDS -->
     <template id="tmpl-ep-card">
         <div class="ep-card">
             <div class="ep-content">
                 <div class="ep-header">
-                    <div class="ep-title"><span class="ep-played-icon" title="Played">✓</span><span class="et-text"></span></div>
+                    <div class="ep-title"><span class="ep-played-icon" title="Played">✓</span><span
+                            class="et-text"></span></div>
                 </div>
                 <div class="ep-meta-row primary-meta">
                     <span class="ep-type ep-tag" style="display:none;"></span>
@@ -1806,23 +1895,23 @@
 
     <!-- INSPECTOR TEMPLATES -->
     <template id="tmpl-inspector-view">
-        
+
         <div class="inspector-header-wrapper">
-            
+
             <div class="inspector-header-card">
-                
+
                 <div class="inspector-top-bar">
                     <div class="insp-nav-buttons">
                         <button class="icon-btn insp-btn-prev">&lt;&lt; PREV</button>
-                        
+
                         <div class="insp-nav-counter"></div>
-                        
+
                         <button class="icon-btn insp-btn-next-nav">NEXT &gt;&gt;</button>
                     </div>
                 </div>
-    
+
                 <h2 class="inspector-title insp-title"></h2>
-                
+
                 <div class="inspector-header-grid">
                     <div class="inspector-header-item full-width">
                         <span class="inspector-header-label">Origin</span>
@@ -1836,7 +1925,8 @@
                         <span class="inspector-header-label">Date</span>
                         <span class="inspector-header-value">
                             <span class="insp-date"></span>
-                            <span class="insp-anniversary-wrapper" style="display:none;">(<span class="insp-anniversary"></span>)</span>
+                            <span class="insp-anniversary-wrapper" style="display:none;">(<span
+                                    class="insp-anniversary"></span>)</span>
                         </span>
                     </div>
                     <div class="inspector-header-item">
@@ -1854,59 +1944,67 @@
                     <div class="inspector-header-item">
                         <span class="inspector-header-label">Duration</span>
                         <span class="inspector-header-value insp-duration"></span>
-                    </div> 
+                    </div>
                 </div>
-    
-                <div class="inspector-dashboard"> 
+
+                <div class="inspector-dashboard">
                     <div class="dashboard-row playback-row">
                         <button class="inspector-action-btn primary insp-btn-play">PLAY NOW</button>
                         <button class="inspector-action-btn insp-btn-playnext">PLAY NEXT</button>
                         <button class="inspector-action-btn insp-btn-queue">QUEUE</button>
                         <button class="inspector-action-btn insp-btn-print">PRINT</button>
                     </div>
-                    
+
                     <div class="dashboard-row verification-row">
                         <button class="inspector-action-btn insp-btn-ok">ELEVATE</button>
                         <button class="inspector-action-btn insp-btn-no">SUPPRESS</button>
-                        
-                        
-                        <input type="text" class="passenger-tag-input insp-tag-input" maxlength="15" placeholder="Add Tag/Note...">
-                        
+
+
+                        <input type="text" class="passenger-tag-input insp-tag-input" maxlength="15"
+                            placeholder="Add Tag/Note...">
+
                     </div>
 
                     <div class="dashboard-row annotations-row">
-                        
+
                     </div>
 
                 </div>
 
-                
+
 
             </div>
         </div>
-        
+
         <div class="inspector-body-wrapper">
             <div class="inspector-section insp-tags-section" style="display:none;">
                 <h4 class="inspector-section-title">Classification Tags</h4>
                 <div class="inspector-tag-list insp-tags-list">
                 </div>
             </div>
-            
+
             <div class="inspector-section">
                 <h4 class="inspector-section-title">Executive Summary</h4>
                 <div class="inspector-prose">
                     <p>
-                        This transmission <span class="insp-prose-anniv-wrap" style="display:none;">originated <strong class="insp-prose-anniv"></strong>, and </span>has been titled "<strong class="insp-prose-title"></strong>" by the Brigistics department.
+                        This transmission <span class="insp-prose-anniv-wrap" style="display:none;">originated <strong
+                                class="insp-prose-anniv"></strong>, and </span>has been titled "<strong
+                            class="insp-prose-title"></strong>" by the Brigistics department.
                     </p>
                     <p>
-                        Geographic metadata indicates it originated from planet <strong class="insp-prose-planet"></strong>,
-                        within the <strong class="insp-prose-region"></strong> region of the <strong class="insp-prose-zone"></strong> zone.
+                        Geographic metadata indicates it originated from planet <strong
+                            class="insp-prose-planet"></strong>,
+                        within the <strong class="insp-prose-region"></strong> region of the <strong
+                            class="insp-prose-zone"></strong> zone.
                         The specific locale is identified as <strong class="insp-prose-locale"></strong>,
                         with the primary origin point recorded as "<strong class="insp-prose-origin"></strong>".
                     </p>
                     <p>
-                        It runs for <strong class="insp-prose-time"></strong> (<span class="insp-prose-dur"></span>)<span class="insp-prose-weird-wrap" style="display:none;">, or roughly <span class="insp-prose-weird"></span></span>.
-                        <span class="insp-prose-size-wrap" style="display:none;">The audio file size is <strong class="insp-prose-size"></strong>. </span>
+                        It runs for <strong class="insp-prose-time"></strong> (<span
+                            class="insp-prose-dur"></span>)<span class="insp-prose-weird-wrap" style="display:none;">,
+                            or roughly <span class="insp-prose-weird"></span></span>.
+                        <span class="insp-prose-size-wrap" style="display:none;">The audio file size is <strong
+                                class="insp-prose-size"></strong>. </span>
                         Audio source is <span class="insp-prose-audio-status"></span>.
                         This transmission's Global Unique ID string is: "<strong class="insp-prose-id"></strong>".
                     </p>
@@ -1914,15 +2012,18 @@
                         It has been cataloged at index <strong class="insp-prose-idx"></strong>
                         with shortcode date <strong class="insp-prose-shortcode"></strong>,
                         is of the type: "<strong class="insp-prose-type"></strong>",
-                        and carries an integrity rating of <strong class="insp-prose-integrity"></strong><span class="insp-prose-int-val-wrap" style="display:none;"> (<span class="insp-prose-int-val"></span>%)</span>.
+                        and carries an integrity rating of <strong class="insp-prose-integrity"></strong><span
+                            class="insp-prose-int-val-wrap" style="display:none;"> (<span
+                                class="insp-prose-int-val"></span>%)</span>.
                     </p>
                     <p class="insp-prose-related-wrap" style="display:none;">
-                        It may or may not be related to <span class="insp-prose-related-titles"></span> which will be linked
+                        It may or may not be related to <span class="insp-prose-related-titles"></span> which will be
+                        linked
                         at the bottom of this document.
                     </p>
                 </div>
             </div>
-    
+
             <div class="inspector-split-row">
                 <div class="inspector-section" style="margin-bottom: 0;">
                     <h4 class="inspector-section-title">Geographic Metadata</h4>
@@ -1939,7 +2040,7 @@
                         <div class="data-value code insp-geo-planet"></div>
                     </div>
                 </div>
-    
+
                 <div class="inspector-section" style="margin-bottom: 0;">
                     <h4 class="inspector-section-title">Temporal Analysis</h4>
                     <div class="inspector-data-grid">
@@ -1956,7 +2057,7 @@
                     </div>
                 </div>
             </div>
-    
+
             <div class="inspector-section insp-related-section" style="display:none;">
                 <h4 class="inspector-section-title">Related Transmissions</h4>
                 <div class="inspector-related-list insp-related-list"></div>
@@ -1971,7 +2072,8 @@
     <template id="tmpl-related-ep">
         <div class="related-ep-card">
             <div class="related-ep-info">
-                <div class="related-ep-title"><span class="ep-played-icon" title="Played">✓</span><span class="et-text"></span></div>
+                <div class="related-ep-title"><span class="ep-played-icon" title="Played">✓</span><span
+                        class="et-text"></span></div>
                 <div class="related-ep-meta"></div>
             </div>
             <div class="related-ep-score">→</div>
@@ -2023,7 +2125,63 @@
         </div>
     </template>
 
-<!-- SERVICE WORKER -->
+
+    <!-- IN-UNIVERSE BROWSER -->
+    <div id="in-universe-browser" class="iu-browser-overlay" style="display: none;">
+
+        <iframe id="iu-iframe" class="iu-iframe" src=""></iframe>
+
+        <div id="iu-badge" class="iu-badge collapsed">
+            
+            <div class="iu-badge-header" onclick="toggleIUBadge()">
+                <img src="./PODCUBE.png" class="iu-badge-logo" alt="PodCube">
+                
+                <div class="iu-badge-info">
+                    <div class="iu-badge-label">NOW PLAYING</div>
+                    <div class="iu-badge-title" id="badgeTitle">Select a transmission...</div>
+                </div>
+                
+                <button class="control-btn control-btn-play iu-badge-play" id="badgePlayBtn" onclick="event.stopPropagation(); togglePlayback();" title="Play/Pause">
+                    <svg viewBox="0 0 24 24" class="icon-svg"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+            </div>
+            
+            <div class="iu-badge-expanded">
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+                    <button class="control-btn iu-control-small" onclick="run('PodCube.skipBack()')" title="Skip Back">
+                        <svg viewBox="0 0 24 24" class="icon-svg"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
+                    </button>
+                    
+                    <div style="display:flex; gap:8px;">
+                        <button id="badgeBtnOk" class="icon-btn insp-btn-ok" title="Elevate" style="padding:4px 12px; display: flex; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor;"><path d="M12 6l-8 12h16z"/></svg>
+                        </button>
+                        <button id="badgeBtnNo" class="icon-btn insp-btn-no" title="Suppress" style="padding:4px 12px; display: flex; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor; transform: rotate(180deg);"><path d="M12 6l-8 12h16z"/></svg>
+                        </button>
+                    </div>
+
+                    <button class="control-btn iu-control-small" onclick="run('PodCube.skipForward()')" title="Skip Forward">
+                        <svg viewBox="0 0 24 24" class="icon-svg" style="transform: scaleX(-1);"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
+                    </button>
+
+                    
+                </div>
+
+                <div class="playback-scrubber" id="badgeScrubber" style="height: 8px; margin: 5px 0 15px 0;">
+                    <div class="playback-scrubber-fill" id="badgeScrubberFill"></div>
+                    <div class="playback-scrubber-handle" id="badgeScrubberHandle"></div>
+                </div>
+                
+                <button class="icon-btn" onclick="closeBrowser()" style="width: 100%; border-color: var(--danger); color: var(--danger); font-family: 'Fustat', sans-serif; font-weight: bold; letter-spacing: 0.05em; justify-content: center;">
+                    BACK TO PODCUBE EXPLORER
+                </button>
+            </div>
+        </div>
+
+    </div>
+    <!-- SERVICE WORKER -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -2033,24 +2191,34 @@
             });
         }
     </script>
-    <div id="install-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999999; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px);">
-    <div style="background: #fdfdfc; border: 2px solid var(--primary); padding: 24px; max-width: 400px; width: 100%; box-shadow: 0 10px 30px rgba(0,0,0,0.3); font-family: 'Fustat', sans-serif;">
-        <h3 style="margin-top: 0; color: var(--primary); border-bottom: 1px solid var(--primary-dim); padding-bottom: 10px;">Install PodCube™ Explorer</h3>
-        <p class="text-muted" style="margin-bottom: 16px; font-size: 14px; line-height: 1.5;">
-            To install this application on your device for offline access and a native experience, follow your OS instructions:
-        </p>
-        <ul style="margin-bottom: 24px; padding-left: 20px; line-height: 1.6; font-size: 14px; color: #333;">
-            <li style="margin-bottom: 10px;"><strong>iOS (Safari):</strong> Tap the <strong>Share</strong> icon (square with an up arrow) at the bottom, scroll down, and tap <strong>Add to Home Screen</strong>.</li>
-            <li style="margin-bottom: 10px;"><strong>Android:</strong> Tap the <strong>Menu</strong> (three dots) at the top right, then tap <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
-            <li><strong>Desktop:</strong> Look for the <strong>Install</strong> icon (a screen with a down arrow) in the right side of your browser's address bar.</li>
-        </ul>
-        <div style="text-align: right;">
-            <button onclick="document.getElementById('install-modal').style.display='none'" style="background: var(--primary); color: white; border: none; padding: 8px 16px; font-weight: bold; cursor: pointer; font-family: 'Fustat', sans-serif;">
-                ACKNOWLEDGED
-            </button>
+    <div id="install-modal"
+        style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999999; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px);">
+        <div
+            style="background: #fdfdfc; border: 2px solid var(--primary); padding: 24px; max-width: 400px; width: 100%; box-shadow: 0 10px 30px rgba(0,0,0,0.3); font-family: 'Fustat', sans-serif;">
+            <h3
+                style="margin-top: 0; color: var(--primary); border-bottom: 1px solid var(--primary-dim); padding-bottom: 10px;">
+                Install PodCube™ Explorer</h3>
+            <p class="text-muted" style="margin-bottom: 16px; font-size: 14px; line-height: 1.5;">
+                To install this application on your device for offline access and a native experience, follow your OS
+                instructions:
+            </p>
+            <ul style="margin-bottom: 24px; padding-left: 20px; line-height: 1.6; font-size: 14px; color: #333;">
+                <li style="margin-bottom: 10px;"><strong>iOS (Safari):</strong> Tap the <strong>Share</strong> icon
+                    (square with an up arrow) at the bottom, scroll down, and tap <strong>Add to Home Screen</strong>.
+                </li>
+                <li style="margin-bottom: 10px;"><strong>Android:</strong> Tap the <strong>Menu</strong> (three dots) at
+                    the top right, then tap <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
+                <li><strong>Desktop:</strong> Look for the <strong>Install</strong> icon (a screen with a down arrow) in
+                    the right side of your browser's address bar.</li>
+            </ul>
+            <div style="text-align: right;">
+                <button onclick="document.getElementById('install-modal').style.display='none'"
+                    style="background: var(--primary); color: white; border: none; padding: 8px 16px; font-weight: bold; cursor: pointer; font-family: 'Fustat', sans-serif;">
+                    ACKNOWLEDGED
+                </button>
+            </div>
         </div>
     </div>
-</div>
 </body>
 
 </html>

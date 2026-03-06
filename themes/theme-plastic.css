@@ -858,3 +858,128 @@ input[type="range"]::-moz-range-thumb:active {
     box-shadow: inset 0 1px 2px rgba(255,255,255,0.4), inset 0 -1px 1px rgba(0,0,0,0.2);
     border-right: 2px solid rgba(255,255,255,0.6); /* Creates a hard 'cap' at the leading edge of the bar */
 }
+
+/* === IN UNIVERSE BROWSER ============= */
+.iu-browser-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999990; /* Right below the De-Frigulator flash and Ads */
+    background: #000;
+    display: none;
+}
+
+.iu-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: #fff;
+}
+
+/* ── THE FLOATING BADGE ── */
+.iu-badge {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    width: 320px;
+    background: var(--bg-panel);
+    border: 2px solid rgba(0,0,0,0.15);
+    border-radius: 8px;
+    box-shadow: 
+        0 10px 25px rgba(0,0,0,0.4), 
+        inset 1px 1px 0px rgba(255,255,255,0.9), 
+        inset -1px -1px 0px rgba(0,0,0,0.1);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    overflow: hidden;
+}
+
+.iu-badge-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    height: 50px; 
+    padding: 0 10px; /* Padding creates breathing room when expanded */
+    box-sizing: border-box;
+    cursor: pointer;
+    background: var(--bg-body);
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+.iu-badge.collapsed {
+    width: 50px;
+    height: 50px;
+}
+
+/* Collapsed Header Layout */
+.iu-badge.collapsed .iu-badge-header {
+    justify-content: center;
+    padding: 0; /* Remove padding to perfectly center the logo in the 50x50 box */
+}
+
+.iu-control-small {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    padding: 5px;
+    border-radius: 4px;
+}
+
+
+/* Expanded Logo */
+.iu-badge-logo {
+    width: 30px;
+    height: 30px;
+    margin-right: 10px; /* Space between logo and track info */
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
+}
+
+/* Collapsed Logo */
+.iu-badge.collapsed .iu-badge-logo {
+    margin-right: 0; /* Drop the margin since there's no text next to it */
+}
+
+/* Hide the Track Info and Play Button when Collapsed */
+.iu-badge.collapsed .iu-badge-info,
+.iu-badge.collapsed .iu-badge-play {
+    display: none;
+}
+
+.iu-badge-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.iu-badge-label {
+    font-family: 'Fustat', sans-serif;
+    font-size: 8px;
+    font-weight: 900;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.iu-badge-title {
+    font-family: 'Fustat', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.iu-badge-play {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.iu-badge-expanded {
+    padding: 15px;
+    display: block;
+    background: var(--bg-panel);
+}
+
+.iu-badge.collapsed .iu-badge-expanded {
+    display: none;
+}

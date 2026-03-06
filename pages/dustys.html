@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dusty's Burger Trough</title>
+    <style>
+        /* RUSTIC NIGHTMARE AESTHETIC */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #5c3a21;
+            /* Heavy Wood Grain Simulation */
+            background-image: 
+                repeating-linear-gradient(to right, transparent, transparent 10px, rgba(0,0,0,0.1) 10px, rgba(0,0,0,0.1) 20px),
+                radial-gradient(circle at 50% 50%, #7b4f2c 0%, #3a2211 100%);
+            font-family: 'Impact', 'Arial Black', sans-serif;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        .wrapper {
+            max-width: 900px;
+            margin: 40px auto;
+            /* Galvanized Metal Container */
+            background: #e0e0e0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.4'/%3E%3C/svg%3E");
+            border: 12px solid #8b4513;
+            border-radius: 10px;
+            box-shadow: 15px 15px 30px rgba(0,0,0,0.7);
+            position: relative;
+        }
+
+        /* Grease Stains */
+        .grease-stain {
+            position: absolute;
+            background: radial-gradient(circle, rgba(120, 80, 20, 0.4) 0%, transparent 70%);
+            mix-blend-mode: multiply;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        header {
+            background: #cc0000;
+            color: #ffd700;
+            padding: 30px;
+            text-align: center;
+            border-bottom: 8px solid #333;
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        h1 { font-size: 3em; margin: 0; line-height: 1.1; }
+        h2 { font-size: 1.8em; margin: 10px 0; color: #fff; }
+        p { font-family: 'Courier New', Courier, monospace; font-size: 1.1em; line-height: 1.5; font-weight: bold; }
+
+        .section {
+            padding: 30px;
+            border-bottom: 4px dashed #8b4513;
+            position: relative;
+            z-index: 2;
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .menu-item {
+            background: rgba(255,255,255,0.7);
+            padding: 15px;
+            border: 2px solid #8b4513;
+        }
+
+        .menu-item h3 { margin: 0 0 5px 0; color: #cc0000; }
+        .menu-item p { margin: 0; font-size: 0.9em; font-weight: normal; }
+
+        .toggle-box {
+            background: #fff; border: 2px solid #000; padding: 10px; display: inline-block; margin-top: 10px; font-family: Arial, sans-serif;
+        }
+
+        /* The Saturday Special */
+        .caution-tape {
+            background: repeating-linear-gradient(45deg, #ffd700, #ffd700 20px, #000 20px, #000 40px);
+            padding: 15px;
+            text-align: center;
+            color: #fff;
+        }
+        .caution-box { background: #fff; color: #000; padding: 20px; margin: 10px; border: 4px solid #000; }
+
+        /* The Watering Hole */
+        .watering-hole {
+            background: #0055aa;
+            color: #fff;
+            background-image: radial-gradient(circle at top right, #0088ff, transparent);
+            border: 8px solid #002244;
+        }
+
+        /* Retro TV Testimonials */
+        .tv-frame {
+            background: #333;
+            padding: 20px;
+            border-radius: 20px;
+            border: 5px solid #111;
+            color: #0f0;
+            font-family: 'Courier New', Courier, monospace;
+            box-shadow: inset 0 0 20px #000;
+        }
+
+        footer {
+            background: #222;
+            color: #888;
+            text-align: center;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            font-size: 0.8em;
+        }
+
+        /* HIGH SPEED TRACTOR */
+        #tractor-container {
+            position: fixed;
+            top: 35%;
+            left: -150px;
+            font-size: 60px;
+            animation: drive 1.2s linear infinite; /* VERY FAST */
+            cursor: crosshair;
+            z-index: 9999;
+            user-select: none;
+        }
+
+        @keyframes drive {
+            0% { transform: translateX(-10vw); }
+            100% { transform: translateX(120vw); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="tractor-container" onclick="catchTractor()" title="Catch me!">🚜💨</div>
+
+    <div class="wrapper">
+        <div class="grease-stain" style="top: -20px; left: -20px; width: 150px; height: 150px;"></div>
+        <div class="grease-stain" style="top: 40%; right: -30px; width: 200px; height: 200px;"></div>
+        <div class="grease-stain" style="bottom: 10%; left: 20%; width: 300px; height: 120px;"></div>
+
+        <header>
+            <h1>DUSTY'S BURGER TROUGH</h1>
+            <h2>"That Crispy Chicken is a Barnyard Bargain!"</h2>
+            <p style="color: #fff;">Welcome to the Trough. Whether you're here for the Double-Decker Quack Patty or just a quick dip in the Watering Hole, we’ve got you covered.</p>
+        </header>
+
+        <div class="section">
+            <h2 style="color: #8b4513; border-bottom: 4px solid #8b4513; display: inline-block;">THE FEED</h2>
+            
+            <div class="toggle-box">
+                <strong>Moo Moo Melt Configuration:</strong><br>
+                <label><input type="radio" name="moomoo" checked> Stacked (Towering)</label>
+                <label><input type="radio" name="moomoo"> Flattened (Space-Saving Disc)</label>
+            </div>
+
+            <div class="menu-grid">
+                <div class="menu-item">
+                    <h3>The Moo Moo Melt</h3>
+                    <p>Our most popular order. Beef, cheese, and a lot of structural integrity.</p>
+                </div>
+                <div class="menu-item">
+                    <h3>Double-Decker Quack Patty</h3>
+                    <p>Twice the poultry, twice the value.</p>
+                </div>
+                <div class="menu-item">
+                    <h3>The Pigpen Patty Melt</h3>
+                    <p>For those who don't mind getting a little messy.</p>
+                </div>
+                <div class="menu-item">
+                    <h3>The Bean Bucket</h3>
+                    <p>A proprietary blend that is roughly 60% fluid and 40% beans.</p>
+                </div>
+                <div class="menu-item">
+                    <h3>The Haystack</h3>
+                    <p>Served with a generous helping of our secret "Dusty Sauce."</p>
+                </div>
+                <div class="menu-item">
+                    <h3>Cluckin’ Good Chicken</h3>
+                    <p>Available as an extra order at half price.</p>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 30px; color: #8b4513;">Sides & Taters</h3>
+            <p style="margin:0;">Corncob Curly Fries • Muddy Taters • Hogwash Pickles • Barnyard Barbecue Chips • Weissnaw Salad (Meal meat optional)</p>
+        </div>
+
+        <div class="caution-tape">
+            <div class="caution-box">
+                <h2 style="color:#cc0000; margin-top:0;">SATURDAY SPECIAL: ALL-YOU-CAN-EAT TRACTOR BUFFET</h2>
+                <p>It’s a race for flavor! Kids eat free if they can catch the tractor. We recommend keeping your children close and your running shoes on.</p>
+            </div>
+        </div>
+
+        <div class="section watering-hole">
+            <h2 style="margin-top:0; text-shadow: 2px 2px 4px #000;">The Watering Hole</h2>
+            <p>Enjoy Free Refills out of the Watering Hole. Please remember to wash your hands before dipping your cup.</p>
+            
+            <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 10px; margin-top: 15px;">
+                <h3 style="margin:0;">Featured Treat: The Cow Pie Cookie Crunch Shake</h3>
+                <p style="margin: 5px 0 0 0; font-size: 0.9em; font-weight:normal;">Did we mess up your order? Ask for a coupon to get one of these on the house!</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 style="color: #8b4513;">What People Are Saying</h2>
+            <div class="tv-frame">
+                <p>"When we go to barnyards, we get a bargain at Dusty's Burger Trough!"<br>
+                <span style="color:#aaa;">— Tommy Birthday, Age 89</span></p>
+                <hr style="border-color:#555;">
+                <p>"I can hear the goat's bleat to the beat of the drum. Come and get some chicken for everyone!"<br>
+                <span style="color:#aaa;">— Official Guild of the Goat Jingle</span></p>
+            </div>
+        </div>
+
+        <div class="section" style="background: #fff;">
+            <h3 style="color: #cc0000; margin-top:0;">Troubleshooting / FAQ</h3>
+            <p style="font-size: 0.9em; font-weight:normal;">
+                <strong>Q: Did you receive three patties instead of two on your Quack Patty?</strong><br>
+                A: Don't worry! We are currently undergoing a marketing re-alignment.<br><br>
+                <strong>Q: Why does my bean fluid have a pus-like consistency?</strong><br>
+                A: Rest assured, that's just the flavor talking.
+            </p>
+            <p style="font-size: 0.8em; text-align:right;">
+                Consulting provided by <a href="#" style="color:#000;">Wexton Industries</a>.
+            </p>
+        </div>
+
+        <footer>
+            Dusty’s Burger Trough: The Future is Today.<br>
+            Consumable items courtesy SQUIRT Procurement Group.
+        </footer>
+    </div>
+
+    <script>
+        function catchTractor() {
+            const t = document.getElementById('tractor-container');
+            t.style.display = 'none';
+            alert("YEEHAW! YOU CAUGHT THE TRACTOR!\n\nShow this alert to your trough attendant for ONE FREE KIDS MEAL.\n\n(Limit 1 per family. Valid only during Saturday Buffet. Requires purchase of equal or greater value trough.)");
+            
+            // Respawn after 8 seconds
+            setTimeout(() => {
+                t.style.display = 'block';
+            }, 8000);
+        }
+    </script>
+</body>
+</html>

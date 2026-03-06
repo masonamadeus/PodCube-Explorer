@@ -22,10 +22,10 @@ const PodAds = (function() {
         './ads/DUSTYS (8).jpg',
     ];
 
-    const MIN_LISTENS_REQUIRED = 5;      // Must have listened to 5 transmissions before ads start
-    const CHECK_INTERVAL_MS = 12000;     // Evaluates whether to show an ad every 2 minutes
-    const AD_PROBABILITY = .15;         // 15% chance to trigger an ad during an evaluation
-    const COOLDOWN_MS = 15 * 60 * 1000;  // Minimum of 15 minutes between ads so it isn't obnoxious
+    const MIN_LISTENS_REQUIRED = 5;      // Must have listened to X transmissions before ads start
+    const CHECK_INTERVAL_MS = 120000;     // Evaluates whether to show an ad every X minutes
+    const AD_PROBABILITY = .01;         // % chance to trigger an ad during an evaluation
+    const COOLDOWN_MS = 30 * 60 * 1000;  // Minimum of 15 minutes between ads so it isn't obnoxious
 
     // --- STATE ---
     let lastAdTime = 0;
@@ -192,7 +192,9 @@ const PodAds = (function() {
                 </div>
 
                 <div class="pric-ad-screen-well">
-                    <img src="${targetAd}" class="pric-ad-image" alt="Sponsored Content" />
+                    
+                        <img src="${targetAd}" class="pric-ad-image" alt="Sponsored Content" />
+                    
                 </div>
 
                 <div class="pric-ad-controls">

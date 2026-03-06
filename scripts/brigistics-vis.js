@@ -364,7 +364,9 @@ const BrigisticsViz = (function() {
             node.style.setProperty('--rx', `${angleX}deg`);
             
             // Color the nodes based on userdata
-            node.style.backgroundColor = getNodeColor(ep.nanoId, history, verified, suppressed);
+            const statusColor = getNodeColor(ep.nanoId, history, verified, suppressed);
+            node.style.backgroundColor = statusColor;
+            node.style.color = statusColor;
             
             // Push nodes out to the radius
             node.style.setProperty('--rz', `${SPHERE_RADIUS+2}px`);
