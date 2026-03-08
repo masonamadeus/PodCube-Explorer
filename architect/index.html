@@ -19,19 +19,17 @@
         <button id="btn-undo" class="btn-top" title="Undo (Ctrl+Z)" disabled>↩ Undo</button>
         <button id="btn-redo" class="btn-top" title="Redo (Ctrl+Shift+Z)" disabled>↪ Redo</button>
     </div>
-    
     <div class="topbar-section">
-        <select id="page-selector" onchange="Architect.switchPage(this.value)" class="tt-select" style="width:130px; height:26px;"></select>
+        <select id="page-selector" onchange="Architect.switchPage(this.value)" class="topbar-select" style="width:150px;"></select>
         <button class="btn-top" onclick="Architect.createPage(false)" title="Add Page">➕ Page</button>
         <button class="btn-top" onclick="Architect.createPage(true)" title="Add Popup">➕ Popup</button>
         <div class="topbar-divider"></div>
         <button class="btn-top active" id="btn-desktop" onclick="Architect.setPreview('desktop')">🖥 Desktop</button>
         <button class="btn-top" id="btn-mobile" onclick="Architect.setPreview('mobile')">📱 Mobile</button>
     </div>
-
     <div class="topbar-section">
         <button class="btn-top" onclick="Architect.openSettings()" title="Site Settings">⚙️ Settings</button>
-        <button class="btn-top btn-library" onclick="Architect.openLibrary()" title="My saved sites">📂 My Sites</button>
+        <button class="btn-top" onclick="Architect.openLibrary()" title="My saved sites">📂 My Sites</button>
         <button class="btn-top btn-export" onclick="Architect.generateExport()">⬇ Export ZIP</button>
     </div>
 </div>
@@ -48,39 +46,56 @@
         <span class="icon">⬛</span>Shape
     </button>
     <div class="dock-separator"></div>
-    <button class="dock-btn" onclick="document.getElementById('media-upload').click()">
+    <button class="dock-btn" onclick="Architect.openAssetLibrary('media')">
         <span class="icon">🖼️</span>Image
     </button>
     <input type="file" id="media-upload" style="display:none" accept="image/*,video/*" multiple onchange="Architect.handleMediaUpload(event)">
+    <input type="file" id="sound-upload" style="display:none" accept="audio/*" multiple onchange="Architect.handleSoundUpload(event)">
 </div>
 
 <div id="mobile-hint">📱 Mobile preview — blocks auto-stack by vertical position</div>
 
 <div id="text-toolbar">
-    <select id="tt-fontFamily" class="tt-select"></select>
-    <input type="number" id="tt-fontSize" class="tt-input" style="width:48px;" min="8" max="120" title="Font Size (px)">
-    <input type="color" id="tt-textHex" class="tt-color" title="Text Color">
-    
+    <select id="tt-fontFamily" class="tt-select" style="width:126px;" title="Font family"></select>
+
     <div class="tt-div"></div>
-    
-    <button class="tt-btn" onmousedown="event.preventDefault()" onclick="Architect.updateTextAlign('left')" title="Align Left">≢</button>
-    <button class="tt-btn" onmousedown="event.preventDefault()" onclick="Architect.updateTextAlign('center')" title="Align Center">≡</button>
-    <button class="tt-btn" onmousedown="event.preventDefault()" onclick="Architect.updateTextAlign('right')" title="Align Right">≣</button>
-    
+
+    <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('h1')" title="Heading 1">H1</button>
+    <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('h2')" title="Heading 2">H2</button>
+    <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('h3')" title="Heading 3">H3</button>
+    <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('body')" title="Body text">Body</button>
+    <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('sub')" title="Subtext / caption">Sub</button>
+
     <div class="tt-div"></div>
-    
-    <button class="tt-btn" onmousedown="event.preventDefault()" onclick="Architect.execFormat('bold')" title="Bold"><b>B</b></button>
-    <button class="tt-btn" onmousedown="event.preventDefault()" onclick="Architect.execFormat('italic')" title="Italic"><i>I</i></button>
-    <button class="tt-btn" onmousedown="event.preventDefault()" onclick="Architect.execFormat('underline')" title="Underline" style="text-decoration:underline">U</button>
+
+    <div class="tt-size-group">
+        <button class="tt-btn tt-size-btn" id="tt-fontSize-dec" onmousedown="event.preventDefault()" title="Decrease">−</button>
+        <input type="number" id="tt-fontSize" class="tt-input" min="8" max="300" title="Font size (px)">
+        <button class="tt-btn tt-size-btn" id="tt-fontSize-inc" onmousedown="event.preventDefault()" title="Increase">+</button>
+    </div>
+
+    <input type="color" id="tt-textHex" class="tt-color" title="Text color">
+
+    <div class="tt-div"></div>
+
+    <button class="tt-btn" onmousedown="event.preventDefault()" onclick="Architect.updateTextAlign('left')"   title="Align left">≢</button>
+    <button class="tt-btn" onmousedown="event.preventDefault()" onclick="Architect.updateTextAlign('center')" title="Align center">≡</button>
+    <button class="tt-btn" onmousedown="event.preventDefault()" onclick="Architect.updateTextAlign('right')"  title="Align right">≣</button>
+
+    <div class="tt-div"></div>
+
+    <button class="tt-btn" id="tt-bold"      onmousedown="event.preventDefault()" onclick="Architect.toggleFormat('bold')"      title="Bold"><b>B</b></button>
+    <button class="tt-btn" id="tt-italic"    onmousedown="event.preventDefault()" onclick="Architect.toggleFormat('italic')"    title="Italic"><i>I</i></button>
+    <button class="tt-btn" id="tt-underline" onmousedown="event.preventDefault()" onclick="Architect.toggleFormat('underline')" title="Underline" style="text-decoration:underline">U</button>
 </div>
 
 <div id="context-panel">
     <div id="ctx-header">
         <span id="ctx-title">Block</span>
         <div class="ctx-header-actions">
-            <button class="ctx-icon-btn" onclick="Architect.changeZIndex(1)" title="Bring Forward">↑</button>
-            <button class="ctx-icon-btn" onclick="Architect.changeZIndex(-1)" title="Send Back">↓</button>
-            <button class="ctx-icon-btn" onclick="Architect.duplicateActive()" title="Duplicate">⧉</button>
+            <button class="ctx-icon-btn" onclick="Architect.changeZIndex(1)"    title="Bring Forward">↑</button>
+            <button class="ctx-icon-btn" onclick="Architect.changeZIndex(-1)"   title="Send Back">↓</button>
+            <button class="ctx-icon-btn" onclick="Architect.duplicateActive()"  title="Duplicate">⧉</button>
             <button class="ctx-icon-btn danger" onclick="Architect.deleteActive()" title="Delete">🗑</button>
         </div>
     </div>
@@ -91,36 +106,28 @@
             <div class="ctx-row">
                 <span class="ctx-label">Fill</span>
                 <input type="color" id="inp-bgHex" class="ctx-color" value="#f0f0f5">
+                <label class="ctx-toggle" title="Transparent fill">
+                    <input type="checkbox" id="inp-bgTransparent">
+                    <span class="ctx-toggle-track"></span>
+                </label>
+                <span class="ctx-label" style="min-width:0;font-size:10px;">Trans.</span>
             </div>
             <div class="ctx-range-row">
                 <span class="ctx-label">Radius</span>
-                <input type="range" id="inp-radius" class="ctx-range" min="0" max="100" value="8" style="flex:1">
+                <input type="range" id="inp-radius" class="ctx-range" min="0" max="100" value="8">
                 <span class="ctx-value" id="val-radius">8</span>px
             </div>
-            <div class="ctx-row" id="row-overflow" style="display:none; margin-top: 8px;">
+            <div class="ctx-range-row">
+                <span class="ctx-label">Opacity</span>
+                <input type="range" id="inp-opacity" class="ctx-range" min="0" max="100" value="100">
+                <span class="ctx-value" id="val-opacity">100</span>%
+            </div>
+            <div class="ctx-row" id="row-overflow" style="display:none; margin-top: 4px;">
                 <span class="ctx-label">Overflow</span>
                 <select id="inp-overflow" class="ctx-select">
                     <option value="hidden">Hidden (Clip)</option>
-                    <option value="visible">Visible (Stick Out)</option>
+                    <option value="visible">Visible (Spill)</option>
                 </select>
-            </div>
-        </div>
-    </div>
-
-    <div class="ctx-section">
-        <div class="ctx-section-header">Action <span class="ctx-chevron">▾</span></div>
-        <div class="ctx-section-body">
-            <div class="ctx-row">
-                <select id="inp-linkType" class="ctx-select">
-                    <option value="none">No Action</option>
-                    <option value="url">External URL</option>
-                    <option value="page">Go to Page</option>
-                    <option value="popup">Open Popup</option>
-                </select>
-            </div>
-            <div class="ctx-row" id="row-linkValue" style="display:none;">
-                <input type="text" id="inp-linkUrl" class="ctx-input" placeholder="https://..." style="width:100%; display:none;">
-                <select id="inp-linkPage" class="ctx-select" style="width:100%; display:none;"></select>
             </div>
         </div>
     </div>
@@ -128,19 +135,43 @@
     <div class="ctx-section collapsed">
         <div class="ctx-section-header">Shadow <span class="ctx-chevron">▾</span></div>
         <div class="ctx-section-body">
-            <div class="ctx-row">
-                <span class="ctx-label">Preset</span>
-                <select id="inp-shadowPreset" class="ctx-select">
-                    <option value="none">None</option>
-                    <option value="soft">Soft & Floaty</option>
-                    <option value="sharp">Sharp & Raised</option>
-                    <option value="deep">Deep & Glowy</option>
-                </select>
+            <div class="ctx-row" style="margin-bottom:10px;">
+                <span class="ctx-label">On</span>
+                <label class="ctx-toggle">
+                    <input type="checkbox" id="inp-shadowOn">
+                    <span class="ctx-toggle-track"></span>
+                </label>
+                <span class="ctx-label" style="min-width:0;">Color</span>
+                <input type="color" id="inp-shadowColor" class="ctx-color" value="#000000">
+                <span class="ctx-value" id="val-shadowAlpha" style="min-width:24px;">20</span>%
             </div>
-            <div class="ctx-range-row" id="row-shadowIntensity" style="display:none;">
-                <span class="ctx-label">Opacity</span>
-                <input type="range" id="inp-shadowAlpha" class="ctx-range" min="0" max="100" value="15" style="flex:1">
-                <span class="ctx-value" id="val-shadowAlpha">15</span>%
+            <div id="shadow-controls" style="display:none;">
+                <div class="ctx-range-row">
+                    <span class="ctx-label">Opacity</span>
+                    <input type="range" id="inp-shadowAlpha" class="ctx-range" min="0" max="100" value="20">
+                </div>
+                <div class="ctx-row" style="margin-bottom:10px;">
+                    <span class="ctx-label">Angle</span>
+                    <div class="angle-knob" id="shadow-angle-knob" title="Drag to set shadow angle">
+                        <div class="angle-indicator" id="shadow-angle-indicator"></div>
+                    </div>
+                    <span class="ctx-value" id="val-shadowAngle" style="min-width:28px;">135</span>°
+                </div>
+                <div class="ctx-range-row">
+                    <span class="ctx-label">Distance</span>
+                    <input type="range" id="inp-shadowDist" class="ctx-range" min="-60" max="60" value="8">
+                    <span class="ctx-value" id="val-shadowDist">8</span>px
+                </div>
+                <div class="ctx-range-row">
+                    <span class="ctx-label">Blur</span>
+                    <input type="range" id="inp-shadowBlur" class="ctx-range" min="0" max="80" value="16">
+                    <span class="ctx-value" id="val-shadowBlur">16</span>px
+                </div>
+                <div class="ctx-range-row">
+                    <span class="ctx-label">Spread</span>
+                    <input type="range" id="inp-shadowSpread" class="ctx-range" min="-20" max="40" value="0">
+                    <span class="ctx-value" id="val-shadowSpread">0</span>px
+                </div>
             </div>
         </div>
     </div>
@@ -150,7 +181,7 @@
         <div class="ctx-section-body">
             <div class="ctx-range-row">
                 <span class="ctx-label">Width</span>
-                <input type="range" id="inp-borderW" class="ctx-range" min="0" max="20" value="0" style="flex:1">
+                <input type="range" id="inp-borderW" class="ctx-range" min="0" max="20" value="0">
                 <span class="ctx-value" id="val-borderW">0</span>px
             </div>
             <div class="ctx-row">
@@ -163,7 +194,30 @@
                     <option value="solid">Solid</option>
                     <option value="dashed">Dashed</option>
                     <option value="dotted">Dotted</option>
+                    <option value="double">Double</option>
                 </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="ctx-section collapsed">
+        <div class="ctx-section-header">Action <span class="ctx-chevron">▾</span></div>
+        <div class="ctx-section-body">
+            <div class="ctx-row">
+                <select id="inp-linkType" class="ctx-select">
+                    <option value="none">No Action</option>
+                    <option value="url">External URL</option>
+                    <option value="page">Go to Page</option>
+                    <option value="popup">Open Popup</option>
+                    <option value="sound">Play Sound</option>
+                </select>
+            </div>
+            <div class="ctx-row" id="row-linkValue" style="display:none;">
+                <input type="text" id="inp-linkUrl" class="ctx-input" placeholder="https://..." style="width:100%;display:none;">
+                <select id="inp-linkPage" class="ctx-select" style="width:100%;display:none;"></select>
+            </div>
+            <div class="ctx-row" id="row-soundValue" style="display:none;">
+                <button id="inp-soundFile" class="lib-btn" onclick="Architect.pickSound()">Choose Sound…</button>
             </div>
         </div>
     </div>
@@ -171,39 +225,47 @@
 
 <div id="settings-modal" style="display: none; position: fixed; inset: 0; z-index: 9000; align-items: center; justify-content: center;">
     <div class="lib-backdrop" onclick="document.getElementById('settings-modal').style.display='none'"></div>
-    <div class="lib-dialog" style="width: 400px;">
+    <div class="lib-dialog" style="width:460px;">
         <div class="lib-header">
             <span class="lib-title">Site Settings</span>
             <button class="lib-close" onclick="document.getElementById('settings-modal').style.display='none'">✕</button>
         </div>
-        <div style="padding: 20px; display: flex; flex-direction: column; gap: 18px;">
+        <div class="settings-body">
             <div>
-                <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 6px;">Site Title</label>
-                <input type="text" id="set-title" class="ctx-input" style="width: 100%; font-size: 14px; padding: 8px;">
+                <label class="settings-label">Site Title</label>
+                <input type="text" id="set-title" class="ctx-input" style="width:100%;font-size:14px;padding:8px;">
             </div>
             <div>
-                <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 6px;">Site ID (Used for unique links & export filename)</label>
-                <input type="text" id="set-id" class="ctx-input" style="width: 100%; font-size: 14px; padding: 8px; font-family: monospace;">
+                <label class="settings-label">Site ID <span style="font-weight:400;color:var(--text-muted);font-size:11px;">(used for filenames &amp; local saves)</span></label>
+                <input type="text" id="set-id" class="ctx-input" style="width:100%;font-size:14px;padding:8px;font-family:monospace;">
             </div>
             <div>
-                <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 6px;">Global Background Color</label>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <input type="color" id="set-bg" class="ctx-color" style="width: 40px; height: 40px; padding: 2px;">
-                    <span id="set-bg-val" style="font-family: monospace; font-size: 12px; color: var(--text-muted);"></span>
+                <label class="settings-label">Global Background Color</label>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <input type="color" id="set-bg" class="ctx-color" style="width:40px;height:40px;padding:2px;">
+                    <span id="set-bg-val" style="font-family:monospace;font-size:12px;color:var(--text-muted);"></span>
                 </div>
             </div>
+            <div>
+                <div class="settings-section-title">Pages &amp; Popups</div>
+                <div id="set-pages-list"></div>
+            </div>
         </div>
-        <div class="lib-footer" style="display: flex; justify-content: flex-end;">
+        <div class="lib-footer" style="display:flex;justify-content:flex-end;">
             <button class="lib-btn" onclick="document.getElementById('settings-modal').style.display='none'">Done</button>
         </div>
     </div>
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        document.getElementById('btn-undo').addEventListener('click', function() { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true })); });
-        document.getElementById('btn-redo').addEventListener('click', function() { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Z', ctrlKey: true, shiftKey: true, bubbles: true })); });
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('btn-undo').addEventListener('click', function() {
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }));
     });
+    document.getElementById('btn-redo').addEventListener('click', function() {
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Z', ctrlKey: true, shiftKey: true, bubbles: true }));
+    });
+});
 </script>
 
 </body>
