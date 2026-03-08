@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wexton Builder</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fustat:wght@400;600;700&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <link rel="stylesheet" href="./architect.css">
+    <script src="./architect.js" defer></script>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="topbar-section">
+        <span class="app-logo">Wexton <span>Builder</span></span>
+        <div class="topbar-divider"></div>
+        <button class="btn-top" onclick="Architect.createNewSite()" title="Start a fresh site">✚ New</button>
+        <button id="btn-undo" class="btn-top" title="Undo (Ctrl+Z)" disabled>↩ Undo</button>
+        <button id="btn-redo" class="btn-top" title="Redo (Ctrl+Shift+Z)" disabled>↪ Redo</button>
+    </div>
+    
+    <div class="topbar-section">
+        <select id="page-selector" onchange="Architect.switchPage(this.value)" class="tt-select" style="width:130px; height:26px;"></select>
+        <button class="btn-top" onclick="Architect.createPage(false)" title="Add Page">➕ Page</button>
+        <button class="btn-top" onclick="Architect.createPage(true)" title="Add Popup">➕ Popup</button>
+        <div class="topbar-divider"></div>
+        <button class="btn-top active" id="btn-desktop" onclick="Architect.setPreview('desktop')">🖥 Desktop</button>
+        <button class="btn-top" id="btn-mobile" onclick="Architect.setPreview('mobile')">📱 Mobile</button>
+    </div>
+
+    <div class="topbar-section">
+        <button class="btn-top" onclick="Architect.openSettings()" title="Site Settings">⚙️ Settings</button>
+        <button class="btn-top btn-library" onclick="Architect.openLibrary()" title="My saved sites">📂 My Sites</button>
+        <button class="btn-top btn-export" onclick="Architect.generateExport()">⬇ Export ZIP</button>
+    </div>
+</div>
+
+<div id="workspace">
+    <div class="canvas" id="canvas"></div>
+</div>
+
+<div class="floating-dock">
+    <button class="dock-btn" onclick="Architect.addBlock('text')">
+        <span class="icon">📝</span>Text
+    </button>
+    <button class="dock-btn" onclick="Architect.addBlock('shape')">
+        <span class="icon">⬛</span>Shape
+    </button>
+    <div class="dock-separator"></div>
+    <button class="dock-btn" onclick="document.getElementById('media-upload').click()">
+        <span class="icon">🖼️</span>Image
+    </button>
+    <input type="file" id="media-upload" style="display:none" accept="image/*,video/*" multiple onchange="Architect.handleMediaUpload(event)">
+</div>
+
+<div id="mobile-hint">📱 Mobile preview — blocks auto-stack by vertical position</div>
+
+<div id="text-toolbar">
+    <select id="tt-fontFamily" class="tt-select"></select>
+    <input type="number" id="tt-fontSize" class="tt-input" style="width:48px;" min="8" max="120" title="Font Size (px)">
+    <input type="color" id="tt-textHex" class="tt-color" title="Text Color">
+    
+    <div class="tt-div"></div>
+    
+    <button class="tt-btn" onmousedown="event.preventDefault()" onclick="Architect.updateTextAlign('left')" title="Align Left">≢</button>
+    <button class="tt-btn" onmousedown="event.preventDefault()" onclick="Architect.updateTextAlign('center')" title="Align Center">≡</button>
+    <button class="tt-btn" onmousedown="event.preventDefault()" onclick="Architect.updateTextAlign('right')" title="Align Right">≣</button>
+    
+    <div class="tt-div"></div>
+    
+    <button class="tt-btn" onmousedown="event.preventDefault()" onclick="Architect.execFormat('bold')" title="Bold"><b>B</b></button>
+    <button class="tt-btn" onmousedown="event.preventDefault()" onclick="Architect.execFormat('italic')" title="Italic"><i>I</i></button>
+    <button class="tt-btn" onmousedown="event.preventDefault()" onclick="Architect.execFormat('underline')" title="Underline" style="text-decoration:underline">U</button>
+</div>
+
+<div id="context-panel">
+    <div id="ctx-header">
+        <span id="ctx-title">Block</span>
+        <div class="ctx-header-actions">
+            <button class="ctx-icon-btn" onclick="Architect.changeZIndex(1)" title="Bring Forward">↑</button>
+            <button class="ctx-icon-btn" onclick="Architect.changeZIndex(-1)" title="Send Back">↓</button>
+            <button class="ctx-icon-btn" onclick="Architect.duplicateActive()" title="Duplicate">⧉</button>
+            <button class="ctx-icon-btn danger" onclick="Architect.deleteActive()" title="Delete">🗑</button>
+        </div>
+    </div>
+
+    <div class="ctx-section">
+        <div class="ctx-section-header">Appearance <span class="ctx-chevron">▾</span></div>
+        <div class="ctx-section-body">
+            <div class="ctx-row">
+                <span class="ctx-label">Fill</span>
+                <input type="color" id="inp-bgHex" class="ctx-color" value="#f0f0f5">
+            </div>
+            <div class="ctx-range-row">
+                <span class="ctx-label">Radius</span>
+                <input type="range" id="inp-radius" class="ctx-range" min="0" max="100" value="8" style="flex:1">
+                <span class="ctx-value" id="val-radius">8</span>px
+            </div>
+            <div class="ctx-row" id="row-overflow" style="display:none; margin-top: 8px;">
+                <span class="ctx-label">Overflow</span>
+                <select id="inp-overflow" class="ctx-select">
+                    <option value="hidden">Hidden (Clip)</option>
+                    <option value="visible">Visible (Stick Out)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="ctx-section">
+        <div class="ctx-section-header">Action <span class="ctx-chevron">▾</span></div>
+        <div class="ctx-section-body">
+            <div class="ctx-row">
+                <select id="inp-linkType" class="ctx-select">
+                    <option value="none">No Action</option>
+                    <option value="url">External URL</option>
+                    <option value="page">Go to Page</option>
+                    <option value="popup">Open Popup</option>
+                </select>
+            </div>
+            <div class="ctx-row" id="row-linkValue" style="display:none;">
+                <input type="text" id="inp-linkUrl" class="ctx-input" placeholder="https://..." style="width:100%; display:none;">
+                <select id="inp-linkPage" class="ctx-select" style="width:100%; display:none;"></select>
+            </div>
+        </div>
+    </div>
+
+    <div class="ctx-section collapsed">
+        <div class="ctx-section-header">Shadow <span class="ctx-chevron">▾</span></div>
+        <div class="ctx-section-body">
+            <div class="ctx-row">
+                <span class="ctx-label">Preset</span>
+                <select id="inp-shadowPreset" class="ctx-select">
+                    <option value="none">None</option>
+                    <option value="soft">Soft & Floaty</option>
+                    <option value="sharp">Sharp & Raised</option>
+                    <option value="deep">Deep & Glowy</option>
+                </select>
+            </div>
+            <div class="ctx-range-row" id="row-shadowIntensity" style="display:none;">
+                <span class="ctx-label">Opacity</span>
+                <input type="range" id="inp-shadowAlpha" class="ctx-range" min="0" max="100" value="15" style="flex:1">
+                <span class="ctx-value" id="val-shadowAlpha">15</span>%
+            </div>
+        </div>
+    </div>
+
+    <div class="ctx-section collapsed">
+        <div class="ctx-section-header">Border <span class="ctx-chevron">▾</span></div>
+        <div class="ctx-section-body">
+            <div class="ctx-range-row">
+                <span class="ctx-label">Width</span>
+                <input type="range" id="inp-borderW" class="ctx-range" min="0" max="20" value="0" style="flex:1">
+                <span class="ctx-value" id="val-borderW">0</span>px
+            </div>
+            <div class="ctx-row">
+                <span class="ctx-label">Color</span>
+                <input type="color" id="inp-borderHex" class="ctx-color" value="#000000">
+            </div>
+            <div class="ctx-row">
+                <span class="ctx-label">Style</span>
+                <select id="inp-borderStyle" class="ctx-select">
+                    <option value="solid">Solid</option>
+                    <option value="dashed">Dashed</option>
+                    <option value="dotted">Dotted</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="settings-modal" style="display: none; position: fixed; inset: 0; z-index: 9000; align-items: center; justify-content: center;">
+    <div class="lib-backdrop" onclick="document.getElementById('settings-modal').style.display='none'"></div>
+    <div class="lib-dialog" style="width: 400px;">
+        <div class="lib-header">
+            <span class="lib-title">Site Settings</span>
+            <button class="lib-close" onclick="document.getElementById('settings-modal').style.display='none'">✕</button>
+        </div>
+        <div style="padding: 20px; display: flex; flex-direction: column; gap: 18px;">
+            <div>
+                <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 6px;">Site Title</label>
+                <input type="text" id="set-title" class="ctx-input" style="width: 100%; font-size: 14px; padding: 8px;">
+            </div>
+            <div>
+                <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 6px;">Site ID (Used for unique links & export filename)</label>
+                <input type="text" id="set-id" class="ctx-input" style="width: 100%; font-size: 14px; padding: 8px; font-family: monospace;">
+            </div>
+            <div>
+                <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 6px;">Global Background Color</label>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="color" id="set-bg" class="ctx-color" style="width: 40px; height: 40px; padding: 2px;">
+                    <span id="set-bg-val" style="font-family: monospace; font-size: 12px; color: var(--text-muted);"></span>
+                </div>
+            </div>
+        </div>
+        <div class="lib-footer" style="display: flex; justify-content: flex-end;">
+            <button class="lib-btn" onclick="document.getElementById('settings-modal').style.display='none'">Done</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('btn-undo').addEventListener('click', function() { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true })); });
+        document.getElementById('btn-redo').addEventListener('click', function() { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Z', ctrlKey: true, shiftKey: true, bubbles: true })); });
+    });
+</script>
+
+</body>
+</html>
