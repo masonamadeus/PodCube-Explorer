@@ -1,0 +1,25 @@
+[
+    {
+        "id": "dustys",
+        "headline": "Dusty's Burger Trough Unleashes the 10lb Bean Bucket",
+        "summary": "Trough locations worldwide are reporting mass fluid-bean casualties following the launch of the new promotional item.",
+        "availability": {
+            "months": null,
+            "days": [9, 20],
+            "times": ["12:00", "18:00"]
+        }
+    },
+    {
+        "id": "sandwet",
+        "headline": "THE SANDWET",
+        "summary": "A NEW KIND OF SANDWICH THAT I THINK DUSTY\"S SHOULD SERVE - DAVE",
+        "availability": {
+            "months": null,
+            "days": null,
+            "times": [
+                "12:38",
+                "14:50"
+            ]
+        }
+    }
+]

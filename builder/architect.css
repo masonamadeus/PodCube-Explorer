@@ -6,6 +6,7 @@
     --border-subtle: #e8e8ed;
     --primary: #0066ff;
     --primary-dim: rgba(0,102,255,0.09);
+    --orange: #f18701;
     --text-main: #1d1d1f;
     --text-muted: #86868b;
     --panel-bg: rgba(255,255,255,0.94);
@@ -60,6 +61,7 @@ body.editing-popup #workspace { align-items: flex-start; padding-top: 80px; padd
     background-size: calc(1000px / 60) 10px;
     background-image: linear-gradient(to right, rgba(0,0,0,0.025) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.025) 1px, transparent 1px);
     transition: box-shadow 0.2s, border-radius 0.2s;
+    overflow: hidden;
 }
 
 /* Make popups physically act like lightboxes while editing! */
@@ -72,17 +74,19 @@ body.editing-popup .canvas {
     margin: 0 auto; /* Ensure it stays horizontally centered but respects the top padding */
 }
 
-.canvas.mobile-mode { width: 375px !important; min-height: 812px !important; border-radius: 40px !important; border: 14px solid #1d1d1f !important; box-shadow: 0 24px 80px rgba(0,0,0,0.3) !important; display: flex !important; flex-direction: column !important; gap: 16px; padding: 20px; background-image: none !important; overflow-y: auto; overflow-x: hidden; }
+.canvas.mobile-mode { width: 420px !important; min-height: 812px !important; border-radius: 40px !important; border: 14px solid #1d1d1f !important; box-shadow: 0 24px 80px rgba(0,0,0,0.3) !important; display: flex !important; flex-direction: column !important; gap: 16px; padding: 20px 0; background-image: none !important; overflow-y: auto; overflow-x: hidden; }
 .canvas.mobile-mode::-webkit-scrollbar { display: none; }
-.canvas.mobile-mode .builder-block { position: relative !important; left: 0 !important; top: 0 !important; width: 100% !important; height: auto !important; min-height: var(--h, 40px) !important; order: var(--y-index); }
+.canvas.mobile-mode .builder-block { position: relative !important; left: 0 !important; top: 0 !important; width: var(--mob-w, calc(100% - 40px)) !important; margin: var(--mob-mt, 0px) var(--mob-mr, 20px) var(--mob-mb, 0px) var(--mob-ml, 20px) !important; height: auto !important; min-height: var(--h, 40px) !important; order: var(--y-index); }
 .canvas.mobile-mode .type-shape > .content-area { display: flex !important; flex-direction: column !important; gap: 12px; padding: 18px !important; }
 .canvas.mobile-mode .type-media { height: 220px !important; }
-.canvas.mobile-mode .type-text .content-area {
-    font-size: calc(var(--fs) * 0.85) !important;
+.canvas.mobile-mode .type-text { 
+    min-height: auto !important; /* Allow text boxes to shrink naturally on mobile */
+}
+.canvas.mobile-mode .type-text > .content-area {
+    font-size: max(16px, calc(var(--fs) * 0.8)) !important; /* Gentler font scaling */
     height: auto !important;
     overflow-wrap: break-word !important;
     word-break: break-word !important;
-    hyphens: auto !important;
     white-space: normal !important;
 }
 
@@ -102,7 +106,7 @@ body.editing-popup .canvas {
     font-size: var(--fs, 16px);
     font-family: var(--ff, 'Nunito', sans-serif);
     text-align: var(--align, left);
-    display: flex; flex-direction: column;
+    display: flex; flex-direction: column; flex-grow: 1;
     justify-content: center; 
     letter-spacing: var(--lsp, 0px);
     line-height: var(--lh, 1.4);
@@ -113,25 +117,54 @@ body.editing-popup .canvas {
 .content-area[contenteditable="true"] { cursor: text; outline: 2px dashed var(--primary); outline-offset: -2px; background: rgba(255,255,255,0.75); }
 
 /* ── SELECTION BOX ── */
-#selection-box { position: absolute; border: 1.5px solid var(--primary); pointer-events: none; z-index: 9999; }
+#selection-box { position: absolute; border: 1.5px solid var(--primary); pointer-events: none; z-index: 9999; transform-origin: 50% 50%; }
+
+.rotate-handle {
+    position: absolute;
+    width: 13px; height: 13px;
+    background: #fff;
+    border: 1.5px solid var(--primary);
+    border-radius: 50%;
+    pointer-events: auto;
+    cursor: grab;
+    z-index: 3;
+    /* Centre above the top edge */
+    left: calc(50% - 6.5px);
+    top: -34px;
+}
+.rotate-handle:active { cursor: grabbing; }
+/* Connector line from handle down to box edge */
+.rotate-handle::after {
+    content: '';
+    position: absolute;
+    width: 1.5px;
+    height: 22px;
+    background: var(--primary);
+    left: calc(50% - 0.75px);
+    top: 100%;
+}
 
 .resize-handle { position: absolute; width: 9px; height: 9px; background: #fff; border: 1.5px solid var(--primary); pointer-events: auto; z-index: 2; border-radius: 2px; }
 .resize-handle.nw { top: -5px; left: -5px; cursor: nwse-resize; } .resize-handle.ne { top: -5px; right: -5px; cursor: nesw-resize; }
 .resize-handle.sw { bottom: -5px; left: -5px; cursor: nesw-resize; } .resize-handle.se { bottom: -5px; right: -5px; cursor: nwse-resize; }
 .resize-handle.n  { top: -5px; left: calc(50% - 5px); cursor: ns-resize; } .resize-handle.s  { bottom: -5px; left: calc(50% - 5px); cursor: ns-resize; }
 .resize-handle.e  { top: calc(50% - 5px); right: -5px; cursor: ew-resize; } .resize-handle.w  { top: calc(50% - 5px); left: -5px; cursor: ew-resize; }
-.radius-handle { position: absolute; width: 11px; height: 11px; background: #fff; border: 1.5px solid var(--primary); border-radius: 50%; pointer-events: auto; cursor: crosshair; z-index: 1; transition: transform 0.1s; }
+.radius-handle { position: absolute; width: 11px; height: 11px; background: transparent; border: 1.5px solid var(--orange); border-radius: 50%; pointer-events: auto; cursor: crosshair; z-index: 1; transition: transform 0.1s; }
 .radius-handle:hover { transform: scale(1.3); }
 .radius-handle.tl { top: 8px; left: 8px; } .radius-handle.tr { top: 8px; right: 8px; }
 .radius-handle.bl { bottom: 8px; left: 8px; } .radius-handle.br { bottom: 8px; right: 8px; }
 
-/* ── TEXT EDITING TOOLBAR ── */
-#text-toolbar {
-    position: fixed; display: none; align-items: center; gap: 2px;
-    background: rgba(255,255,255,0.97); backdrop-filter: blur(24px) saturate(1.5); -webkit-backdrop-filter: blur(24px) saturate(1.5);
-    border: 1px solid var(--border); border-radius: 10px; padding: 5px 8px;
-    z-index: 10000; box-shadow: var(--shadow-panel);
-}
+
+/* ── CUSTOM VISUAL FONT PICKER ── */
+.tt-font-picker { position: relative; user-select: none; }
+.tt-fp-selected { background: #fff; border: 1px solid var(--border); color: var(--text-main); border-radius: 5px; padding: 4px 24px 4px 8px; font-size: 12px; font-weight: 600; cursor: pointer; height: 26px; display: flex; align-items: center; width: 100%; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2386868b'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: border-color 0.1s; }
+.tt-fp-selected:hover { border-color: #b0b0b8; }
+.tt-fp-dropdown { position: absolute; top: 100%; left: 0; background: #fff; border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-panel); margin-top: 4px; width: 100%; min-width: 150px; max-height: 340px; overflow-y: auto; display: none; z-index: 10001; padding: 6px 0; }
+.tt-fp-dropdown.active { display: block; animation: lib-in 0.15s ease; }
+.tt-fp-cat { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; padding: 10px 12px 4px; letter-spacing: 0.05em; background: #fff; position: sticky; top: 0; }
+.tt-fp-item { padding: 8px 12px; font-size: 15px; cursor: pointer; transition: background 0.1s; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tt-fp-item:hover { background: var(--primary-dim); color: var(--primary); }
+
 .tt-btn { background: transparent; border: none; color: var(--text-main); padding: 4px 8px; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 700; line-height: 1; transition: background 0.1s, color 0.1s; }
 .tt-btn:hover { background: #f0f0f5; }
 .tt-btn.tt-active { background: var(--primary-dim); color: var(--primary); }
@@ -171,6 +204,7 @@ body.editing-popup .canvas {
 .ctx-header-actions { display: flex; gap: 3px; }
 .ctx-icon-btn { background: rgba(0,0,0,0.04); border: none; width: 26px; height: 26px; border-radius: 6px; cursor: pointer; font-size: 13px; line-height: 1; display: flex; align-items: center; justify-content: center; transition: background 0.1s; color: var(--text-main); }
 .ctx-icon-btn:hover { background: rgba(0,0,0,0.1); }
+.ctx-icon-btn.active { background: var(--primary-dim); color: var(--primary); }
 .ctx-icon-btn.danger:hover { background: #fee2e2; color: #dc2626; }
 
 .ctx-section { border-bottom: 1px solid var(--border-subtle); }

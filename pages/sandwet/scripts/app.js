@@ -1,0 +1,27 @@
+// Wexton Interactive Runtime
+document.addEventListener('DOMContentLoaded', () => {
+    // Wire up Popups
+    document.querySelectorAll('[data-popup-trigger]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const popup = document.getElementById('overlay-' + btn.getAttribute('data-popup-trigger'));
+            if(popup) popup.classList.add('active');
+        });
+    });
+
+    // Wire up Popup Closers
+    document.querySelectorAll('.wx-popup-close, .wx-popup-overlay').forEach(el => {
+        el.addEventListener('click', (e) => {
+            if(e.target === el) el.closest('.wx-popup-overlay').classList.remove('active');
+        });
+    });
+
+    // Wire up Audio Triggers
+    document.querySelectorAll('[data-sound-src]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const audio = new Audio(btn.getAttribute('data-sound-src'));
+            audio.currentTime = 0;
+            audio.play();
+        });
+    });
+});

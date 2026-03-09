@@ -647,7 +647,7 @@ function executeDefrigulate() {
 
 
 // CLICK HANDLER FOR NOTIFICATIONS
-function handleNotificationClick(id) {
+async function handleNotificationClick(id) {
     const n = PodUser.data.notifications.find(x => x.id === id);
     if (!n) return;
 
@@ -656,8 +656,10 @@ function handleNotificationClick(id) {
 
     const payload = n.payload;
 
-    // Mark as read
-    PodUser.markNotificationRead(id);
+    // Mark as read. We await this in case it returns a Promise, 
+    // ensuring background saves complete before we proceed.
+    const markRes = PodUser.markNotificationRead(id);
+    if (markRes instanceof Promise) await markRes;
 
     // --- ACHIEVEMENT CLICK ---
     if (payload && payload.type === 'achievement') {
@@ -666,6 +668,8 @@ function handleNotificationClick(id) {
         _achFilter = 'all';
         renderUserUI(PodUser.data);
 
+        // Bumping timeout from 100ms to 350ms ensures that if a background 
+        // save triggers a UI re-render, it finishes BEFORE we grab the card.
         setTimeout(() => {
             const card = document.getElementById(`ach-card-${payload.id}`);
             if (card) {
@@ -682,7 +686,7 @@ function handleNotificationClick(id) {
                     setTimeout(() => card.style.zIndex = '', 400);
                 }, 2000);
             }
-        }, 100);
+        }, 350); 
     } 
 
     // --- MAINTENANCE (DE-FRIGULATION) CLICK ---
@@ -690,6 +694,7 @@ function handleNotificationClick(id) {
         if (typeof switchTab !== 'undefined') switchTab('profile', true);
         renderUserUI(PodUser.data);
 
+        // Bumped this timeout to 350ms as well to protect the Maintenance scroll
         setTimeout(() => {
             const section = document.getElementById(payload.target);
             if (section) {
@@ -715,7 +720,7 @@ function handleNotificationClick(id) {
                     }, 2000);
                 }
             }
-        }, 100);
+        }, 350); 
     } 
 
     else if (payload && payload.type === 'new_episode') {
@@ -736,4 +741,4 @@ function handleNotificationClick(id) {
     else {
         renderUserUI(PodUser.data);
     }
-};
+}

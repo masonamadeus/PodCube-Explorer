@@ -1,34 +1,72 @@
 /**
  * podnews.js
- * The Brigistics Live Intranet Feed (Google Sheets TSV Backend)
+ * The Wexton Intranet Feed Engine
  */
 
 const PodNews = (function () {
 
-    const SHEET_TSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTYkZkmYBH3CYJT95LsneNg6QjCJMGtOuQvsTIsH5Nq1pfMroDVym0lJX3AxHAEBe-xUuisLIErrIBz/pub?output=tsv";
+    const MANIFEST_URL = "./pages/intranet.json";
 
-    // --- POPULATE THE HERO CARD ---
+    // --- POPULATE THE HERO CARD (Unchanged) ---
     function populateHeroCard() {
-        // Grab the closest episode using the core engine API
         const nearestEps = PodCube.getNearestToToday();
-
-        console.log(nearestEps);
         
         if (nearestEps && nearestEps.length > 0) {
             const ep = nearestEps[0];
-            
-            // Populate text
             document.getElementById('news-hero-anniversary-distance').textContent = ep.anniversary;
             document.getElementById('news-hero-title').textContent = ep.title;
             document.getElementById('news-hero-meta').textContent = `${ep.date?.toString() || 'Unknown Date'} • ${ep.model || 'Unknown Model'}`;
             
-            // Wire up the Play button
             const playBtn = document.getElementById('news-hero-play');
             playBtn.onclick = () => {
                 run(`PodCube.play(PodCube.findEpisode('${ep.id}'))`);
-                toggleAutoplayMode(true); // Optional: turn on radio mode so it keeps playing after
+                toggleAutoplayMode(true); 
             };
         }
+    }
+
+    // --- TEMPORAL AVAILABILITY CHECKER ---
+    function isSiteAvailable(availability) {
+        if (!availability) return true; // If no rules, it's always live
+        
+        const now = new Date();
+        const m = now.getMonth() + 1; // 1-12
+        const d = now.getDate();
+        const h = now.getHours();
+        const mins = now.getMinutes();
+
+        // 1. Month Check
+        if (availability.months && availability.months.length === 2) {
+            const [startM, endM] = availability.months;
+            if (m < startM || m > endM) return false;
+        }
+
+        // 2. Day Check
+        if (availability.days && availability.days.length === 2) {
+            const [startD, endD] = availability.days;
+            if (d < startD || d > endD) return false;
+        }
+
+        // 3. Time Check
+        if (availability.times && availability.times.length === 2) {
+            const currentMins = (h * 60) + mins;
+            
+            const [sH, sM] = availability.times[0].split(':').map(Number);
+            const [eH, eM] = availability.times[1].split(':').map(Number);
+            
+            const startTotal = (sH * 60) + sM;
+            const endTotal = (eH * 60) + eM;
+
+            if (startTotal <= endTotal) {
+                // Standard daytime range (e.g. 09:00 to 17:00)
+                if (currentMins < startTotal || currentMins > endTotal) return false;
+            } else {
+                // Overnight range (e.g. 22:00 to 04:00)
+                if (currentMins < startTotal && currentMins > endTotal) return false;
+            }
+        }
+
+        return true;
     }
 
     async function fetchLiveFeed() {
@@ -38,29 +76,33 @@ const PodNews = (function () {
         if (!loadingEl || !contentEl) return;
 
         try {
-            if (typeof logCommand === 'function') {
-                logCommand("// INTRANET: Polling mainframe for updates...");
-            }
+            if (typeof logCommand === 'function') logCommand("// INTRANET: Polling manifest for temporal availability...");
 
-            const response = await fetch(`${SHEET_TSV_URL}&cachebust=${Date.now()}`);
+            // Fetch the compiled Intranet JSON
+            const response = await fetch(`${MANIFEST_URL}?cachebust=${Date.now()}`);
             if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
 
-            const tsvText = await response.text();
-            const data = parseTSV(tsvText);
+            const allSites = await response.json();
 
-            const validData = data.filter(row => {
-                // Check if VISIBLE exists and equals 'true' (case-insensitive)
-                const isVisible = row.VISIBLE && row.VISIBLE.trim().toLowerCase() === 'true';
-                const hasHeadline = row.HEADLINE && row.HEADLINE.trim() !== '';
-                return isVisible && hasHeadline;
-            });
-            renderLiveFeed(validData);
+            // Filter out sites that aren't available right now
+            const liveSites = allSites.filter(site => isSiteAvailable(site.availability));
+
+            // Randomize the array (Fisher-Yates Shuffle)
+            for (let i = liveSites.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [liveSites[i], liveSites[j]] = [liveSites[j], liveSites[i]];
+            }
+
+            // Pick a random selection (e.g. top 3 sites) to populate the feed
+            const displaySites = liveSites.slice(0, 3);
+            
+            renderLiveFeed(displaySites);
 
             loadingEl.style.display = 'none';
             contentEl.style.display = 'flex';
             
             if (typeof logCommand === 'function') {
-                logCommand(`// INTRANET: Successfully retrieved ${validData.length} records.`);
+                logCommand(`// INTRANET: Rendered ${displaySites.length} active nodes.`);
             }
 
         } catch (error) {
@@ -70,89 +112,35 @@ const PodNews = (function () {
         }
     }
 
-    function parseTSV(str) {
-        const rows = str.trim().split('\n');
-        if (rows.length < 2) return []; 
-
-        const headers = rows[0].split('\t').map(h => h.trim().toUpperCase());
-        const result = [];
-
-        for (let i = 1; i < rows.length; i++) {
-            const currentLine = rows[i].split('\t');
-            const obj = {};
-            for (let j = 0; j < headers.length; j++) {
-                obj[headers[j]] = currentLine[j] ? currentLine[j].trim() : "";
-            }
-            result.push(obj);
-        }
-        return result;
-    }
-
-function renderLiveFeed(records) {
+    function renderLiveFeed(records) {
         const contentEl = document.getElementById('live-feed-content');
         const template = document.getElementById('tmpl-news-card');
         
         if (!contentEl || !template) return;
         contentEl.innerHTML = ''; 
-        
-        // Reverse array so newest are on top
-        const reversedRecords = [...records].reverse();
 
-        reversedRecords.forEach((rec, index) => {
+        if (records.length === 0) {
+            contentEl.innerHTML = `<div style="text-align:center; padding: 20px; color: #888;">No Intranet nodes responding at your current ISWORM coordinates.</div>`;
+            return;
+        }
+
+        records.forEach((rec) => {
             const clone = document.importNode(template.content, true);
             
-            clone.querySelector('.news-headline').textContent = rec.HEADLINE || "Untitled";
+            clone.querySelector('.news-headline').textContent = rec.headline || "Untitled Node";
             
-            // AUTO-GENERATE A FAKE ID based on the total records and current index
-            // Results in something like "REF: PN-0014"
-            const fakeId = `PN-${(records.length - index).toString().padStart(4, '0')}`;
-            clone.querySelector('.news-id').textContent = `REF: ${fakeId}`;
+            // Randomly generated REF ID for aesthetic flair
+            const fakeId = `REF: WX-${Math.floor(Math.random() * 9000) + 1000}`;
+            clone.querySelector('.news-id').textContent = fakeId;
             
-            clone.querySelector('.news-content').textContent = rec.CONTENT || "";
+            clone.querySelector('.news-content').textContent = rec.summary || "";
 
-            // --- MEDIA HANDLING ---
-            const mediaContainer = clone.querySelector('.news-media-container');
-            const mediaData = formatMediaUrl(rec.FILE); // Pass the raw string through our formatter
-            
-            if (mediaData.url) {
-                mediaContainer.style.display = 'block';
-                const lowerUrl = mediaData.url.toLowerCase();
-                
-                // If it's a Drive file, we assume it's an image. 
-                // Otherwise, check standard file extensions.
-                if (mediaData.isDriveFile || lowerUrl.match(/\.(jpeg|jpg|gif|png|webp)$/)) {
-                    mediaContainer.innerHTML = `<img src="${mediaData.url}" style="width: 100%; height: auto; display: block;" alt="Attached Image">`;
-                } 
-                else if (lowerUrl.match(/\.(mp3|wav|ogg)$/)) {
-                    mediaContainer.innerHTML = `
-                        <audio controls style="width: 100%; height: 40px; margin: 10px 0;">
-                            <source src="${mediaData.url}" type="audio/mpeg">
-                        </audio>`;
-                } 
-                else if (lowerUrl.match(/\.(mp4|webm)$/)) {
-                    mediaContainer.innerHTML = `
-                        <video controls style="width: 100%; height: auto; display: block;">
-                            <source src="${mediaData.url}" type="video/mp4">
-                        </video>`;
-                } 
-                else {
-                    mediaContainer.innerHTML = `
-                        <div style="padding: 10px; text-align: center;">
-                            <a href="${mediaData.url}" target="_blank" class="hero-btn" style="text-decoration:none; display:inline-block;">
-                                <strong>VIEW ATTACHMENT</strong>
-                            </a>
-                        </div>`;
-                }
-            }
-
-            // LINK HANDLING
+            // Link to launch PodBrowser!
             const linkContainer = clone.querySelector('.news-link-container');
-            const linkPayload = rec.LINK; // From your new sheet column!
-            if (linkPayload) {
+            if (rec.id) {
                 linkContainer.style.display = 'block';
-                // Uses the refactored openBrowser function
                 linkContainer.innerHTML = `
-                    <button class="icon-btn" onclick="PodBrowser.open('${linkPayload}')" style="border-color: var(--primary); color: var(--primary); font-weight: bold; font-family: 'Fustat', sans-serif;">
+                    <button class="icon-btn" onclick="PodBrowser.open('${rec.id}')" style="border-color: var(--primary); color: var(--primary); font-weight: bold; font-family: 'Fustat', sans-serif;">
                         ACCESS INTRANET LINK ↗
                     </button>
                 `;
@@ -162,33 +150,8 @@ function renderLiveFeed(records) {
         });
     }
 
-
-    /**
-     * Automatically converts standard Google Drive viewer links into raw image streams.
-     * Returns an object with the corrected URL and a flag if it's a Drive file.
-     */
-    function formatMediaUrl(rawUrl) {
-        if (!rawUrl) return { url: null, isDriveFile: false };
-        
-        let url = rawUrl.trim();
-        let isDriveFile = false;
-
-        // RegEx looks for "file/d/ID" or "open?id=ID" inside a drive.google.com link
-        const driveMatch = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/);
-        
-        if (driveMatch && driveMatch[1]) {
-            const fileId = driveMatch[1];
-            // Convert to Google's undocumented direct-download endpoint
-            url = `https://drive.google.com/uc?export=view&id=${fileId}`;
-            isDriveFile = true;
-        }
-
-        return { url, isDriveFile };
-    }
-
     return {
         init: function () {
-            // Populate the static UI elements first
             populateHeroCard();
             fetchLiveFeed();
         },

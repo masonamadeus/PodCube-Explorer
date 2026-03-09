@@ -28,8 +28,10 @@
         <button class="btn-top" id="btn-mobile" onclick="Architect.setPreview('mobile')">📱 Mobile</button>
     </div>
     <div class="topbar-section">
+        <button class="btn-top" onclick="document.getElementById('layers-panel').style.display='flex'; Architect.renderLayers();" title="Show Layers">📚 Layers</button>
         <button class="btn-top" onclick="Architect.openSettings()" title="Site Settings">⚙️ Settings</button>
         <button class="btn-top" onclick="Architect.openLibrary()" title="My saved sites">📂 My Sites</button>
+        <button class="btn-top" onclick="Architect.previewSite()" title="Test current page">▶ Preview</button>
         <button class="btn-top btn-export" onclick="Architect.generateExport()">⬇ Export ZIP</button>
     </div>
 </div>
@@ -55,39 +57,6 @@
 
 <div id="mobile-hint">📱 Mobile preview — blocks auto-stack by vertical position</div>
 
-<div id="text-toolbar">
-    <select id="tt-fontFamily" class="tt-select" style="width:126px;" title="Font family"></select>
-
-    <div class="tt-div"></div>
-
-    <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('h1')" title="Heading 1">H1</button>
-    <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('h2')" title="Heading 2">H2</button>
-    <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('h3')" title="Heading 3">H3</button>
-    <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('body')" title="Body text">Body</button>
-    <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('sub')" title="Subtext / caption">Sub</button>
-
-    <div class="tt-div"></div>
-
-    <div class="tt-size-group">
-        <button class="tt-btn tt-size-btn" id="tt-fontSize-dec" onmousedown="event.preventDefault()" title="Decrease">−</button>
-        <input type="number" id="tt-fontSize" class="tt-input" min="8" max="300" title="Font size (px)">
-        <button class="tt-btn tt-size-btn" id="tt-fontSize-inc" onmousedown="event.preventDefault()" title="Increase">+</button>
-    </div>
-
-    <input type="color" id="tt-textHex" class="tt-color" title="Text color">
-
-    <div class="tt-div"></div>
-
-    <button class="tt-btn" onmousedown="event.preventDefault()" onclick="Architect.updateTextAlign('left')"   title="Align left">≢</button>
-    <button class="tt-btn" onmousedown="event.preventDefault()" onclick="Architect.updateTextAlign('center')" title="Align center">≡</button>
-    <button class="tt-btn" onmousedown="event.preventDefault()" onclick="Architect.updateTextAlign('right')"  title="Align right">≣</button>
-
-    <div class="tt-div"></div>
-
-    <button class="tt-btn" id="tt-bold"      onmousedown="event.preventDefault()" onclick="Architect.toggleFormat('bold')"      title="Bold"><b>B</b></button>
-    <button class="tt-btn" id="tt-italic"    onmousedown="event.preventDefault()" onclick="Architect.toggleFormat('italic')"    title="Italic"><i>I</i></button>
-    <button class="tt-btn" id="tt-underline" onmousedown="event.preventDefault()" onclick="Architect.toggleFormat('underline')" title="Underline" style="text-decoration:underline">U</button>
-</div>
 
 <div id="context-panel">
     <div id="ctx-header">
@@ -100,8 +69,53 @@
         </div>
     </div>
 
+    <div class="ctx-section" id="section-text" style="display:none;">
+        <div class="ctx-section-header">Text <span class="ctx-chevron">▾</span></div>
+        <div class="ctx-section-body">
+            <div class="ctx-row" style="margin-bottom: 8px;">
+                <div class="tt-font-picker" id="tt-catPicker" title="Font Category" style="flex:1; min-width:0;">
+                    <div class="tt-fp-selected" id="tt-cat-selected">Category</div>
+                    <div class="tt-fp-dropdown" id="tt-cat-dropdown"></div>
+                </div>
+                <div class="tt-font-picker" id="tt-fontPicker" title="Font Family" style="flex:1.2; min-width:0;">
+                    <div class="tt-fp-selected" id="tt-fp-selected">Nunito</div>
+                    <div class="tt-fp-dropdown" id="tt-fp-dropdown"></div>
+                </div>
+            </div>
+            
+            <div class="ctx-row" style="margin-bottom: 8px;">
+                <div class="tt-size-group" style="flex:1; justify-content:space-between; border: 1px solid var(--border); border-radius: 6px; background:#fff; overflow:hidden;">
+                    <button class="ctx-icon-btn" id="tt-fontSize-dec" onmousedown="event.preventDefault()" title="Decrease" style="border-radius:0;">−</button>
+                    <input type="number" id="tt-fontSize" class="tt-input" min="8" max="300" title="Font size (px)" style="border:none; width:40px; text-align:center; padding:0; font-weight:bold;">
+                    <button class="ctx-icon-btn" id="tt-fontSize-inc" onmousedown="event.preventDefault()" title="Increase" style="border-radius:0;">+</button>
+                </div>
+                <input type="color" id="tt-textHex" class="ctx-color" title="Text color" style="width:34px;">
+            </div>
+
+            <div class="ctx-row" style="justify-content: flex-start; gap:4px;">
+                <button class="ctx-icon-btn" id="tt-bold" onmousedown="event.preventDefault()" onclick="Architect.toggleFormat('bold')" title="Bold"><b>B</b></button>
+                <button class="ctx-icon-btn" id="tt-italic" onmousedown="event.preventDefault()" onclick="Architect.toggleFormat('italic')" title="Italic"><i>I</i></button>
+                <button class="ctx-icon-btn" id="tt-underline" onmousedown="event.preventDefault()" onclick="Architect.toggleFormat('underline')" title="Underline" style="text-decoration:underline">U</button>
+                
+                <div style="width:1px; height:18px; background:var(--border-subtle); margin:0 4px;"></div>
+                
+                <button class="ctx-icon-btn" id="tt-align-left" onmousedown="event.preventDefault()" onclick="Architect.updateTextAlign('left')" title="Align left">≢</button>
+                <button class="ctx-icon-btn" id="tt-align-center" onmousedown="event.preventDefault()" onclick="Architect.updateTextAlign('center')" title="Align center">≡</button>
+                <button class="ctx-icon-btn" id="tt-align-right" onmousedown="event.preventDefault()" onclick="Architect.updateTextAlign('right')" title="Align right">≣</button>
+            </div>
+            
+            <div class="ctx-row" style="flex-wrap: wrap; justify-content:flex-start; gap: 4px; margin-top:8px;">
+                <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('h1')">H1</button>
+                <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('h2')">H2</button>
+                <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('h3')">H3</button>
+                <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('body')">Body</button>
+                <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('sub')">Sub</button>
+            </div>
+        </div>
+    </div>
+
     <div class="ctx-section">
-        <div class="ctx-section-header">Appearance <span class="ctx-chevron">▾</span></div>
+        <div class="ctx-section-header">Shape <span class="ctx-chevron">▾</span></div>
         <div class="ctx-section-body">
             <div class="ctx-row">
                 <span class="ctx-label">Fill</span>
@@ -122,8 +136,13 @@
                 <input type="range" id="inp-opacity" class="ctx-range" min="0" max="100" value="100">
                 <span class="ctx-value" id="val-opacity">100</span>%
             </div>
+            <div class="ctx-range-row">
+                <span class="ctx-label">Rotate</span>
+                <input type="range" id="inp-rotation" class="ctx-range" min="0" max="359" value="0">
+                <span class="ctx-value" id="val-rotation">0</span>°
+            </div>
             <div class="ctx-row" id="row-overflow" style="display:none; margin-top: 4px;">
-                <span class="ctx-label">Overflow</span>
+                <span class="ctx-label">Boundary</span>
                 <select id="inp-overflow" class="ctx-select">
                     <option value="hidden">Hidden (Clip)</option>
                     <option value="visible">Visible (Spill)</option>
@@ -225,20 +244,23 @@
 
 <div id="settings-modal" style="display: none; position: fixed; inset: 0; z-index: 9000; align-items: center; justify-content: center;">
     <div class="lib-backdrop" onclick="document.getElementById('settings-modal').style.display='none'"></div>
-    <div class="lib-dialog" style="width:460px;">
+    <div class="lib-dialog" style="width:500px; max-height: 90vh;">
         <div class="lib-header">
-            <span class="lib-title">Site Settings</span>
+            <span class="lib-title">Site Settings & Intranet Discovery</span>
             <button class="lib-close" onclick="document.getElementById('settings-modal').style.display='none'">✕</button>
         </div>
-        <div class="settings-body">
-            <div>
-                <label class="settings-label">Site Title</label>
-                <input type="text" id="set-title" class="ctx-input" style="width:100%;font-size:14px;padding:8px;">
+        <div class="settings-body" style="padding-right: 15px;">
+            <div style="display:flex; gap:10px;">
+                <div style="flex:1;">
+                    <label class="settings-label">Site ID (Filename)</label>
+                    <input type="text" id="set-id" class="ctx-input" style="width:100%;font-size:14px;padding:8px;font-family:monospace;" placeholder="e.g. dustys">
+                </div>
+                <div style="flex:1;">
+                    <label class="settings-label">Window Title</label>
+                    <input type="text" id="set-title" class="ctx-input" style="width:100%;font-size:14px;padding:8px;" placeholder="Dusty's Burger Trough">
+                </div>
             </div>
-            <div>
-                <label class="settings-label">Site ID <span style="font-weight:400;color:var(--text-muted);font-size:11px;">(used for filenames &amp; local saves)</span></label>
-                <input type="text" id="set-id" class="ctx-input" style="width:100%;font-size:14px;padding:8px;font-family:monospace;">
-            </div>
+
             <div>
                 <label class="settings-label">Global Background Color</label>
                 <div style="display:flex;align-items:center;gap:10px;">
@@ -246,15 +268,85 @@
                     <span id="set-bg-val" style="font-family:monospace;font-size:12px;color:var(--text-muted);"></span>
                 </div>
             </div>
+
+            <div style="border-top: 1px solid var(--border-subtle); margin: 5px 0;"></div>
+
+            <div class="settings-section-title" style="color:var(--primary);">PodNews Discovery Settings</div>
+            
             <div>
-                <div class="settings-section-title">Pages &amp; Popups</div>
+                <label class="settings-label">News Headline</label>
+                <input type="text" id="set-headline" class="ctx-input" style="width:100%;font-size:13px;padding:8px;" placeholder="Dusty's Unveils the 10lb Bean Bucket!">
+            </div>
+            
+            <div>
+                <label class="settings-label">News Summary</label>
+                <textarea id="set-summary" class="ctx-input" style="width:100%; height:60px; font-size:12px; padding:8px; resize:none;" placeholder="A brief teaser to display on the Today tab..."></textarea>
+            </div>
+
+            <div>
+                <label class="settings-label">Temporal Availability (Leave blank for Always Available)</label>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; background: #fafafa; padding: 10px; border: 1px solid var(--border-subtle); border-radius: 8px;">
+                    
+                    <div style="display:flex; flex-direction:column; gap:4px;">
+                        <span style="font-size:10px; color:#888; font-weight:bold;">MONTHS (1-12)</span>
+                        <div style="display:flex; gap:5px; align-items:center;">
+                            <input type="number" id="set-avail-m1" class="ctx-input" min="1" max="12" placeholder="Start">
+                            <span>to</span>
+                            <input type="number" id="set-avail-m2" class="ctx-input" min="1" max="12" placeholder="End">
+                        </div>
+                    </div>
+
+                    <div style="display:flex; flex-direction:column; gap:4px;">
+                        <span style="font-size:10px; color:#888; font-weight:bold;">DAYS (1-31)</span>
+                        <div style="display:flex; gap:5px; align-items:center;">
+                            <input type="number" id="set-avail-d1" class="ctx-input" min="1" max="31" placeholder="Start">
+                            <span>to</span>
+                            <input type="number" id="set-avail-d2" class="ctx-input" min="1" max="31" placeholder="End">
+                        </div>
+                    </div>
+
+                    <div style="grid-column: span 2; display:flex; flex-direction:column; gap:4px; margin-top:5px;">
+                        <span style="font-size:10px; color:#888; font-weight:bold;">HOURS (Local Time)</span>
+                        <div style="display:flex; gap:5px; align-items:center;">
+                            <input type="time" id="set-avail-t1" class="ctx-input">
+                            <span>to</span>
+                            <input type="time" id="set-avail-t2" class="ctx-input">
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div style="border-top: 1px solid var(--border-subtle); margin: 5px 0;"></div>
+
+            <div>
+                <div class="settings-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>Pages & Popups</span>
+                    <span style="font-size:9px; color:#aaa;">HOME</span>
+                </div>
                 <div id="set-pages-list"></div>
             </div>
         </div>
         <div class="lib-footer" style="display:flex;justify-content:flex-end;">
-            <button class="lib-btn" onclick="document.getElementById('settings-modal').style.display='none'">Done</button>
+            <button class="lib-btn primary" onclick="document.getElementById('settings-modal').style.display='none'">Done</button>
         </div>
     </div>
+</div>
+
+<div id="layers-panel" style="display:none; position:fixed; left:20px; top:70px; width:240px; background:var(--panel-bg); backdrop-filter:blur(24px) saturate(1.5); -webkit-backdrop-filter:blur(24px) saturate(1.5); border:1px solid var(--border); border-radius:var(--radius-panel); box-shadow:var(--shadow-panel); z-index:2500; flex-direction:column; max-height:calc(100vh - 180px);">
+    <div style="padding:12px 14px; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-muted); border-bottom:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center;">
+        Layers 
+        <button onclick="document.getElementById('layers-panel').style.display='none'" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:14px;">✕</button>
+    </div>
+    <div id="layers-list" style="overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:4px;"></div>
+</div>
+
+<div id="preview-overlay" style="display:none; position:fixed; inset:0; z-index:99999; background:#e2e2e7;">
+    <div style="position:absolute; top:12px; right:16px; z-index:100000; display:flex; gap:10px; align-items:center;">
+        <div style="background: rgba(0,0,0,0.5); color:white; padding:6px 12px; border-radius:20px; font-size:12px; font-weight:bold; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);">Live Sandbox</div>
+        <button onclick="document.getElementById('preview-overlay').style.display='none'; document.getElementById('preview-iframe').src='';" style="padding:8px 16px; background:#1d1d1f; color:#fff; border:none; border-radius:8px; font-weight:bold; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.3); font-family:inherit; transition:transform 0.1s;">✕ Close Preview</button>
+    </div>
+    <iframe id="preview-iframe" style="width:100%; height:100%; border:none; background:#fff;" sandbox="allow-scripts allow-popups allow-same-origin"></iframe>
 </div>
 
 <script>

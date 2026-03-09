@@ -878,7 +878,7 @@ input[type="range"]::-moz-range-thumb:active {
 /* ── THE FLOATING BADGE ── */
 .iu-badge {
     position: absolute;
-    top: 5px;
+    bottom: 5px;
     left: 5px;
     width: 320px;
     background: var(--bg-panel);

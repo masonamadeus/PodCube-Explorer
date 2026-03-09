@@ -1,0 +1,13 @@
+{
+    "id": "sandwet",
+    "headline": "THE SANDWET",
+    "summary": "A NEW KIND OF SANDWICH THAT I THINK DUSTY\"S SHOULD SERVE - DAVE",
+    "availability": {
+        "months": null,
+        "days": null,
+        "times": [
+            "12:38",
+            "14:50"
+        ]
+    }
+}

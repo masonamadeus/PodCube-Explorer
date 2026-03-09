@@ -12,8 +12,8 @@ const PodBrowser = (function() {
             // Clean the payload (e.g., "slowtaco")
             const siteId = target.toLowerCase().trim();
             
-            // Assume the HTML file is named exactly the same as the target!
-            const url = `./pages/${siteId}.html`;
+            // Point to the index.html inside the site's subfolder!
+            const url = `./pages/${siteId}/index.html`;
 
             iframe.src = url;
             overlay.style.display = 'block';
