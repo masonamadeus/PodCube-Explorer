@@ -45,6 +45,10 @@
     /* Trophy icons, lightbox close (was 48px)  */
 }
 
+html {
+    scrollbar-gutter:stable;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -181,6 +185,11 @@ h1 {
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: #666;
+}
+
+.podflex{
+    display: flex;
+    flex-direction:column;
 }
 
 /* --- TABS --- */
@@ -1395,9 +1404,6 @@ html.dark-theme .ep-card.is-verified {
     margin-bottom: 20px;
 }
 
-.player-scrubber-wrapper {
-    margin-bottom: 20px;
-}
 
 .player-transport-row {
     display: flex;
@@ -1872,6 +1878,7 @@ html.dark-theme .ep-card.is-verified {
     overflow: visible;
     border: 1px solid var(--primary-dim);
     touch-action: none;
+    margin-bottom: 20px;
 }
 
 .playback-scrubber-fill {

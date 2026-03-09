@@ -799,6 +799,11 @@ class PodCubeEngine {
 
             this.isReady = true;
             log.info(`Ready. Loaded ${this.episodes.length} episodes via ${CONFIG.FEED_TYPE.toUpperCase()}.`);
+
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('PodCube:Ready', { detail: this }));
+            }
+
             return this;
         } catch (e) {
             log.error("Init failed:", e);
@@ -2976,7 +2981,7 @@ if (typeof window !== 'undefined') {
     window.PodCube = PodCubeInstance;
 
     // Dispatch a custom event so non-module scripts know we are ready
-    window.dispatchEvent(new CustomEvent('PodCube:Ready', {
+    window.dispatchEvent(new CustomEvent('PodCube:Loaded', {
         detail: PodCubeInstance
     }));
 

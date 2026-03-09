@@ -57,6 +57,8 @@
     <!-- EXPLORER FEATURE SCRIPTS-->
     <script src="./scripts/podchat.js"></script>
     <script src="./scripts/popups.js"></script>
+    <script src="./scripts/podnews.js"></script>
+    <script src="./scripts/podbrowser.js"></script>
     <script src="./scripts/explorer.js"></script>
     <script src="./scripts/degradation.js"></script>
     <script src="./scripts/playlist-sharing.js"></script>
@@ -129,6 +131,7 @@
         </header>
         <div class="tabs-wrapper">
             <nav class="tabs">
+                <button class="tab-button" data-tab="news">Today</button>
                 <button class="tab-button" data-tab="about">About™</button>
                 <button class="tab-button active" data-tab="overview">Brigistics</button>
                 <button class="tab-button" data-tab="archive">Transmissions</button>
@@ -141,6 +144,65 @@
             </nav>
         </div>
     </div>
+
+<!-- NEWS/TODAY TAB -->
+    <div id="news" class="tab-content">
+        <div class="section">
+            
+            <div class="" style="display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 30px; align-items: center;">
+                
+                <div class="raised" style="flex: 0 0 140px; display: flex; flex-direction: column; align-items: center; text-align: center; border-right: 2px dashed var(--primary-dim); padding-right: 15px;">
+                    <img src="./assets/today-icon.png" alt="Today" style="width: 80px; height: 80px; margin-bottom: 10px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">
+                    <h3 style="margin: 0; color: var(--primary); font-family: 'Fustat', sans-serif; font-size: 1.3em; line-height: 1;">PodNews<br>Today™</h3>
+                </div>
+                
+                <div class="panel" style="flex: 1; min-width: 200px; display: flex; flex-direction: column; justify-content: center;">
+                    <span id="news-hero-anniversary-distance" class="meta text-muted" style="font-size: 10px; margin-bottom: 5px; font-weight: bold; letter-spacing: 0.05em;text-transform:uppercase;">TRANSMISSION NEAREST TO TODAY™</span>
+                    
+                    <h4 id="news-hero-title" style="margin: 0 0 5px 0; font-size: 1.3em; font-family: 'Libertinus Math', serif; color: var(--text-main); line-height: 1.1;">
+                        Calculating proximity...
+                    </h4>
+                    
+                    <div id="news-hero-meta" class="meta text-muted" style="margin-bottom: 15px;">
+                        Awaiting telemetry
+                    </div>
+                    
+                    <button id="news-hero-play" class="hero-btn" style="width: 100%; padding: 8px 15px;" onclick="">
+                        <span class="hero-btn-icon">▶</span>
+                        <span class="hero-btn-text">
+                            <strong>PLAY NOW</strong>
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <h4 style="border-bottom: 2px solid var(--primary); padding-bottom: 5px; margin-bottom: 15px;">LIVE INTRANET UPDATES</h4>
+
+            <div id="live-feed-loading" style="text-align:center; padding: 20px; color: var(--primary);">
+                ESTABLISHING UPLINK...
+            </div>
+        
+            <div id="live-feed-content" style="display:none; display: flex; flex-direction: column; gap: 15px;"></div>
+        </div>
+    </div>
+
+    <template id="tmpl-news-card">
+        <div class="panel raised" style="margin-bottom: 15px;">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 8px; margin-bottom: 10px;">
+                <h4 class="news-headline" style="margin:0; color: var(--primary); font-size: 1.2em;"></h4>
+                <span class="news-id meta text-muted" style="font-size: 10px;"></span>
+            </div>
+            
+            <div class="news-media-container" style="display:none; margin-bottom: 15px; border-radius: 6px; overflow: hidden; background: #000;">
+                </div>
+
+            <div class="news-content" style="font-family: 'Nunito', sans-serif; font-size: 14px; line-height: 1.5; color: var(--text-main); white-space: pre-wrap;">
+                </div>
+
+            <div class="news-link-container" style="display:none; margin-top: 15px; text-align: right;">
+                </div>
+        </div>
+    </template>
 
     <!-- BRIGISTICS TAB -->
     <div id="overview" class="tab-content active">
@@ -445,15 +507,17 @@
                         <span id="playerTimeStart">0:00</span> / <span id="playerTimeEnd">0:00</span>
                     </div>
                 </div>
-                <div id="playerNowPlayingTitle" class="player-card-title">Select a transmission</div>
-                <div id="playerNowPlayingMeta" class="player-card-meta">Click the transmissions tab above to browse.
+                <div id="playerNowPlayingTitle" class="player-card-title">
+                    Select a transmission
                 </div>
-
-                <div class="player-scrubber-wrapper">
-                    <div class="playback-scrubber" id="playerScrubber">
-                        <div class="playback-scrubber-fill" id="playerScrubberFill"></div>
-                        <div class="playback-scrubber-handle" id="playerScrubberHandle"></div>
-                    </div>
+    
+                <div id="playerNowPlayingMeta" class="player-card-meta">
+                    Click the transmissions tab above to browse.
+                </div>
+    
+                <div class="playback-scrubber" id="playerScrubber">
+                    <div class="playback-scrubber-fill" id="playerScrubberFill"></div>
+                    <div class="playback-scrubber-handle" id="playerScrubberHandle"></div>
                 </div>
 
                 <div class="player-transport-row">
@@ -511,9 +575,9 @@
                     <div class="player-setting-group">
                         <label class="player-setting-label">Speed</label>
                         <select class="player-setting-select" id="playerSpeed" onchange="updatePlayerSpeed(this.value)">
-                            <option value="0.5">0.5×</option>
-                            <option value="1" selected>1.0×</option>
-                            <option value="2">2.0×</option>
+                            <option value="0.5">0.5</option>
+                            <option value="1" selected>1.0</option>
+                            <option value="2">2.0</option>
                         </select>
                     </div>
                 </div>
@@ -597,7 +661,7 @@
         </div>
     </div>
 
-    <!-- ABOUT TAB (we should get jordan to record words from this so we can make them clickable and hear it-->
+    <!-- ABOUT TAB -->
     <div id="about" class="tab-content">
         <div class="section doubleborder about-hero panel" data-label="About PodCube™">
             <div class="hero-actions" style="max-width: 100%;">
@@ -816,7 +880,6 @@
     </div>
 
     <!-- INTERACTIVE TAB -->
-
     <div id="interactive" class="tab-content">
 
         <div id="pc-menu-view" class="section">
@@ -916,8 +979,7 @@
                 <p class="profile-role">PRIC Terminal — Authorized Personnel</p>
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                <button class="hero-btn" style="width:auto;" onclick="PodUser.requestOSNotifications().then(ok =>
-                        alert(ok ? 'OS NOTIFICATIONS ENABLED' : 'PERMISSION DENIED OR UNAVAILABLE'))">
+                <button class="hero-btn" style="width:auto;" onclick="PodUser.requestOSNotifications().then(ok => alert(ok ? 'OS NOTIFICATIONS ENABLED' : 'PERMISSION DENIED OR UNAVAILABLE'))">
                     <span class="hero-btn-icon">🔔</span>
                     <span class="hero-btn-text">
                         <strong>Enable Alerts</strong>
@@ -1133,7 +1195,8 @@
                         <p>Provide a callback to restrict which episodes are eligible for random selection. The callback
                             receives the full episodes array and must return a filtered array. Pass <code>null</code> to
                             clear the filter. Used by Radio Mode's auto-queue logic as well as direct calls to
-                            <code>PodCube.random</code>.</p>
+                            <code>PodCube.random</code>.
+                        </p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.where(filters, sort)</code>
@@ -1170,7 +1233,8 @@
                             exact, 4 points prefix), origin (10 points), locale (6), region (4), zone (2, but the value
                             <code>"USA"</code> is explicitly excluded to prevent overly broad matches), shared tags
                             (3 each), and same lore year (5). Planet is not scored. Minimum threshold: 7 points. Default
-                            limit is 10.</p>
+                            limit is 10.
+                        </p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.getNearestToToday()</code>
@@ -1453,7 +1517,8 @@
                         <code class="api-signature">PodCube.importPlaylist(code)</code>
                         <p>Import a playlist from a share code. Returns
                             <code>{name, episodes, totalDuration, missingCount}</code> or null if
-                            invalid. Uses fuzzy matching via nanoId.</p>
+                            invalid. Uses fuzzy matching via nanoId.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -1616,12 +1681,14 @@
                         <code class="api-signature">PodCube.logo</code>
                         <p>Feed logo URL string extracted during <code>init()</code> (from the RSS
                             <code>&lt;image&gt;</code> tag or JSON <code>icon</code> field). Null before initialization
-                            or if the feed provides no logo.</p>
+                            or if the feed provides no logo.
+                        </p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">PodCube.Episode</code>
                         <p>Reference to the Episode class itself. Useful for <code>instanceof</code> checks:
-                            <code>ep instanceof PodCube.Episode</code>.</p>
+                            <code>ep instanceof PodCube.Episode</code>.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -1694,7 +1761,8 @@
                             match, a human-readable string otherwise (e.g., <code>"2 years ago"</code>,
                             <code>"3 months from now"</code>, <code>"500 years from now"</code>,
                             <code>"4 days ago"</code>), or <code>null</code> if the episode has no lore date. Resolution
-                            cascades: years → months → weeks → days.</p>
+                            cascades: years → months → weeks → days.
+                        </p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">episode.integrity</code>
@@ -1736,7 +1804,8 @@
                         <p>Duration formatted with a randomly selected whimsical suffix. The format is
                             <code>M.FF&lt;suffix&gt;</code> where M is whole minutes and FF is fractional minutes.
                             Example outputs: <code>"5.42ish minutes"</code>, <code>"12.8 minutes (+/- a bit)"</code>,
-                            <code>"30.5 or so minutes"</code>. Returns "IDK?" if duration is unavailable.</p>
+                            <code>"30.5 or so minutes"</code>. Returns "IDK?" if duration is unavailable.
+                        </p>
                     </div>
                     <div class="api-method">
                         <code class="api-signature">episode.sizeBytes</code>
@@ -1836,6 +1905,79 @@
         <span class="monitor-timestamp" id="monitorTimestamp"></span>
     </div>
 
+    <!-- IN-UNIVERSE BROWSER -->
+    <div id="in-universe-browser" class="iu-browser-overlay" style="display: none;">
+
+        <iframe id="iu-iframe" class="iu-iframe" src=""></iframe>
+
+        <div id="iu-badge" class="iu-badge collapsed">
+
+            <div class="iu-badge-header" onclick="PodBrowser.toggleBadge();">
+                <img src="./PODCUBE.png" class="iu-badge-logo" alt="PodCube">
+
+                <div class="iu-badge-info">
+                    <div class="iu-badge-label">NOW PLAYING</div>
+                    <div class="iu-badge-title" id="badgeTitle">Select a transmission...</div>
+                </div>
+
+                <button class="control-btn control-btn-play iu-badge-play" id="badgePlayBtn"
+                    onclick="event.stopPropagation(); togglePlayback();" title="Play/Pause">
+                    <svg viewBox="0 0 24 24" class="icon-svg">
+                        <path d="M8 5v14l11-7z" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="iu-badge-expanded">
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+                    <button class="control-btn iu-control-small" onclick="run('PodCube.skipBack()')" title="Skip Back">
+                        <svg viewBox="0 0 24 24" class="icon-svg">
+                            <path
+                                d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z" />
+                        </svg>
+                    </button>
+
+                    <div style="display:flex; gap:8px;">
+                        <button id="badgeBtnOk" class="icon-btn insp-btn-ok" title="Elevate"
+                            style="padding:4px 12px; display: flex; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor;">
+                                <path d="M12 6l-8 12h16z" />
+                            </svg>
+                        </button>
+                        <button id="badgeBtnNo" class="icon-btn insp-btn-no" title="Suppress"
+                            style="padding:4px 12px; display: flex; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 24 24"
+                                style="width: 16px; height: 16px; fill: currentColor; transform: rotate(180deg);">
+                                <path d="M12 6l-8 12h16z" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <button class="control-btn iu-control-small" onclick="run('PodCube.skipForward()')"
+                        title="Skip Forward">
+                        <svg viewBox="0 0 24 24" class="icon-svg" style="transform: scaleX(-1);">
+                            <path
+                                d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z" />
+                        </svg>
+                    </button>
+
+
+                </div>
+
+                <div class="playback-scrubber" id="badgeScrubber" style="height: 8px; margin: 5px 0 15px 0;">
+                    <div class="playback-scrubber-fill" id="badgeScrubberFill"></div>
+                    <div class="playback-scrubber-handle" id="badgeScrubberHandle"></div>
+                </div>
+
+                <button class="icon-btn" onclick="PodBrowser.close()"
+                    style="width: 100%; border-color: var(--danger); color: var(--danger); font-family: 'Fustat', sans-serif; font-weight: bold; letter-spacing: 0.05em; justify-content: center;">
+                    BACK TO PODCUBE EXPLORER
+                </button>
+            </div>
+        </div>
+
+    </div>
 
     <!-- ========  TEMPLATES  ========= -->
     <template id="tmpl-stat-box">
@@ -2085,9 +2227,7 @@
         <div class="queue-item" data-queue-index="">
             <div class="queue-drag-handle">
                 <svg viewBox="0 0 24 24" class="drag-icon">
-                    <path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2
-                        2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9
-                        2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                    <path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
                 </svg>
             </div>
             <div class="queue-item-info">
@@ -2126,61 +2266,7 @@
     </template>
 
 
-    <!-- IN-UNIVERSE BROWSER -->
-    <div id="in-universe-browser" class="iu-browser-overlay" style="display: none;">
-
-        <iframe id="iu-iframe" class="iu-iframe" src=""></iframe>
-
-        <div id="iu-badge" class="iu-badge collapsed">
-            
-            <div class="iu-badge-header" onclick="toggleIUBadge()">
-                <img src="./PODCUBE.png" class="iu-badge-logo" alt="PodCube">
-                
-                <div class="iu-badge-info">
-                    <div class="iu-badge-label">NOW PLAYING</div>
-                    <div class="iu-badge-title" id="badgeTitle">Select a transmission...</div>
-                </div>
-                
-                <button class="control-btn control-btn-play iu-badge-play" id="badgePlayBtn" onclick="event.stopPropagation(); togglePlayback();" title="Play/Pause">
-                    <svg viewBox="0 0 24 24" class="icon-svg"><path d="M8 5v14l11-7z"/></svg>
-                </button>
-            </div>
-            
-            <div class="iu-badge-expanded">
-                
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
-                    <button class="control-btn iu-control-small" onclick="run('PodCube.skipBack()')" title="Skip Back">
-                        <svg viewBox="0 0 24 24" class="icon-svg"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
-                    </button>
-                    
-                    <div style="display:flex; gap:8px;">
-                        <button id="badgeBtnOk" class="icon-btn insp-btn-ok" title="Elevate" style="padding:4px 12px; display: flex; align-items: center; justify-content: center;">
-                            <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor;"><path d="M12 6l-8 12h16z"/></svg>
-                        </button>
-                        <button id="badgeBtnNo" class="icon-btn insp-btn-no" title="Suppress" style="padding:4px 12px; display: flex; align-items: center; justify-content: center;">
-                            <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor; transform: rotate(180deg);"><path d="M12 6l-8 12h16z"/></svg>
-                        </button>
-                    </div>
-
-                    <button class="control-btn iu-control-small" onclick="run('PodCube.skipForward()')" title="Skip Forward">
-                        <svg viewBox="0 0 24 24" class="icon-svg" style="transform: scaleX(-1);"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
-                    </button>
-
-                    
-                </div>
-
-                <div class="playback-scrubber" id="badgeScrubber" style="height: 8px; margin: 5px 0 15px 0;">
-                    <div class="playback-scrubber-fill" id="badgeScrubberFill"></div>
-                    <div class="playback-scrubber-handle" id="badgeScrubberHandle"></div>
-                </div>
-                
-                <button class="icon-btn" onclick="closeBrowser()" style="width: 100%; border-color: var(--danger); color: var(--danger); font-family: 'Fustat', sans-serif; font-weight: bold; letter-spacing: 0.05em; justify-content: center;">
-                    BACK TO PODCUBE EXPLORER
-                </button>
-            </div>
-        </div>
-
-    </div>
+    
     <!-- SERVICE WORKER -->
     <script>
         if ('serviceWorker' in navigator) {

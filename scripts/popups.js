@@ -2,24 +2,24 @@ const PodAds = (function() {
     
     // --- AD CONFIGURATION ---
     const AD_INVENTORY = [
-        './ads/SLOWTACO (1).jpg',
-        './ads/SLOWTACO (2).jpg',
-        './ads/SLOWTACO (3).jpg',
-        './ads/SLOWTACO (4).jpg',
-        './ads/SLOWTACO (5).jpg',
-        './ads/SLOWTACO (6).jpg',
-        './ads/SLOWTACO (7).jpg',
-        './ads/SLOWTACO (8).jpg',
-        './ads/SLOWTACO (9).jpg',
-        './ads/SLOWTACO (10).jpg',
-        './ads/DUSTYS (1).jpg',
-        './ads/DUSTYS (2).jpg',
-        './ads/DUSTYS (3).jpg',
-        './ads/DUSTYS (4).jpg',
-        './ads/DUSTYS (5).jpg',
-        './ads/DUSTYS (6).jpg',
-        './ads/DUSTYS (7).jpg',
-        './ads/DUSTYS (8).jpg',
+        { src: './ads/SLOWTACO (1).jpg', payload: 'slowtaco' },
+        { src: './ads/SLOWTACO (2).jpg', payload: 'slowtaco' },
+        { src: './ads/SLOWTACO (3).jpg', payload: 'slowtaco' },
+        { src: './ads/SLOWTACO (4).jpg', payload: 'slowtaco' },
+        { src: './ads/SLOWTACO (5).jpg', payload: 'slowtaco' },
+        { src: './ads/SLOWTACO (6).jpg', payload: 'slowtaco' },
+        { src: './ads/SLOWTACO (7).jpg', payload: 'slowtaco' },
+        { src: './ads/SLOWTACO (8).jpg', payload: 'slowtaco' },
+        { src: './ads/SLOWTACO (9).jpg', payload: 'slowtaco' },
+        { src: './ads/SLOWTACO (10).jpg', payload: 'slowtaco' },
+        { src: './ads/DUSTYS (1).jpg', payload: 'dustys' },
+        { src: './ads/DUSTYS (2).jpg', payload: 'dustys' },
+        { src: './ads/DUSTYS (3).jpg', payload: 'dustys' },
+        { src: './ads/DUSTYS (4).jpg', payload: 'dustys' },
+        { src: './ads/DUSTYS (5).jpg', payload: 'dustys' },
+        { src: './ads/DUSTYS (6).jpg', payload: 'dustys' },
+        { src: './ads/DUSTYS (7).jpg', payload: 'dustys' },
+        { src: './ads/DUSTYS (8).jpg', payload: 'dustys' },
     ];
 
     const MIN_LISTENS_REQUIRED = 5;      // Must have listened to X transmissions before ads start
@@ -192,9 +192,7 @@ const PodAds = (function() {
                 </div>
 
                 <div class="pric-ad-screen-well">
-                    
-                        <img src="${targetAd}" class="pric-ad-image" alt="Sponsored Content" />
-                    
+                    <img src="${targetAd.src}" class="pric-ad-image" alt="Sponsored Content" style="cursor: pointer;" />
                 </div>
 
                 <div class="pric-ad-controls">
@@ -216,6 +214,12 @@ const PodAds = (function() {
             }, 300);
         };
 
+        const adImage = overlay.querySelector('.pric-ad-image');
+        adImage.addEventListener('click', () => {
+            closeAd(); // Dismiss the popup
+            openAd(targetAd.payload); // Fire the payload action!
+        });
+
         overlay.querySelector('.pric-ad-close-btn').addEventListener('click', closeAd);
         overlay.addEventListener('click', closeAd);
     }
@@ -233,6 +237,18 @@ const PodAds = (function() {
         if (Math.random() < AD_PROBABILITY) triggerAd();
     }
 
+    function openAd(payload) {
+        if (!payload) return; // Do nothing if it's just a generic image
+        
+        if (typeof logCommand === 'function') {
+            logCommand(`// AD-SERV: Executing redirect payload [${payload.toUpperCase()}]...`);
+        }
+
+        if (PodBrowser){
+            PodBrowser.open(payload);
+        }
+    }
+
     return {
         init: function() {
             injectAdStyles();
@@ -241,6 +257,9 @@ const PodAds = (function() {
         },
         test: triggerAd 
     };
+
+
+
 })();
 // Boot it up when the core engine is ready
 window.addEventListener('PodCube:Ready', () => {

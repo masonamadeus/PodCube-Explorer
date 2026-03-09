@@ -50,11 +50,6 @@ const ICONS = {
 
 // #region INITIALIZATION
 
-// Phase 1: Boot both core engines. Everything else depends on this.
-async function initEngines() {
-    await PodCube.init();
-    await PodUser.init();
-}
 
 // Phase 2: Wire the PodUser update callback and do the very first UI render.
 // Kept separate from initEngines so the callback is registered in one clear place.
@@ -365,16 +360,20 @@ function failSplash(error) {
 }
 
 // --- BOOT SEQUENCE ---
+window.addEventListener('PodCube:Loaded', async ()=>{
+    await PodCube.init();
+    await PodUser.init();
+})
+
 window.addEventListener('PodCube:Ready', async () => {
     try {
-        await initEngines();           // 1. PodCube + PodUser must be up before anything else.
-        initUserCallbacks();           // 2. Wire onUpdate callback and paint initial user UI.
-        registerPlaybackListeners();   // 3. All event listeners MUST be registered before session restore.
-        await restoreSession();        // 4. Restore volume + session; listeners will catch fired events.
-        renderInitialUI();             // 5. First synchronous paint using restored session state.
-        initUIControls();              // 6. Boot all static panels, controls, and interactive widgets.
-        handleDeepLinks();             // 7. Handle URL import codes and pre-load the inspector.
-        dismissSplash();               // 8. Everything is ready — fade out the splash screen.
+        initUserCallbacks();           // Wire onUpdate callback and paint initial user UI.
+        registerPlaybackListeners();   // All event listeners MUST be registered before session restore.
+        await restoreSession();        // Restore volume + session; listeners will catch fired events.
+        renderInitialUI();             // First synchronous paint using restored session state.
+        initUIControls();              // Boot all static panels, controls, and interactive widgets.
+        handleDeepLinks();             // Handle URL import codes and pre-load the inspector.
+        dismissSplash();               // Everything is ready — fade out the splash screen.
     } catch (e) {
         failSplash(e);
     }
@@ -3547,7 +3546,6 @@ function closeBrowser() {
     if (overlay && iframe) {
         overlay.style.display = 'none';
         iframe.src = ''; // Clear memory
-        logCommand(`// INTRANET: Connection severed. Returning to Explorer.`);
     }
 }
 
