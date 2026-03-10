@@ -1653,12 +1653,16 @@ const Architect = (function () {
                         
                         const selfRot = Number(block.style.rotation) || 0;
                         
+                        let newGlobalRot = (selfRot + (startParams.parentAccRot || 0)) % 360;
+                        if (newGlobalRot < 0) newGlobalRot += 360;
+                        block.style.rotation = newGlobalRot;
+                        
                         // 1. Vector from block center to mouse in local space
                         const cxOffset = startParams.mouseLocalX - w / 2;
                         const cyOffset = startParams.mouseLocalY - h / 2;
                         
-                        // 2. Rotate vector to global screen space
-                        const rotOffset = selfRot ? rotateVec(cxOffset, cyOffset, selfRot) : { x: cxOffset, y: cyOffset };
+                        // 2. Rotate vector to global screen space (using the new combined global rotation)
+                        const rotOffset = block.style.rotation ? rotateVec(cxOffset, cyOffset, block.style.rotation) : { x: cxOffset, y: cyOffset };
                         
                         // 3. Mouse position in canvas space
                         const centerCanvasX = (e.clientX - cr.left + canvas.scrollLeft) - rotOffset.x;
@@ -1933,7 +1937,18 @@ const Architect = (function () {
                         x: Math.round(localX / colWidth),
                         y: snapY(localY) 
                     });
-                    updateBlock(state.activeId, { parentId: startParams.hoveredShape, layout: nw }); renderCanvas();
+                    
+                    // FIX: Counter-rotate the element so it visually stays exactly where it was
+                    const currentAbsoluteRot = getAccumulatedRotation(state.activeId);
+                    let newRelativeRot = (currentAbsoluteRot - pRot) % 360;
+                    if (newRelativeRot < 0) newRelativeRot += 360;
+
+                    updateBlock(state.activeId, { 
+                        parentId: startParams.hoveredShape, 
+                        layout: nw,
+                        style: { rotation: newRelativeRot }
+                    }); 
+                    renderCanvas();
                 }
             }
 
@@ -2222,6 +2237,11 @@ const Architect = (function () {
             // Calculate absolute visual center to prevent jumps when detaching rotated objects
             const centerX = rect.left + rect.width / 2 - cr.left + canvas.scrollLeft;
             const centerY = rect.top + rect.height / 2 - cr.top + canvas.scrollTop;
+            
+            // Bake the absolute rotation into the element before detaching
+            const currentAbsoluteRot = getAccumulatedRotation(state.activeId);
+            b.style.rotation = currentAbsoluteRot % 360;
+            if (b.style.rotation < 0) b.style.rotation += 360;
             
             b.parentId = null;
             b.layout.x = pxToCols(centerX - node.offsetWidth / 2);

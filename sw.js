@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'podcube-explorer-v8.builder';
+const CACHE_NAME = 'podcube-explorer-v8.builderROTATION';
 
 // Detect if we are running locally
 const isLocalhost = Boolean(
