@@ -197,18 +197,12 @@ const Architect = (function () {
             if (modal) modal.style.display = 'none';
             return;
         }
-        if (isStock && !assetFiles.has(name)) {
-            fetch(`./assets/${name}`).then(r => r.blob()).then(blob => {
-                const file = new File([blob], name, { type: blob.type });
-                assetFiles.set(name, file); assetUrls.set(name, URL.createObjectURL(blob)); _saveAsset(name, file);
-                addBlock('media', { filename: name });
-            }).catch(() => {
-                assetUrls.set(name, `./assets/${name}`);
-                addBlock('media', { filename: name });
-            });
-        } else {
-            addBlock('media', { filename: name });
+        
+        if (isStock) {
+            assetUrls.set(name, `./assets/${name}`);
         }
+        addBlock('media', { filename: name });
+        
         if (modal) modal.style.display = 'none';
     }
 
@@ -2071,9 +2065,15 @@ const Architect = (function () {
     function compileNodeHTML(parentId, targetPage, isPreview = false) {
         let html = '';
         const baseUrl = isPreview ? window.location.href.split('/').slice(0,-1).join('/') + '/assets/' : './assets/';
+        const allStockNames = [...(_stockAssets.images || []), ...(_stockAssets.videos || []), ...(_stockAssets.sounds || [])];
+
         const resolveAsset = (filename) => {
             if (!filename) return '';
-            return isPreview && assetUrls.has(filename) ? assetUrls.get(filename) : (baseUrl + filename);
+            if (isPreview) {
+                return assetUrls.has(filename) ? assetUrls.get(filename) : (baseUrl + filename);
+            }
+            // In Export ZIP: Route stock assets to the Intranet's root folder, keep custom assets local to the ZIP
+            return allStockNames.includes(filename) ? `/builder/assets/${filename}` : `./assets/${filename}`;
         };
 
         targetPage.layerOrder.filter(id => targetPage.blocks[id].parentId === parentId).forEach(id => {
@@ -2134,17 +2134,31 @@ const Architect = (function () {
         const siteId = state.settings.pageId || 'my-site';
         const siteTitle = state.settings.title || 'Untitled Site';
         const zip = new JSZip();
-        
-        // 1. Assets
         const assetsFolder = zip.folder('assets'); 
-        assetFiles.forEach((file, name) => assetsFolder.file(name, file));
+        
+        // 1. Smart Sweep: Collect all custom assets ACTUALLY USED in the site
+        const requiredCustomAssets = new Set();
+        const allStockNames = [...(_stockAssets.images || []), ...(_stockAssets.videos || []), ...(_stockAssets.sounds || [])];
 
-        // 2. CSS & JS
+        Object.values(state.pages).forEach(p => {
+            Object.values(p.blocks).forEach(b => {
+                // Only queue assets that are NOT in the stock manifest
+                if (b.type === 'media' && b.filename && !allStockNames.includes(b.filename)) requiredCustomAssets.add(b.filename);
+                if (b.link && b.link.type === 'sound' && b.link.value && !allStockNames.includes(b.link.value)) requiredCustomAssets.add(b.link.value);
+            });
+        });
+
+        // 2. Add only the required custom uploads to the ZIP
+        requiredCustomAssets.forEach(name => {
+            if (assetFiles.has(name)) assetsFolder.file(name, assetFiles.get(name));
+        });
+
+        // 3. CSS & JS
         const { css, fontStr } = compileSiteCSS();
         zip.folder('css').file('styles.css', fontStr + '\n\n' + css);
         zip.folder('scripts').file('app.js', getAppJS());
 
-        // 3. HTML (Popups & Pages)
+        // 4. HTML (Popups & Pages)
         let popupsHTML = '';
         Object.values(state.pages).filter(p => p.type === 'popup').forEach(popupPage => {
             popupsHTML += `\n\n<div id="overlay-${popupPage.id}" class="wx-popup-overlay">\n    <div class="wx-popup-window">\n        <div class="wx-popup-close">✕</div>\n${compileNodeHTML(null, popupPage, false)}    </div>\n</div>\n`;
@@ -2160,7 +2174,7 @@ const Architect = (function () {
             zip.file(filename, htmlOut);
         });
 
-        // 4. Manifest
+        // 5. Manifest
         const s = state.settings;
         zip.file('manifest-snippet.json', JSON.stringify({
             id: siteId, headline: s.headline || `${siteTitle} Launches on Intranet`, summary: s.summary || `Access the new portal for ${siteTitle} via your local Brigistics terminal today.`,
@@ -2171,11 +2185,12 @@ const Architect = (function () {
             }
         }, null, 4));
 
-        // 5. Download
+        // 6. Download
         zip.generateAsync({ type: 'blob' }).then(blob => { 
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = siteId + '.zip'; a.click(); 
         });
     }
+    
     // ── PUBLIC API ───────────────────────────────────────────────────
     return {
         init: () => {

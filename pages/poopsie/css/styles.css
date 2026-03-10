@@ -1,0 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bangers:wght@400;700&display=swap');
+
+/* Poopsie's Party Time! - Auto-Generated Styles */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #d0f39b; font-family: 'Nunito', sans-serif; overflow-x: hidden; }
+.site-canvas { width: 100%; max-width: 1000px; margin: 0 auto; position: relative; min-height: 100vh; overflow: visible; }
+.wx-popup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; z-index: 10000; overflow-y: auto; padding: 20px; }
+.wx-popup-overlay.active { display: block; }
+.wx-popup-window { background: #fff; border-radius: 16px; position: relative; margin: 40px auto; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3); width: 100%; max-width: 600px; min-height: 400px; }
+.wx-popup-close { position: absolute; top: 16px; right: 16px; width: 32px; height: 32px; background: rgba(0,0,0,0.05); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 20px; z-index: 99999; transition: background 0.2s; }
+.wx-popup-close:hover { background: rgba(0,0,0,0.15); }
+@media(max-width:768px) {
+  .site-canvas { display: flex !important; flex-direction: column !important; padding: 20px 0 !important; gap: 20px !important; height: auto !important; }
+  .wx-block { position: relative !important; left: 0 !important; top: 0 !important; width: var(--mob-w, calc(100% - 40px)) !important; margin: var(--mob-mt, 0px) var(--mob-mr, 20px) var(--mob-mb, 0px) var(--mob-ml, 20px) !important; height: auto !important; min-height: var(--h) !important; order: var(--y-index) !important; overflow-wrap: break-word !important; word-break: break-word !important; }
+  .wx-block.type-text { min-height: auto !important; }
+  .wx-block.type-text > .content-area { font-size: max(16px, calc(var(--fs) * 0.8)) !important; height: auto !important; white-space: normal !important; }
+  .wx-block.type-shape > .content-area { display: flex !important; flex-direction: column !important; gap: 16px !important; padding: 20px !important; }
+  .preserve-layout { height: auto !important; min-height: 0 !important; aspect-ratio: var(--desk-w) / var(--desk-h) !important; container-type: inline-size; }
+  .preserve-layout.type-shape > .content-area { display: block !important; padding: 0 !important; }
+  .preserve-layout .wx-block { position: absolute !important; top: var(--top-pct) !important; left: var(--left-pct) !important; width: var(--w-pct) !important; height: var(--h-pct) !important; min-height: 0 !important; margin: 0 !important; }
+  .preserve-layout .wx-block > .content-area { padding: calc(var(--pad-num) / var(--root-desk-w) * 100cqw) !important; }
+  .preserve-layout .wx-block.type-text > .content-area { font-size: calc(var(--fs-num) / var(--root-desk-w) * 100cqw) !important; letter-spacing: calc(var(--lsp-num) / var(--root-desk-w) * 100cqw) !important; line-height: var(--lh) !important; }
+}
+
+/* wx-blk-23 */
+
+/* wx-blk-23 */
+#wx-blk-23 { position: absolute; z-index: 1; box-sizing: border-box; --y-index: 100; --h: 240px; --fs: 16px; --fs-num: 16; --pad: 0px; --pad-num: 0; --lsp-num: 0; --mob-mt: 0px; --mob-mb: 0px; --mob-ml: 0px; --mob-mr: 20px; --mob-w: calc(100% - 0px - 20px); --top-pct: 10000%; --h-pct: 24000%; --w-pct: 56.666666666666664%; --left-pct: 0%; --desk-w: 566.6666666666667; --desk-h: 240; --root-desk-w: 566.6666666666667; left: 0%; top: 100px; width: 56.666666666666664%; height: 240px; background-color: #f4a4a4; color: #1d1d1f; border-radius: 8px 119.90276471215523px 64.0083289510855px 8px; border: 5px dashed #a19ffe; box-shadow: 21.2px 21.2px 0px 7px rgba(0,0,0,0.42); opacity: 1; overflow: hidden; transform: rotate(344.38086493003726deg); transform-origin: 50% 50%; }
+#wx-blk-23 > .content-area { flex-grow: 1; padding: 0px; font-size: 16px; font-family: 'Nunito', sans-serif; text-align: left; justify-content: center; display: flex; flex-direction: column; letter-spacing: 0px; line-height: 1.4; text-shadow: none; width: 100%; height: 100%; box-sizing: border-box; overflow-wrap: break-word; word-break: break-word; }
+
+/* wx-blk-24 */
+
+/* wx-blk-24 */
+#wx-blk-24 { position: absolute; z-index: 2; box-sizing: border-box; --y-index: 60; --h: 80px; --fs: 53px; --fs-num: 53; --pad: 12px; --pad-num: 12; --lsp-num: 0; --mob-mt: 0px; --mob-mb: 0px; --mob-ml: 20px; --mob-mr: 20px; --mob-w: calc(100% - 20px - 20px); --top-pct: 25%; --h-pct: 33.33333333333333%; --w-pct: 88.23529411764706%; --left-pct: 5.88235294117647%; --desk-w: 500.00000000000006; --desk-h: 80;  left: 5.88235294117647%; top: 60px; width: 88.23529411764706%; height: auto; min-height: 80px; display: flex; flex-direction: column; background-color: transparent; color: #ffffff; border-radius: 8px 8px 8px 8px; border: none; box-shadow: none; opacity: 1; overflow: visible; transform: rotate(3.2469421401237923deg); transform-origin: 50% 50%; }
+#wx-blk-24 > .content-area { flex-grow: 1; padding: 12px; font-size: 53px; font-family: 'Bangers', sans-serif; text-align: center; justify-content: center; display: flex; flex-direction: column; letter-spacing: 0px; line-height: 1.4; text-shadow: 5.7px 5.7px 0px rgba(0,0,0,0.2); width: 100%; height: 100%; box-sizing: border-box; overflow-wrap: break-word; word-break: break-word; }
+
+/* wx-blk-25 */
+
+/* wx-blk-25 */
+#wx-blk-25 { position: absolute; z-index: 3; box-sizing: border-box; --y-index: 240; --h: 300px; --fs: 16px; --fs-num: 16; --pad: 12px; --pad-num: 12; --lsp-num: 0; --mob-mt: 0px; --mob-mb: 0px; --mob-ml: 20px; --mob-mr: 20px; --mob-w: calc(100% - 20px - 20px); --top-pct: 24000%; --h-pct: 30000%; --w-pct: 33.33333333333333%; --left-pct: 58.333333333333336%; --desk-w: 333.33333333333337; --desk-h: 300;  left: 58.333333333333336%; top: 240px; width: 33.33333333333333%; height: 300px; background-color: transparent; color: #1d1d1f; border-radius: 8px 8px 8px 8px; border: none; box-shadow: none; opacity: 1; overflow: hidden;  }
+#wx-blk-25 > .content-area { flex-grow: 1; padding: 12px; font-size: 16px; font-family: 'Nunito', sans-serif; text-align: left; justify-content: center; display: flex; flex-direction: column; letter-spacing: 0px; line-height: 1.4; text-shadow: none; width: 100%; height: 100%; box-sizing: border-box; overflow-wrap: break-word; word-break: break-word; }
+
+/* wx-blk-27 */
+
+/* wx-blk-27 */
+#wx-blk-27 { position: absolute; z-index: 4; box-sizing: border-box; --y-index: 520; --h: 240px; --fs: 16px; --fs-num: 16; --pad: 0px; --pad-num: 0; --lsp-num: 0; --mob-mt: 0px; --mob-mb: -20px; --mob-ml: 20px; --mob-mr: 20px; --mob-w: calc(100% - 20px - 20px); --top-pct: 52000%; --h-pct: 24000%; --w-pct: 50%; --left-pct: 21.666666666666668%; --desk-w: 500.00000000000006; --desk-h: 240; --root-desk-w: 500.00000000000006; left: 21.666666666666668%; top: 520px; width: 50%; height: 240px; background-color: #f79797; color: #1d1d1f; border-radius: 8px 8px 8px 8px; border: none; box-shadow: none; opacity: 1; overflow: hidden;  }
+#wx-blk-27 > .content-area { flex-grow: 1; padding: 0px; font-size: 16px; font-family: 'Nunito', sans-serif; text-align: left; justify-content: center; display: flex; flex-direction: column; letter-spacing: 0px; line-height: 1.4; text-shadow: none; width: 100%; height: 100%; box-sizing: border-box; overflow-wrap: break-word; word-break: break-word; }
+
+/* wx-blk-26 */
+
+/* wx-blk-26 */
+#wx-blk-26 { position: absolute; z-index: 5; box-sizing: border-box; --y-index: 160; --h: 60px; --fs: 16px; --fs-num: 16; --pad: 12px; --pad-num: 12; --lsp-num: 0; --mob-mt: 0px; --mob-mb: 0px; --mob-ml: 20px; --mob-mr: 20px; --mob-w: calc(100% - 20px - 20px); --top-pct: 66.66666666666666%; --h-pct: 25%; --w-pct: 13.333333333333334%; --left-pct: 80%; --desk-w: 66.66666666666667; --desk-h: 60;  left: 80%; top: 160px; width: 13.333333333333334%; height: 60px; background-color: transparent; color: #1d1d1f; border-radius: 8px 8px 8px 8px; border: none; box-shadow: none; opacity: 1; overflow: hidden;  }
+#wx-blk-26 > .content-area { flex-grow: 1; padding: 12px; font-size: 16px; font-family: 'Nunito', sans-serif; text-align: left; justify-content: center; display: flex; flex-direction: column; letter-spacing: 0px; line-height: 1.4; text-shadow: none; width: 100%; height: 100%; box-sizing: border-box; overflow-wrap: break-word; word-break: break-word; }
+
+/* wx-blk-28 */
+
+/* wx-blk-28 */
+#wx-blk-28 { position: absolute; z-index: 6; box-sizing: border-box; --y-index: 90; --h: 80px; --fs: 16px; --fs-num: 16; --pad: 12px; --pad-num: 12; --lsp-num: 0; --mob-mt: 0px; --mob-mb: 0px; --mob-ml: 20px; --mob-mr: 20px; --mob-w: calc(100% - 20px - 20px); --top-pct: 37.5%; --h-pct: 33.33333333333333%; --w-pct: 66.66666666666666%; --left-pct: 10%; --desk-w: 333.33333333333337; --desk-h: 80;  left: 10%; top: 90px; width: 66.66666666666666%; height: auto; min-height: 80px; display: flex; flex-direction: column; background-color: transparent; color: #1d1d1f; border-radius: 8px 8px 8px 8px; border: none; box-shadow: none; opacity: 1; overflow: visible; transform: rotate(33.22986770618468deg); transform-origin: 50% 50%; }
+#wx-blk-28 > .content-area { flex-grow: 1; padding: 12px; font-size: 16px; font-family: 'Nunito', sans-serif; text-align: left; justify-content: center; display: flex; flex-direction: column; letter-spacing: 0px; line-height: 1.4; text-shadow: none; width: 100%; height: 100%; box-sizing: border-box; overflow-wrap: break-word; word-break: break-word; }
+
+/* wx-blk-29 */
+
+/* wx-blk-29 */
+#wx-blk-29 { position: absolute; z-index: 1; box-sizing: border-box; --y-index: 340; --h: 80px; --fs: 16px; --fs-num: 16; --pad: 12px; --pad-num: 12; --lsp-num: 0; --mob-mt: 0px; --mob-mb: -20px; --mob-ml: 20px; --mob-mr: 20px; --mob-w: calc(100% - 20px - 20px); --top-pct: 34000%; --h-pct: 8000%; --w-pct: 33.33333333333333%; --left-pct: 25%; --desk-w: 333.33333333333337; --desk-h: 80;  left: 25%; top: 340px; width: 33.33333333333333%; height: auto; min-height: 80px; display: flex; flex-direction: column; background-color: transparent; color: #1d1d1f; border-radius: 8px 8px 8px 8px; border: none; box-shadow: none; opacity: 1; overflow: visible;  }
+#wx-blk-29 > .content-area { flex-grow: 1; padding: 12px; font-size: 16px; font-family: 'Nunito', sans-serif; text-align: left; justify-content: center; display: flex; flex-direction: column; letter-spacing: 0px; line-height: 1.4; text-shadow: none; width: 100%; height: 100%; box-sizing: border-box; overflow-wrap: break-word; word-break: break-word; }
