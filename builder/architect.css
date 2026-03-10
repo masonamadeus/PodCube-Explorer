@@ -95,7 +95,7 @@ body.editing-popup .canvas {
 /* ── CANVAS BLOCKS ── */
 .builder-block { position: absolute; box-sizing: border-box; cursor: grab; }
 .builder-block:active { cursor: grabbing; }
-.builder-block.is-dragging { opacity: 0.85; z-index: 99999 !important; box-shadow: 0 20px 40px rgba(0,0,0,0.15) !important; }
+.builder-block.is-dragging { opacity: 0.85; box-shadow: 0 20px 40px rgba(0,0,0,0.15) !important; }
 .builder-block img, .builder-block video { pointer-events: none; -webkit-user-drag: none; user-select: none; }
 .drop-highlight { box-shadow: 0 0 0 3px var(--primary) inset !important; }
 
@@ -307,3 +307,51 @@ input[type="range"].ctx-range::-webkit-slider-thumb { -webkit-appearance: none; 
 .alib-audio-play { flex-shrink: 0; background: var(--primary-dim); border: none; color: var(--primary); width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: background 0.1s; }
 .alib-audio-play:hover { background: var(--primary); color: #fff; }
 #inp-soundFile { width: 100%; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── PRESERVE LAYOUT (MOBILE SCALE LOCK) ── */
+.canvas.mobile-mode .preserve-layout {
+    height: auto !important;
+    min-height: 0 !important;
+    aspect-ratio: var(--desk-w) / var(--desk-h) !important;
+    container-type: inline-size;
+}
+.canvas.mobile-mode .preserve-layout.type-shape > .content-area {
+    display: block !important;
+    padding: 0 !important;
+}
+.canvas.mobile-mode .preserve-layout .builder-block {
+    position: absolute !important;
+    top: var(--top-pct) !important;
+    left: var(--left-pct) !important;
+    width: var(--w-pct) !important;
+    height: var(--h-pct) !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+}
+.canvas.mobile-mode .preserve-layout .builder-block > .content-area {
+    padding: calc(var(--pad-num) / var(--root-desk-w) * 100cqw) !important;
+}
+.canvas.mobile-mode .preserve-layout .type-text > .content-area {
+    font-size: calc(var(--fs-num) / var(--root-desk-w) * 100cqw) !important;
+    letter-spacing: calc(var(--lsp-num) / var(--root-desk-w) * 100cqw) !important;
+    line-height: var(--lh) !important;
+}
+
+/* ── MULTI-SELECT ── */
+/* Blue outline on each individually-selected block */
+.multi-selected {
+    outline: 2px solid var(--primary) !important;
+    outline-offset: 2px;
+    z-index: 9998 !important;
+}
+
+/* Rubber-band marquee rectangle drawn while drag-selecting */
+#marquee-select {
+    position: absolute;
+    border: 1.5px dashed var(--primary);
+    background: rgba(0, 102, 255, 0.06);
+    pointer-events: none;
+    z-index: 9999;
+    display: none;
+    border-radius: 3px;
+}

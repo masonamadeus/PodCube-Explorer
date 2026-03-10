@@ -20,6 +20,7 @@
         <button id="btn-redo" class="btn-top" title="Redo (Ctrl+Shift+Z)" disabled>↪ Redo</button>
     </div>
     <div class="topbar-section">
+        <button class="btn-top" onclick="document.getElementById('layers-panel').style.display='flex'; Architect.renderLayers();" title="Show Layers">📚 Layers</button>
         <select id="page-selector" onchange="Architect.switchPage(this.value)" class="topbar-select" style="width:150px;"></select>
         <button class="btn-top" onclick="Architect.createPage(false)" title="Add Page">➕ Page</button>
         <button class="btn-top" onclick="Architect.createPage(true)" title="Add Popup">➕ Popup</button>
@@ -28,9 +29,8 @@
         <button class="btn-top" id="btn-mobile" onclick="Architect.setPreview('mobile')">📱 Mobile</button>
     </div>
     <div class="topbar-section">
-        <button class="btn-top" onclick="document.getElementById('layers-panel').style.display='flex'; Architect.renderLayers();" title="Show Layers">📚 Layers</button>
-        <button class="btn-top" onclick="Architect.openSettings()" title="Site Settings">⚙️ Settings</button>
         <button class="btn-top" onclick="Architect.openLibrary()" title="My saved sites">📂 My Sites</button>
+        <button class="btn-top" onclick="Architect.openSettings()" title="Site Settings">⚙️ Settings</button>
         <button class="btn-top" onclick="Architect.previewSite()" title="Test current page">▶ Preview</button>
         <button class="btn-top btn-export" onclick="Architect.generateExport()">⬇ Export ZIP</button>
     </div>
@@ -62,6 +62,7 @@
     <div id="ctx-header">
         <span id="ctx-title">Block</span>
         <div class="ctx-header-actions">
+            <button class="ctx-icon-btn" id="btn-unparent" onclick="Architect.unparentActive()" title="Detach from parent" style="display:none; font-weight:bold;">⏏</button>
             <button class="ctx-icon-btn" onclick="Architect.changeZIndex(1)"    title="Bring Forward">↑</button>
             <button class="ctx-icon-btn" onclick="Architect.changeZIndex(-1)"   title="Send Back">↓</button>
             <button class="ctx-icon-btn" onclick="Architect.duplicateActive()"  title="Duplicate">⧉</button>
@@ -147,6 +148,13 @@
                     <option value="hidden">Hidden (Clip)</option>
                     <option value="visible">Visible (Spill)</option>
                 </select>
+            </div>
+            <div class="ctx-row" id="row-preserve" style="display:none; margin-top: 4px;">
+                <span class="ctx-label" style="width:auto; flex:1;" title="Keep children proportionally positioned on mobile">Preserve Layout</span>
+                <label class="ctx-toggle">
+                    <input type="checkbox" id="inp-preserveLayout">
+                    <span class="ctx-toggle-track"></span>
+                </label>
             </div>
         </div>
     </div>

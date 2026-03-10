@@ -17,6 +17,7 @@ const Architect = (function () {
 
     let assetFiles = new Map(); let assetUrls = new Map();
     let panelDragged = false;
+    let selectedIds = new Set(); // Tracks multi-selected block IDs
 
     const LAST_ACTIVE_KEY = 'wexton_last_id';
     const LIBRARY_KEY = 'wexton_library';
@@ -37,15 +38,35 @@ const Architect = (function () {
         let allFonts = [];
         FONT_CATEGORIES.forEach(cat => allFonts.push(...cat.fonts));
         
-        // Chunk requests to avoid hitting the browser URL length limit
+        // Inject Google Fonts stylesheets in chunks and collect a load-promise per link.
+        // The links are async — @font-face rules don't exist until each one is parsed.
+        const linkPromises = [];
         for (let i = 0; i < allFonts.length; i += 15) {
             const chunk = allFonts.slice(i, i + 15);
             const params = chunk.map(f => `family=${encodeURIComponent(f).replace(/%20/g,'+')}:wght@400;700`).join('&');
             const link = document.createElement('link');
             link.rel = 'stylesheet';
             link.href = `https://fonts.googleapis.com/css2?${params}&display=swap`;
+            linkPromises.push(new Promise(res => { link.onload = res; link.onerror = res; }));
             document.head.appendChild(link);
         }
+
+        // Only AFTER all stylesheets are parsed do we append the hidden stage.
+        // If we do it before, the browser sees font-family values on the spans but
+        // finds no matching @font-face rule yet, falls back, and never re-checks —
+        // meaning the fonts never get downloaded until something else triggers them.
+        Promise.all(linkPromises).then(() => {
+            const stage = document.createElement('div');
+            stage.setAttribute('aria-hidden', 'true');
+            stage.style.cssText = 'position:absolute;top:-9999px;left:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;';
+            allFonts.forEach(f => {
+                const span = document.createElement('span');
+                span.style.fontFamily = `'${f}', sans-serif`;
+                span.textContent = 'Aa';
+                stage.appendChild(span);
+            });
+            document.body.appendChild(stage);
+        });
     }
 
     // ── INDEXEDDB ────────────────────────────────────────────────────
@@ -355,7 +376,7 @@ const Architect = (function () {
 
         idCounter = 23;
 
-        history = []; historyIndex = -1; renderPageDropdowns(); renderCanvas(); saveState(); closeLibraryModal();
+        history = []; historyIndex = -1; renderPageDropdowns(); renderCanvas(); saveState(); closeLibraryModal(); Architect.openSettings();
     }
 
     function openLibraryModal() {
@@ -468,7 +489,7 @@ const Architect = (function () {
         // Reverse order so the top-most layers render at the top of the list
         [...page.layerOrder].reverse().forEach(id => {
             const b = page.blocks[id];
-            const isSelected = state.activeId === id;
+            const isSelected = state.activeId === id || (selectedIds.size > 1 && selectedIds.has(id));
             
             // Determine Icon and Name
             const icon = b.type === 'text' ? '📝' : b.type === 'shape' ? '⬛' : '🖼️';
@@ -535,7 +556,8 @@ const Architect = (function () {
             borderW: 0, borderStyle: 'solid', borderHex: '#000000',
             overflow: 'hidden',
             letterSpacing: 0, lineHeight: 1.4,
-            rotation: 0
+            rotation: 0,
+            preserveLayout: type === 'shape'
         };
     }
 
@@ -566,7 +588,7 @@ const Architect = (function () {
         renderCanvas(); setActive(id); return id;
     }
 
-    function updateBlock(id, updates) {
+    function updateBlock(id, updates, skipUI = false) {
         const page = getActivePage(); if (!page.blocks[id]) return;
         const b = page.blocks[id];
         if (updates.parentId !== undefined) b.parentId = updates.parentId;
@@ -575,12 +597,27 @@ const Architect = (function () {
         if (updates.content !== undefined) b.content = updates.content;
         if (updates.link !== undefined) b.link = updates.link;
         renderBlockNode(id);
-        updateCanvasHeight();
-        if (state.activeId === id) { renderSelectionBox(); syncContextPanel(true); }
-        renderLayers();
+        
+        if (!skipUI) {
+            updateCanvasHeight();
+            if (state.activeId === id || selectedIds.has(id)) { renderSelectionBox(); syncContextPanel(true); }
+            renderLayers();
+        }
     }
 
-    function setActive(id) {
+    function setActive(id, additive = false) {
+        if (!additive) {
+            selectedIds.clear();
+            if (id) selectedIds.add(id);
+        } else if (id) {
+            if (selectedIds.has(id)) {
+                selectedIds.delete(id);
+                id = selectedIds.size > 0 ? [...selectedIds].at(-1) : null;
+            } else {
+                selectedIds.add(id);
+            }
+        }
+
         if (state.activeId !== id && state.activeId) {
             const oldNode = document.getElementById(state.activeId);
             if (oldNode) {
@@ -596,22 +633,67 @@ const Architect = (function () {
             }
         }
         if (state.activeId !== id) panelDragged = false;
-        state.activeId = id; renderSelectionBox(); syncContextPanel(); renderLayers();
+        state.activeId = id; renderSelectionHighlights(); renderSelectionBox(); syncContextPanel(); renderLayers();
+    }
+
+    // Applies / removes the .multi-selected highlight class on all selected blocks.
+    function renderSelectionHighlights() {
+        document.querySelectorAll('.multi-selected').forEach(el => el.classList.remove('multi-selected'));
+        if (selectedIds.size > 1) {
+            selectedIds.forEach(sid => {
+                const el = document.getElementById(sid);
+                if (el) el.classList.add('multi-selected');
+            });
+        }
     }
 
     function deleteActive() {
-        if (!state.activeId) return; saveState();
-        const page = getActivePage(); const toDelete = [state.activeId];
-        page.layerOrder.forEach(id => { if (page.blocks[id] && page.blocks[id].parentId === state.activeId) toDelete.push(id); });
+        const idsToDelete = selectedIds.size > 0 ? new Set([...selectedIds]) : (state.activeId ? new Set([state.activeId]) : null);
+        if (!idsToDelete || idsToDelete.size === 0) return;
+        saveState();
+        const page = getActivePage(); const toDelete = [];
+        idsToDelete.forEach(id => {
+            toDelete.push(id);
+            page.layerOrder.forEach(lid => { if (page.blocks[lid] && page.blocks[lid].parentId === id) toDelete.push(lid); });
+        });
         toDelete.forEach(id => { delete page.blocks[id]; page.layerOrder = page.layerOrder.filter(i => i !== id); });
+        selectedIds.clear();
         setActive(null); renderCanvas();
     }
 
     function duplicateActive() {
-        if (!state.activeId) return; saveState();
-        const copy = JSON.parse(JSON.stringify(getActivePage().blocks[state.activeId]));
-        copy.id = undefined; copy.layout.x += 2; copy.layout.y += 20;
-        addBlock(copy.type, copy);
+        const idsToDuplicate = selectedIds.size > 1 ? Array.from(selectedIds) : (state.activeId ? [state.activeId] : []);
+        if (idsToDuplicate.length === 0) return;
+        
+        saveState();
+        const page = getActivePage();
+        const newIds = [];
+        
+        idsToDuplicate.forEach(id => {
+            const b = page.blocks[id]; 
+            if (!b) return;
+            
+            // Perfectly clone the element's exact properties
+            const copy = JSON.parse(JSON.stringify(b));
+            copy.id = generateId(); 
+            copy.layout.x += 2; 
+            copy.layout.y += 20;
+            
+            // Bypass addBlock() and inject directly into state
+            page.blocks[copy.id] = copy;
+            page.layerOrder.push(copy.id);
+            newIds.push(copy.id);
+        });
+        
+        // Target all newly created blocks as the active selection
+        selectedIds.clear();
+        newIds.forEach(id => selectedIds.add(id));
+        state.activeId = newIds[newIds.length - 1];
+        
+        // Refresh the UI once for all items
+        renderCanvas();
+        syncContextPanel();
+        saveState();
     }
 
     function changeZIndex(dir) {
@@ -671,10 +753,13 @@ const Architect = (function () {
         node.style.setProperty('--y-index', Math.round(block.layout.y));
         node.style.setProperty('--h', block.layout.h + 'px');
         node.style.setProperty('--pad', s.padding + 'px');
+        node.style.setProperty('--pad-num', s.padding);
         node.style.setProperty('--fs', s.fontSize + 'px');
+        node.style.setProperty('--fs-num', s.fontSize);
         node.style.setProperty('--ff', `'${s.fontFamily || 'Nunito'}', sans-serif`);
         node.style.setProperty('--align', s.textAlign || 'left');
         node.style.setProperty('--lsp', (s.letterSpacing || 0) + 'px');
+        node.style.setProperty('--lsp-num', s.letterSpacing || 0);
         node.style.setProperty('--lh', s.lineHeight || 1.4);
         
         if (isText) {
@@ -719,6 +804,24 @@ const Architect = (function () {
         node.style.setProperty('--mob-ml', isLeftEdge ? '0px' : '20px');
         node.style.setProperty('--mob-mr', isRightEdge ? '0px' : '20px');
         node.style.setProperty('--mob-w', `calc(100% - ${isLeftEdge ? 0 : 20}px - ${isRightEdge ? 0 : 20}px)`);
+
+        const parentH = parentBlock ? parentBlock.layout.h : 1;
+        node.style.setProperty('--top-pct', (block.layout.y / parentH * 100) + '%');
+        node.style.setProperty('--h-pct', (block.layout.h / parentH * 100) + '%');
+        node.style.setProperty('--w-pct', (block.layout.w / parentCols * 100) + '%');
+        node.style.setProperty('--left-pct', (block.layout.x / parentCols * 100) + '%');
+        
+        const deskW = block.layout.w * (1000 / 60);
+        node.style.setProperty('--desk-w', deskW);
+        node.style.setProperty('--desk-h', block.layout.h);
+        
+        if (s.preserveLayout) {
+            node.classList.add('preserve-layout');
+            node.style.setProperty('--root-desk-w', deskW);
+        } else {
+            node.classList.remove('preserve-layout');
+            node.style.removeProperty('--root-desk-w');
+        }
     }
 
     function createOrUpdateDOMNode(id) {
@@ -785,6 +888,7 @@ const Architect = (function () {
             } else { canvas.appendChild(node); }
         });
         updateCanvasHeight();
+        renderSelectionHighlights();
         renderSelectionBox();
         renderLayers();
     }
@@ -792,7 +896,7 @@ const Architect = (function () {
     function renderSelectionBox() {
         let box = document.getElementById('selection-box');
         const page = getActivePage();
-        if (!state.activeId || !page.blocks[state.activeId] || canvas.classList.contains('mobile-mode')) {
+        if ((!state.activeId && selectedIds.size === 0) || canvas.classList.contains('mobile-mode')) {
             if (box) box.style.display = 'none'; return;
         }
         if (!box) {
@@ -813,27 +917,49 @@ const Architect = (function () {
                 <div class="radius-handle br" data-action="radius" data-corner="radiusBR"></div>`;
             canvas.appendChild(box);
         }
-        const an = document.getElementById(state.activeId); if (!an) return;
-        const block = page.blocks[state.activeId];
-        // Accumulated rotation = block's own + all ancestor shapes
-        const rotation = getAccumulatedRotation(state.activeId);
 
-        // offsetWidth/Height give the pre-transform layout dimensions (correct for the overlay).
-        // getBoundingClientRect gives the post-transform AABB — its center is still the true
-        // visual center of the element regardless of rotation, so we use it to position the box.
-        const cr = canvas.getBoundingClientRect();
-        const nr = an.getBoundingClientRect();
-        const boxW = an.offsetWidth;
-        const boxH = an.offsetHeight;
-        const centerX = nr.left - cr.left + canvas.scrollLeft + nr.width  / 2;
-        const centerY = nr.top  - cr.top  + canvas.scrollTop  + nr.height / 2;
+        if (selectedIds.size > 1) {
+            // MULTI-SELECTION: Virtual Group Bounding Box
+            box.querySelectorAll('.rotate-handle, .radius-handle').forEach(h => h.style.display = 'none'); // Hide rotation for groups
+            const cr = canvas.getBoundingClientRect();
+            let minL = Infinity, minT = Infinity, maxR = -Infinity, maxB = -Infinity;
+            
+            selectedIds.forEach(id => {
+                const node = document.getElementById(id);
+                if (node) {
+                    const nr = node.getBoundingClientRect();
+                    const l = nr.left - cr.left + canvas.scrollLeft; 
+                    const t = nr.top - cr.top + canvas.scrollTop;
+                    if (l < minL) minL = l; if (t < minT) minT = t;
+                    if (l + nr.width > maxR) maxR = l + nr.width; if (t + nr.height > maxB) maxB = t + nr.height;
+                }
+            });
+            if (minL === Infinity) { box.style.display = 'none'; return; }
+            box.style.display = 'block'; 
+            box.style.width = (maxR - minL) + 'px'; 
+            box.style.height = (maxB - minT) + 'px';
+            box.style.left = minL + 'px'; 
+            box.style.top = minT + 'px'; 
+            box.style.transform = `rotate(0deg)`;
+        } else {
+            // SINGLE SELECTION
+            box.querySelectorAll('.rotate-handle, .radius-handle').forEach(h => h.style.display = 'block');
+            const an = document.getElementById(state.activeId); if (!an) return;
+            const rotation = getAccumulatedRotation(state.activeId);
+            const cr = canvas.getBoundingClientRect(); 
+            const nr = an.getBoundingClientRect();
+            const boxW = an.offsetWidth;
+            const boxH = an.offsetHeight;
+            const centerX = nr.left - cr.left + canvas.scrollLeft + nr.width  / 2;
+            const centerY = nr.top  - cr.top  + canvas.scrollTop  + nr.height / 2;
 
-        box.style.display = 'block';
-        box.style.width  = boxW + 'px';
-        box.style.height = boxH + 'px';
-        box.style.left   = (centerX - boxW / 2) + 'px';
-        box.style.top    = (centerY - boxH / 2) + 'px';
-        box.style.transform = `rotate(${rotation}deg)`;
+            box.style.display = 'block';
+            box.style.width  = boxW + 'px';
+            box.style.height = boxH + 'px';
+            box.style.left   = (centerX - boxW / 2) + 'px';
+            box.style.top    = (centerY - boxH / 2) + 'px';
+            box.style.transform = `rotate(${rotation}deg)`;
+        }
     }
 
     function syncTextToolbarFormat() {
@@ -847,13 +973,28 @@ const Architect = (function () {
     }
 
 
-    // ── UI SYNC ──────────────────────────────────────────────────────
     function syncContextPanel(positionOnly) {
         const panel = document.getElementById('context-panel');
+
+        
+        if (positionOnly && !canvas.classList.contains('mobile-mode')) { positionContextPanel(); return; }
+
+        // Always restore section visibility first (handles returning from multi-select)
+        panel.querySelectorAll('.ctx-section').forEach(s => s.style.display = '');
+
+        // Multi-select mode: show a simplified panel header with count
+        if (selectedIds.size > 1) {
+            panel.style.display = 'block';
+            const ctxTitle = document.getElementById('ctx-title');
+            if (ctxTitle) ctxTitle.textContent = `${selectedIds.size} selected`;
+            panel.querySelectorAll('.ctx-section').forEach(s => s.style.display = 'none');
+            if (!canvas.classList.contains('mobile-mode')) positionContextPanel();
+            return;
+        }
+
         const block = getActivePage().blocks[state.activeId];
         if (!block) { panel.style.display = 'none'; return; }
         panel.style.display = 'block';
-        if (positionOnly && !canvas.classList.contains('mobile-mode')) { positionContextPanel(); return; }
 
         const get = id => document.getElementById(id);
         const set = (id, val) => { const e = get(id); if (e) e.value = val; };
@@ -861,6 +1002,9 @@ const Architect = (function () {
         const s = block.style;
 
         if (get('ctx-title')) get('ctx-title').textContent = block.type;
+
+        const unparentBtn = get('btn-unparent');
+        if (unparentBtn) unparentBtn.style.display = block.parentId ? 'flex' : 'none';
 
         // Appearance
         const isTrans = s.bgHex === 'transparent';
@@ -871,7 +1015,9 @@ const Architect = (function () {
         const rot = Math.round(s.rotation || 0);
         set('inp-rotation', rot); txt('val-rotation', rot);
         get('row-overflow').style.display = block.type === 'shape' ? 'flex' : 'none';
+        get('row-preserve').style.display = block.type === 'shape' ? 'flex' : 'none';
         set('inp-overflow', s.overflow || 'hidden');
+        if (get('inp-preserveLayout')) get('inp-preserveLayout').checked = !!s.preserveLayout;
 
         // Shadow
         const shadowOn = !!s.shadowOn;
@@ -1144,9 +1290,11 @@ const Architect = (function () {
                 document.execCommand('styleWithCSS', false, false); 
                 document.execCommand('fontSize', false, "7");
                 const fonts = ca.querySelectorAll('font[size="7"]');
+                const baseSize = getActivePage().blocks[state.activeId].style.fontSize || 16;
                 fonts.forEach(f => {
                     f.removeAttribute('size');
-                    f.style.fontSize = value + 'px';
+                    // Write size in relative 'em' so it perfectly shrinks down with the container!
+                    f.style.fontSize = (value / baseSize) + 'em'; 
                 });
             }
             
@@ -1167,7 +1315,23 @@ const Architect = (function () {
         const dropdown = document.getElementById('tt-fp-dropdown');
         if (!dropdown) return;
         const cat = FONT_CATEGORIES.find(c => c.label === categoryLabel) || FONT_CATEGORIES[0];
-        dropdown.innerHTML = cat.fonts.map(f => `<div class="tt-fp-item" data-font="${f}" style="font-family: '${f}', sans-serif;">${f}</div>`).join('');
+
+        dropdown.innerHTML = cat.fonts.map(f =>
+            `<div class="tt-fp-item" data-font="${f}" style="font-family: '${f}', sans-serif;">${f}</div>`
+        ).join('');
+
+        // Trigger on-demand loading for this category's fonts.
+        // If the hidden preload stage hasn't finished downloading yet (e.g. slow
+        // network), this ensures fonts for the currently-visible list arrive ASAP.
+        // We re-stamp font-family on each item after load to guarantee a repaint.
+        cat.fonts.forEach(f => {
+            if (document.fonts && document.fonts.load) {
+                document.fonts.load(`400 16px '${f}'`).then(() => {
+                    const item = dropdown.querySelector(`.tt-fp-item[data-font="${CSS.escape(f)}"]`);
+                    if (item) item.style.fontFamily = `'${f}', sans-serif`;
+                }).catch(() => {});
+            }
+        });
     }
 
     function initFontPicker() {
@@ -1260,6 +1424,13 @@ const Architect = (function () {
         bindStyle('inp-rotation', 'rotation', Number);
         bindStyle('inp-overflow', 'overflow');
 
+        const preserveToggle = document.getElementById('inp-preserveLayout');
+        if (preserveToggle) preserveToggle.addEventListener('change', e => {
+            if (!state.activeId) return;
+            updateBlock(state.activeId, { style: { preserveLayout: e.target.checked } });
+            saveState();
+        });
+
         const shadowOnEl = document.getElementById('inp-shadowOn');
         if (shadowOnEl) shadowOnEl.addEventListener('change', e => {
             if (!state.activeId) return;
@@ -1335,8 +1506,6 @@ const Architect = (function () {
                 saveState(); isInteracting = true; action = e.target.dataset.action;
                 const b = page.blocks[state.activeId];
                 if (action === 'rotate') {
-                    // Capture the angle from block-center to the mouse at drag-start so we can
-                    // do a true delta-rotation (feels natural even from any start angle).
                     const blockNode = document.getElementById(state.activeId);
                     const nr = blockNode.getBoundingClientRect();
                     const cx = nr.left + nr.width / 2;
@@ -1346,14 +1515,39 @@ const Architect = (function () {
                         startMouseAngle: Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI
                     };
                 } else {
-                    // accRotation lets us project screen-space drag deltas into this
-                    // element's local coordinate frame during resize/radius operations.
+                    const startLayouts = {};
+                    let minX = Infinity, minY = Infinity, maxR = -Infinity, maxB = -Infinity;
+                    const idsToScale = selectedIds.size > 1 ? Array.from(selectedIds) : [state.activeId];
+                    
+                    idsToScale.forEach(id => {
+                        const blk = page.blocks[id]; if(!blk) return;
+                        startLayouts[id] = Object.assign({}, blk.layout);
+                        const pxX = blk.layout.x * getColWidth(); const pxY = blk.layout.y;
+                        const pxW = blk.layout.w * getColWidth(); const pxH = blk.layout.h;
+                        if (pxX < minX) minX = pxX; if (pxY < minY) minY = pxY;
+                        if (pxX + pxW > maxR) maxR = pxX + pxW; if (pxY + pxH > maxB) maxB = pxY + pxH;
+                    });
+
+                    // Cache children layouts for scaling if preserveLayout is enabled
+                    const startChildData = {};
+                    page.layerOrder.forEach(cid => {
+                        const cb = page.blocks[cid];
+                        if (cb && cb.parentId && idsToScale.includes(cb.parentId)) {
+                            const pblk = page.blocks[cb.parentId];
+                            if (pblk.style.preserveLayout) {
+                                startChildData[cid] = { layout: Object.assign({}, cb.layout), style: Object.assign({}, cb.style) };
+                            }
+                        }
+                    });
+
                     startParams = {
                         startX: e.clientX, startY: e.clientY,
                         dir: e.target.dataset.dir, corner: e.target.dataset.corner,
-                        startLayout: Object.assign({}, b.layout),
-                        startRadius: b.style[e.target.dataset.corner] || 0,
-                        accRotation: getAccumulatedRotation(state.activeId)
+                        startLayout: Object.assign({}, b ? b.layout : {}),
+                        startLayouts, groupRect: { x: minX, y: minY, w: maxR - minX, h: maxB - minY },
+                        startChildData,
+                        startRadius: b ? (b.style[e.target.dataset.corner] || 0) : 0,
+                        accRotation: b ? getAccumulatedRotation(state.activeId) : 0
                     };
                 }
                 return;
@@ -1362,7 +1556,21 @@ const Architect = (function () {
             const blockNode = e.target.closest('.builder-block');
             if (blockNode) {
                 e.stopPropagation();
-                if (state.activeId !== blockNode.id) setActive(blockNode.id);
+
+                // Shift+click: toggle block in/out of multi-selection (no drag)
+                if (e.shiftKey) {
+                    setActive(blockNode.id, true);
+                    return;
+                }
+
+                // If clicked block is NOT in the current selection, switch to it alone
+                if (!selectedIds.has(blockNode.id)) {
+                    setActive(blockNode.id);
+                } else if (state.activeId !== blockNode.id) {
+                    state.activeId = blockNode.id;
+                    syncContextPanel();
+                }
+
                 saveState();
                 const b = page.blocks[blockNode.id];
                 const parentAccRot = b.parentId ? getAccumulatedRotation(b.parentId) : 0;
@@ -1376,19 +1584,55 @@ const Architect = (function () {
                 const mouseLocalX = (blockNode.offsetWidth / 2) + localOffset.x;
                 const mouseLocalY = (blockNode.offsetHeight / 2) + localOffset.y;
 
+                const isMultiSelect = selectedIds.size > 1;
                 startParams = {
                     startX: e.clientX, startY: e.clientY,
                     startLayout: Object.assign({}, b.layout),
                     hoveredShape: null, hasMoved: false,
-                    parentAccRot, mouseLocalX, mouseLocalY
+                    parentAccRot, mouseLocalX, mouseLocalY,
+                    isMultiSelect
                 };
+
+                // Capture starting layouts for all selected blocks for group move
+                if (isMultiSelect) {
+                    startParams.multiStartLayouts = {};
+                    selectedIds.forEach(sid => {
+                        if (page.blocks[sid]) startParams.multiStartLayouts[sid] = Object.assign({}, page.blocks[sid].layout);
+                    });
+                }
+
                 isInteracting = true; action = 'move'; return;
             }
+
+            // No block hit — start a marquee (rubber-band) selection on empty canvas
+            if (e.target === canvas || e.target.id === 'canvas') {
+                setActive(null);
+                isInteracting = true; action = 'marquee';
+                const cr = canvas.getBoundingClientRect();
+                startParams = {
+                    startX: e.clientX, startY: e.clientY,
+                    canvasLeft: cr.left, canvasTop: cr.top
+                };
+                let marquee = document.getElementById('marquee-select');
+                if (!marquee) {
+                    marquee = document.createElement('div');
+                    marquee.id = 'marquee-select';
+                    canvas.appendChild(marquee);
+                }
+                const mx = e.clientX - cr.left + canvas.scrollLeft;
+                const my = e.clientY - cr.top + canvas.scrollTop;
+                marquee.style.left = mx + 'px'; marquee.style.top = my + 'px';
+                marquee.style.width = '0'; marquee.style.height = '0';
+                marquee.style.display = 'block';
+                return;
+            }
+
             setActive(null);
         });
 
         document.addEventListener('mousemove', e => {
-            if (!isInteracting || !state.activeId) return;
+            if (!isInteracting) return;
+            if (action !== 'marquee' && !state.activeId) return;
             const page = getActivePage(); const block = page.blocks[state.activeId];
             // Raw screen-space deltas from the drag start point
             const rawDx = e.clientX - startParams.startX;
@@ -1403,7 +1647,7 @@ const Architect = (function () {
 
                 if (!startParams.hasMoved && (Math.abs(rawDx) > 3 || Math.abs(rawDy) > 3)) {
                     
-                    if (block.parentId) {
+                    if (!startParams.isMultiSelect && block.parentId) {
                         const blockNode = document.getElementById(state.activeId);
                         const cr = canvas.getBoundingClientRect();
                         block.parentId = null; // Detach from parent
@@ -1459,8 +1703,28 @@ const Architect = (function () {
                     startParams.hasMoved = true;
                     const tn = document.getElementById(state.activeId); 
                     if (tn) tn.classList.add('is-dragging');
+                    if (startParams.isMultiSelect) {
+                        selectedIds.forEach(sid => { const el = document.getElementById(sid); if (el) el.classList.add('is-dragging'); });
+                    }
                 }
                 if (startParams.hasMoved) {
+                    // ── MULTI-MOVE: translate all selected root blocks together ──
+                    if (startParams.isMultiSelect) {
+                        selectedIds.forEach(sid => {
+                            const sb = page.blocks[sid]; if (!sb || sb.parentId) return;
+                            const sl = startParams.multiStartLayouts[sid]; if (!sl) return;
+                            sb.layout = Object.assign({}, sb.layout, {
+                                x: Math.max(0, Math.min(sl.x + pxToCols(dx), CONFIG.gridCols - sb.layout.w)),
+                                y: Math.max(0, snapY(sl.y + dy))
+                            });
+                            const node = document.getElementById(sid);
+                            if (node) applyStyles(node, sb);
+                        });
+                        updateCanvasHeight();
+                        renderSelectionBox(); // Force the box to track the moving group
+                        return; // skip single-block move logic
+                    }
+
                     newLayout.x = startParams.startLayout.x + pxToCols(dx);
                     newLayout.y = snapY(startParams.startLayout.y + dy)
                     if (!block.parentId) {
@@ -1472,25 +1736,92 @@ const Architect = (function () {
                     if (an) an.style.visibility = '';
                     document.querySelectorAll('.drop-highlight').forEach(el => el.classList.remove('drop-highlight'));
                     startParams.hoveredShape = null;
-                    const shape = dt && dt.closest('.builder-block.type-shape');
-                    if (shape && shape.id !== state.activeId) { shape.classList.add('drop-highlight'); startParams.hoveredShape = shape.id; }
+                    
+                    // Hold Shift while dragging to prevent auto-parenting into shapes
+                    if (!e.shiftKey) {
+                        const shape = dt && dt.closest('.builder-block.type-shape');
+                        if (shape && shape.id !== state.activeId) { shape.classList.add('drop-highlight'); startParams.hoveredShape = shape.id; }
+                    }
+                }
+            } else if (action === 'marquee') {
+                const cr = canvas.getBoundingClientRect();
+                const mx = e.clientX - cr.left + canvas.scrollLeft;
+                const my = e.clientY - cr.top + canvas.scrollTop;
+                const sx = startParams.startX - cr.left + canvas.scrollLeft;
+                const sy = startParams.startY - cr.top + canvas.scrollTop;
+                const marquee = document.getElementById('marquee-select');
+                if (marquee) {
+                    marquee.style.left = Math.min(mx, sx) + 'px';
+                    marquee.style.top = Math.min(my, sy) + 'px';
+                    marquee.style.width = Math.abs(mx - sx) + 'px';
+                    marquee.style.height = Math.abs(my - sy) + 'px';
                 }
             } else if (action === 'resize') {
-                // Project drag delta into the element's own local coordinate frame
-                // so handles track correctly when the block (or its parent) is rotated.
                 const accRot = startParams.accRotation || 0;
                 const local  = accRot ? rotateVec(rawDx, rawDy, -accRot) : { x: rawDx, y: rawDy };
                 const dx = local.x, dy = local.y;
-
                 const dir = startParams.dir;
+
+                // Helper to scale inner elements mathematically so it accurately reflects what the Mobile export will do!
+                function applyPreserveLayoutToChildren(parentId, scaleX, scaleY, startChildData) {
+                    page.layerOrder.forEach(cid => {
+                        const cb = page.blocks[cid];
+                        if (cb && cb.parentId === parentId && startChildData[cid]) {
+                            const sd = startChildData[cid];
+                            const nx = sd.layout.x * scaleX;
+                            const ny = sd.layout.y * scaleY;
+                            const nw = sd.layout.w * scaleX;
+                            const nh = sd.layout.h * scaleY;
+                            const nFs = sd.style.fontSize * scaleX;
+                            const nPad = sd.style.padding * scaleX;
+                            const nLsp = (sd.style.letterSpacing || 0) * scaleX;
+                            updateBlock(cid, { 
+                                layout: { x: nx, y: ny, w: Math.max(1, nw), h: Math.max(10, nh) },
+                                style: { fontSize: Math.max(1, nFs), padding: Math.max(0, nPad), letterSpacing: nLsp }
+                            }, true);
+                        }
+                    });
+                }
+
+                if (selectedIds.size > 1) {
+                    // MULTI-SCALE ENGINE
+                    let newGw = startParams.groupRect.w; let newGh = startParams.groupRect.h;
+                    if (dir.includes('e')) newGw += dx;
+                    if (dir.includes('w')) newGw -= dx; 
+                    if (dir.includes('s')) newGh += dy;
+                    if (dir.includes('n')) newGh -= dy;
+                    
+                    const scaleX = Math.max(0.1, newGw / startParams.groupRect.w);
+                    const scaleY = Math.max(0.1, newGh / startParams.groupRect.h);
+
+                    selectedIds.forEach(id => {
+                        const sl = startParams.startLayouts[id]; if (!sl) return;
+                        const oldPxX = sl.x * getColWidth();
+                        
+                        let newPxX = startParams.groupRect.x + (oldPxX - startParams.groupRect.x) * scaleX;
+                        let newY = startParams.groupRect.y + (sl.y - startParams.groupRect.y) * scaleY;
+                        
+                        if (dir.includes('w')) newPxX += dx;
+                        if (dir.includes('n')) newY += dy;
+
+                        const newW = pxToCols((sl.w * getColWidth()) * scaleX);
+                        const newH = snapY(sl.h * scaleY);
+                        
+                        updateBlock(id, { layout: { ...sl, x: pxToCols(newPxX), y: snapY(newY), w: newW, h: newH } }, true);
+                        
+                        if (page.blocks[id] && page.blocks[id].style.preserveLayout) {
+                            applyPreserveLayoutToChildren(id, newW / sl.w, newH / sl.h, startParams.startChildData);
+                        }
+                    });
+                    renderSelectionBox(); return;
+                }
+                
+                // SINGLE ELEMENT RESIZE
                 if (dir.length === 2) {
-                    const startVisW = startParams.startLayout.w * getColWidth();
-                    const startVisH = startParams.startLayout.h;
+                    const startVisW = startParams.startLayout.w * getColWidth(); const startVisH = startParams.startLayout.h;
                     const visRatio = startVisW / startVisH;
-                    let newVisW = startVisW + (dir.includes('e') ? dx : -dx);
-                    newVisW = Math.max(newVisW, 2 * getColWidth());
-                    let newVisH = Math.max(newVisW / visRatio, 20);
-                    newVisW = newVisH * visRatio;
+                    let newVisW = Math.max(startVisW + (dir.includes('e') ? dx : -dx), 2 * getColWidth());
+                    let newVisH = Math.max(newVisW / visRatio, 20); newVisW = newVisH * visRatio;
                     newLayout.w = pxToCols(newVisW); newLayout.h = snapY(newVisH);
                     if (dir.includes('w')) newLayout.x = startParams.startLayout.x + (startParams.startLayout.w - newLayout.w);
                     if (dir.includes('n')) newLayout.y = startParams.startLayout.y + (startParams.startLayout.h - newLayout.h);
@@ -1505,6 +1836,12 @@ const Architect = (function () {
                 if (!block.parentId) {
                     if (newLayout.x < 0) { newLayout.x = 0; if (dir.includes('w')) { newLayout.w = startParams.startLayout.w + startParams.startLayout.x; if (dir.length === 2) { newLayout.h = snapY((newLayout.w * getColWidth()) / (startParams.startLayout.w * getColWidth() / startParams.startLayout.h)); if (dir.includes('n')) newLayout.y = startParams.startLayout.y + (startParams.startLayout.h - newLayout.h); } } }
                     if (newLayout.x + newLayout.w > CONFIG.gridCols) { if (dir.includes('e') || dir.length === 2) { newLayout.w = CONFIG.gridCols - newLayout.x; if (dir.length === 2) { newLayout.h = snapY((newLayout.w * getColWidth()) / (startParams.startLayout.w * getColWidth() / startParams.startLayout.h)); if (dir.includes('n')) newLayout.y = startParams.startLayout.y + (startParams.startLayout.h - newLayout.h); } } else if (dir.includes('w')) { newLayout.x = CONFIG.gridCols - newLayout.w; } }
+                }
+
+                if (block.style.preserveLayout) {
+                    const scaleX = newLayout.w / startParams.startLayout.w;
+                    const scaleY = newLayout.h / startParams.startLayout.h;
+                    applyPreserveLayoutToChildren(state.activeId, scaleX, scaleY, startParams.startChildData);
                 }
             } else if (action === 'radius') {
                 // Project into element's local frame for correct diagonal tracking
@@ -1535,10 +1872,47 @@ const Architect = (function () {
             if (startParams.hasMoved || action === 'resize' || action === 'radius') updateBlock(state.activeId, { layout: newLayout });
         });
 
-        document.addEventListener('mouseup', () => {
+        document.addEventListener('mouseup', e => {
             document.querySelectorAll('.is-dragging').forEach(el => el.classList.remove('is-dragging'));
             document.querySelectorAll('.drop-highlight').forEach(el => el.classList.remove('drop-highlight'));
             const page = getActivePage();
+
+            // ── MARQUEE: resolve selection from rubber-band rect ──
+            if (isInteracting && action === 'marquee') {
+                const marquee = document.getElementById('marquee-select');
+                if (marquee) {
+                    const mr = marquee.getBoundingClientRect();
+                    const minArea = 4; // ignore accidental micro-drags
+                    if (mr.width * mr.height > minArea) {
+                        const newSelected = [];
+                        page.layerOrder.forEach(id => {
+                            const b = page.blocks[id]; if (b.parentId) return; // root blocks only
+                            const el = document.getElementById(id); if (!el) return;
+                            const er = el.getBoundingClientRect();
+                            if (er.right > mr.left && er.left < mr.right && er.bottom > mr.top && er.top < mr.bottom) {
+                                newSelected.push(id);
+                            }
+                        });
+                        if (newSelected.length > 1) {
+                            selectedIds = new Set(newSelected);
+                            state.activeId = newSelected[newSelected.length - 1];
+                            renderSelectionHighlights(); renderSelectionBox(); syncContextPanel(); renderLayers();
+                        } else if (newSelected.length === 1) {
+                            setActive(newSelected[0]);
+                        }
+                    }
+                    marquee.style.display = 'none';
+                }
+                isInteracting = false; action = null;
+                return;
+            }
+
+            // ── MULTI-MOVE: save state after group drag ──
+            if (isInteracting && action === 'move' && startParams.isMultiSelect) {
+                if (startParams.hasMoved) { saveState(); renderSelectionHighlights(); }
+                isInteracting = false; action = null;
+                return;
+            }
             
             if (isInteracting && action === 'move' && state.activeId && startParams.hoveredShape) {
                 const an = document.getElementById(state.activeId), shapeEl = document.getElementById(startParams.hoveredShape);
@@ -1571,6 +1945,9 @@ const Architect = (function () {
 
             if (isInteracting && (startParams.hasMoved || action === 'resize' || action === 'radius' || action === 'rotate')) {
                 updateCanvasHeight();
+                renderLayers();
+                syncContextPanel();
+                renderSelectionBox();
             }
 
             isInteracting = false; action = null;
@@ -1585,32 +1962,29 @@ const Architect = (function () {
             if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteActive(); return; }
 
             // ── ARROW KEY NUDGING ──
-            if (state.activeId && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-                e.preventDefault(); // Stop the browser from scrolling the window
-                saveState(); // Correctly save state before modifying
-
+            if (selectedIds.size > 0 && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                e.preventDefault();
+                saveState();
                 const page = getActivePage();
-                const b = page.blocks[state.activeId];
-                let newX = b.layout.x;
-                let newY = b.layout.y;
-                
-                // Base step: 1 column for X, 10px for Y. Holding Shift jumps further.
                 const stepX = e.shiftKey ? 5 : 1; 
-                const stepY = e.shiftKey ? (CONFIG.gridV * 5) : CONFIG.gridV; 
+                const stepY = e.shiftKey ? (CONFIG.gridV * 5) : CONFIG.gridV;
 
-                if (e.key === 'ArrowUp') newY -= stepY;
-                if (e.key === 'ArrowDown') newY += stepY;
-                if (e.key === 'ArrowLeft') newX -= stepX;
-                if (e.key === 'ArrowRight') newX += stepX;
-
-                // Bounds checking (prevent nudging off the root canvas)
-                if (!b.parentId) {
-                    if (newX < 0) newX = 0;
-                    if (newX + b.layout.w > CONFIG.gridCols) newX = CONFIG.gridCols - b.layout.w;
-                    if (newY < 0) newY = 0;
-                }
-
-                updateBlock(state.activeId, { layout: { ...b.layout, x: newX, y: newY } });
+                // Nudge every selected block (falls through to single-block case too)
+                const nudgeIds = selectedIds.size > 1 ? [...selectedIds] : (state.activeId ? [state.activeId] : []);
+                nudgeIds.forEach(nid => {
+                    const b = page.blocks[nid]; if (!b) return;
+                    let nx = b.layout.x, ny = b.layout.y;
+                    if (e.key === 'ArrowUp') ny -= stepY;
+                    if (e.key === 'ArrowDown') ny += stepY;
+                    if (e.key === 'ArrowLeft') nx -= stepX;
+                    if (e.key === 'ArrowRight') nx += stepX;
+                    if (!b.parentId) {
+                        if (nx < 0) nx = 0;
+                        if (nx + b.layout.w > CONFIG.gridCols) nx = CONFIG.gridCols - b.layout.w;
+                        if (ny < 0) ny = 0;
+                    }
+                    updateBlock(nid, { layout: { ...b.layout, x: nx, y: ny } });
+                });
             }
         });
     }
@@ -1634,10 +2008,12 @@ const Architect = (function () {
         const siteTitle = state.settings.title || 'Untitled Site';
         let css = `/* ${siteTitle} - Auto-Generated Styles */\n* { box-sizing: border-box; margin: 0; padding: 0; }\nbody { background: ${state.settings.bgHex}; font-family: 'Nunito', sans-serif; overflow-x: hidden; }\n.site-canvas { width: 100%; max-width: 1000px; margin: 0 auto; position: relative; min-height: 100vh; overflow: visible; }\n`;
         
-        // Global Popups & Mobile Media Queries
+       // Global Popups
         css += `.wx-popup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; z-index: 10000; overflow-y: auto; padding: 20px; }\n.wx-popup-overlay.active { display: block; }\n.wx-popup-window { background: #fff; border-radius: 16px; position: relative; margin: 40px auto; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3); width: 100%; max-width: 600px; min-height: 400px; }\n.wx-popup-close { position: absolute; top: 16px; right: 16px; width: 32px; height: 32px; background: rgba(0,0,0,0.05); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 20px; z-index: 99999; transition: background 0.2s; }\n.wx-popup-close:hover { background: rgba(0,0,0,0.15); }\n`;
-        css += `@media(max-width:768px) {\n  .site-canvas { display: flex !important; flex-direction: column !important; padding: 20px 0 !important; gap: 20px !important; height: auto !important; }\n  .wx-block { position: relative !important; left: 0 !important; top: 0 !important; width: var(--mob-w, calc(100% - 40px)) !important; margin: var(--mob-mt, 0px) var(--mob-mr, 20px) var(--mob-mb, 0px) var(--mob-ml, 20px) !important; height: auto !important; min-height: var(--h) !important; order: var(--y-index) !important; overflow-wrap: break-word !important; word-break: break-word !important; }\n  .wx-block.type-text { min-height: auto !important; }\n  .wx-block.type-text > .content-area { font-size: max(16px, calc(var(--fs) * 0.8)) !important; height: auto !important; white-space: normal !important; }\n  .wx-block.type-shape > .content-area { display: flex !important; flex-direction: column !important; gap: 16px !important; padding: 20px !important; }\n}\n`;
-
+        
+        // Standard Mobile Media Queries & Preserve Layout
+        css += `@media(max-width:768px) {\n  .site-canvas { display: flex !important; flex-direction: column !important; padding: 20px 0 !important; gap: 20px !important; height: auto !important; }\n  .wx-block { position: relative !important; left: 0 !important; top: 0 !important; width: var(--mob-w, calc(100% - 40px)) !important; margin: var(--mob-mt, 0px) var(--mob-mr, 20px) var(--mob-mb, 0px) var(--mob-ml, 20px) !important; height: auto !important; min-height: var(--h) !important; order: var(--y-index) !important; overflow-wrap: break-word !important; word-break: break-word !important; }\n  .wx-block.type-text { min-height: auto !important; }\n  .wx-block.type-text > .content-area { font-size: max(16px, calc(var(--fs) * 0.8)) !important; height: auto !important; white-space: normal !important; }\n  .wx-block.type-shape > .content-area { display: flex !important; flex-direction: column !important; gap: 16px !important; padding: 20px !important; }\n  .preserve-layout { height: auto !important; min-height: 0 !important; aspect-ratio: var(--desk-w) / var(--desk-h) !important; container-type: inline-size; }\n  .preserve-layout.type-shape > .content-area { display: block !important; padding: 0 !important; }\n  .preserve-layout .wx-block { position: absolute !important; top: var(--top-pct) !important; left: var(--left-pct) !important; width: var(--w-pct) !important; height: var(--h-pct) !important; min-height: 0 !important; margin: 0 !important; }\n  .preserve-layout .wx-block > .content-area { padding: calc(var(--pad-num) / var(--root-desk-w) * 100cqw) !important; }\n  .preserve-layout .wx-block.type-text > .content-area { font-size: calc(var(--fs-num) / var(--root-desk-w) * 100cqw) !important; letter-spacing: calc(var(--lsp-num) / var(--root-desk-w) * 100cqw) !important; line-height: var(--lh) !important; }\n}\n`;
+        
         let fontImports = new Set(['Nunito']);
 
         Object.values(state.pages).forEach(page => {
@@ -1671,8 +2047,19 @@ const Architect = (function () {
                 const mobW = `calc(100% - ${isLeftEdge ? 0 : 20}px - ${isRightEdge ? 0 : 20}px)`;
 
                 css += `\n/* ${id} */\n`;
+                const parentH = b.parentId && page.blocks[b.parentId] ? page.blocks[b.parentId].layout.h : 1;
+                const topPct = (b.layout.y / parentH * 100) + '%';
+                const hPct = (b.layout.h / parentH * 100) + '%';
+                const wPct = (b.layout.w / parentCols * 100) + '%';
+                const leftPct = (b.layout.x / parentCols * 100) + '%';
+                const deskW = b.layout.w * (1000 / 60);
+                const deskH = b.layout.h;
+                const rootDeskW = s.preserveLayout ? `--root-desk-w: ${deskW};` : '';
+
+                css += `\n/* ${id} */\n`;
                 const transformRule = s.rotation ? `transform: rotate(${s.rotation}deg); transform-origin: 50% 50%;` : '';
-                css += `#${id} { position: absolute; z-index: ${index+1}; box-sizing: border-box; --y-index: ${Math.round(b.layout.y)}; --h: ${b.layout.h}px; --fs: ${s.fontSize}px; --pad: ${s.padding}px; --mob-mt: ${mt}; --mob-mb: ${mb}; --mob-ml: ${ml}; --mob-mr: ${mr}; --mob-w: ${mobW}; left: ${(b.layout.x/parentCols*100)}%; top: ${b.layout.y}px; width: ${(b.layout.w/parentCols*100)}%; ${hRule} background-color: ${s.bgHex==='transparent'?'transparent':s.bgHex}; color: ${s.textHex}; border-radius: ${s.radiusTL}px ${s.radiusTR}px ${s.radiusBR}px ${s.radiusBL}px; border: ${s.borderW>0?s.borderW+'px '+s.borderStyle+' '+s.borderHex:'none'}; box-shadow: ${boxSh}; opacity: ${(s.opacity||100)/100}; ${overflowRule} ${transformRule} }\n`;
+                css += `#${id} { position: absolute; z-index: ${index+1}; box-sizing: border-box; --y-index: ${Math.round(b.layout.y)}; --h: ${b.layout.h}px; --fs: ${s.fontSize}px; --fs-num: ${s.fontSize}; --pad: ${s.padding}px; --pad-num: ${s.padding}; --lsp-num: ${s.letterSpacing || 0}; --mob-mt: ${mt}; --mob-mb: ${mb}; --mob-ml: ${ml}; --mob-mr: ${mr}; --mob-w: ${mobW}; --top-pct: ${topPct}; --h-pct: ${hPct}; --w-pct: ${wPct}; --left-pct: ${leftPct}; --desk-w: ${deskW}; --desk-h: ${deskH}; ${rootDeskW} left: ${(b.layout.x/parentCols*100)}%; top: ${b.layout.y}px; width: ${(b.layout.w/parentCols*100)}%; ${hRule} background-color: ${s.bgHex==='transparent'?'transparent':s.bgHex}; color: ${s.textHex}; border-radius: ${s.radiusTL}px ${s.radiusTR}px ${s.radiusBR}px ${s.radiusBL}px; border: ${s.borderW>0?s.borderW+'px '+s.borderStyle+' '+s.borderHex:'none'}; box-shadow: ${boxSh}; opacity: ${(s.opacity||100)/100}; ${overflowRule} ${transformRule} }\n`;
+            
                 css += `#${id} > .content-area { flex-grow: 1; padding: ${s.padding}px; font-size: ${s.fontSize}px; font-family: '${s.fontFamily||'Nunito'}', sans-serif; text-align: ${s.textAlign||'left'}; justify-content: center; display: flex; flex-direction: column; letter-spacing: ${s.letterSpacing||0}px; line-height: ${s.lineHeight||1.4}; text-shadow: ${txtSh}; width: 100%; height: 100%; box-sizing: border-box; overflow-wrap: break-word; word-break: break-word; }\n`;
             });
         });
@@ -1700,15 +2087,16 @@ const Architect = (function () {
                               : `<img src="${resolveAsset(b.filename)}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;">`;
             }
             
-            let wOpen = '', wClose = ''; let blockAttrs = `id="${id}" class="wx-block type-${b.type}"`;
+            let wOpen = '', wClose = ''; let blockAttrs = `id="${id}" class="wx-block type-${b.type}${b.style.preserveLayout ? ' preserve-layout' : ''}"`;
             if (b.link && b.link.type !== 'none' && b.link.value) {
                 if (b.link.type === 'url') { 
                     wOpen = `<a href="${b.link.value}" ${isPreview ? 'target="_blank"' : ''} style="text-decoration:none;color:inherit;display:contents;">`; wClose = '</a>'; 
                 } else if (b.link.type === 'page') { 
                     const target = state.settings.indexPageId === b.link.value ? 'index.html' : `${b.link.value}.html`; 
-                    wOpen = isPreview ? `<a href="#" onclick="alert('Routing Simulated: Would go to page ${b.link.value}'); return false;" style="text-decoration:none;color:inherit;display:contents;">` : `<a href="${target}" style="text-decoration:none;color:inherit;display:contents;">`; 
+                    // Tell the parent builder window to seamlessly swap the iframe to the new page!
+                    wOpen = isPreview ? `<a href="#" onclick="window.parent.Architect.previewSite('${b.link.value}'); return false;" style="text-decoration:none;color:inherit;display:contents;">` : `<a href="${target}" style="text-decoration:none;color:inherit;display:contents;">`; 
                     wClose = '</a>'; 
-                } else if (b.link.type === 'popup') { 
+                } else if (b.link.type === 'popup') {
                     blockAttrs += ` data-popup-trigger="${b.link.value}" style="cursor:pointer;"`; 
                 } else if (b.link.type === 'sound') { 
                     blockAttrs += ` data-sound-src="${resolveAsset(b.link.value)}" style="cursor:pointer;"`; 
@@ -1724,14 +2112,17 @@ const Architect = (function () {
     }
 
     // ── LIVE PREVIEW ENGINE ──────────────────────────────────────────
-    function previewSite() {
+    function previewSite(overridePageId) {
+        // Allow the iframe to request a specific page, otherwise default to the active editor page
+        const targetPage = overridePageId && state.pages[overridePageId] ? state.pages[overridePageId] : getActivePage();
+        
         const { css, fontStr } = compileSiteCSS();
         let popupsHTML = '';
         Object.values(state.pages).filter(p => p.type === 'popup').forEach(popupPage => {
             popupsHTML += `\n<div id="overlay-${popupPage.id}" class="wx-popup-overlay">\n    <div class="wx-popup-window">\n        <div class="wx-popup-close">✕</div>\n${compileNodeHTML(null, popupPage, true)}    </div>\n</div>\n`;
         });
 
-        const htmlOut = `<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>Preview</title>\n<style>${fontStr}\n\n${css}</style>\n<script>${getAppJS()}</script>\n</head>\n<body>\n<div class="site-canvas">\n${compileNodeHTML(null, getActivePage(), true)}\n</div>\n${popupsHTML}\n</body>\n</html>`;
+        const htmlOut = `<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>Preview</title>\n<style>${fontStr}\n\n${css}</style>\n<script>${getAppJS()}</script>\n</head>\n<body>\n<div class="site-canvas">\n${compileNodeHTML(null, targetPage, true)}\n</div>\n${popupsHTML}\n</body>\n</html>`;
 
         const blob = new Blob([htmlOut], { type: 'text/html' });
         document.getElementById('preview-iframe').src = URL.createObjectURL(blob);
@@ -1803,6 +2194,27 @@ const Architect = (function () {
         changeZIndex, 
         deleteActive, 
         duplicateActive,
+        unparentActive: () => {
+            if (!state.activeId) return;
+            const page = getActivePage();
+            const b = page.blocks[state.activeId];
+            if (!b || !b.parentId) return;
+            
+            const node = document.getElementById(state.activeId);
+            const cr = canvas.getBoundingClientRect();
+            const rect = node.getBoundingClientRect();
+            
+            // Calculate absolute visual center to prevent jumps when detaching rotated objects
+            const centerX = rect.left + rect.width / 2 - cr.left + canvas.scrollLeft;
+            const centerY = rect.top + rect.height / 2 - cr.top + canvas.scrollTop;
+            
+            b.parentId = null;
+            b.layout.x = pxToCols(centerX - node.offsetWidth / 2);
+            b.layout.y = snapY(centerY - node.offsetHeight / 2);
+            
+            saveState();
+            renderCanvas();
+        },
         selectLayer: (id) => setActive(id), 
         renderLayers: () => renderLayers(), 
         loadFromLibrary, 
@@ -1912,3 +2324,4 @@ const Architect = (function () {
     };
 })();
 document.addEventListener('DOMContentLoaded', Architect.init);
+window.Architect = Architect;

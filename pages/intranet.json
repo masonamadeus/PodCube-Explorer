@@ -21,5 +21,18 @@
                 "14:50"
             ]
         }
+    },
+    {
+    "id": "molly-cryptid",
+    "headline": "WHAT IS THIS?! EXPLAIN THIS!!",
+    "summary": "Somebody needs to take a look at this ok? They don't want us to know something, and I don't know what it is or who it is that doesn't want us to know",
+    "availability": {
+        "months": null,
+        "days": null,
+        "times": [
+            "21:14",
+            "05:14"
+        ]
     }
+}
 ]
