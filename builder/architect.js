@@ -176,9 +176,25 @@ const Architect = (function () {
     function _renderMediaCard(name, isStock) {
         const src = isStock ? `./assets/${name}` : (assetUrls.get(name) || '');
         const isVid = /\.(mp4|webm|ogg)$/i.test(name);
-        const thumb = isVid ? `<div class="alib-card-vid">▶</div>` : `<img class="alib-card-img" src="${src}" alt="" loading="lazy">`;
+        
+        let thumb = '';
+        let hoverEvents = '';
+        
+        if (isVid) {
+            // A11y & UX: Show the first frame instantly, play silently on hover!
+            hoverEvents = `onmouseenter="var v=this.querySelector('video'); if(v) v.play().catch(()=>{})" onmouseleave="var v=this.querySelector('video'); if(v) v.pause()"`;
+            thumb = `<video class="alib-card-img" src="${src}#t=0.001" preload="metadata" loop muted playsinline style="background:#1d1d1f; object-fit: cover; pointer-events: none;"></video>`;
+        } else {
+            thumb = `<img class="alib-card-img" src="${src}" alt="" loading="lazy">`;
+        }
+        
         const label = name.length > 18 ? name.slice(0,16) + '…' : name;
-        return `<div class="alib-card" data-name="${name}" data-stock="${isStock}" title="${name}">${thumb}<div class="alib-card-label">${label}</div></div>`;
+        
+        return `
+            <div class="alib-card" data-name="${name}" data-stock="${isStock}" title="${name}" ${hoverEvents}>
+                ${thumb}
+                <div class="alib-card-label">${isVid ? '🎥 ' : ''}${label}</div>
+            </div>`;
     }
 
     function _renderAudioCard(name, isStock) {
