@@ -10,17 +10,16 @@
     <script src="./architect.js" defer></script>
 </head>
 <body>
-
 <div class="topbar">
     <div class="topbar-section">
         <span class="app-logo">Wexton <span>Builder</span></span>
         <div class="topbar-divider"></div>
-        <button class="btn-top" onclick="Architect.createNewSite()" title="Start a fresh site">✚ New</button>
+        <button class="btn-top" onclick="document.getElementById('layers-panel').style.display='flex'; Architect.renderLayers();" title="Show Layers">📚 Layers</button>
         <button id="btn-undo" class="btn-top" title="Undo (Ctrl+Z)" disabled>↩ Undo</button>
         <button id="btn-redo" class="btn-top" title="Redo (Ctrl+Shift+Z)" disabled>↪ Redo</button>
     </div>
-    <div class="topbar-section">
-        <button class="btn-top" onclick="document.getElementById('layers-panel').style.display='flex'; Architect.renderLayers();" title="Show Layers">📚 Layers</button>
+
+    <div class="topbar-section" style="flex: 1; justify-content: center;">
         <select id="page-selector" onchange="Architect.switchPage(this.value)" class="topbar-select" style="width:150px;"></select>
         <button class="btn-top" onclick="Architect.createPage(false)" title="Add Page">➕ Page</button>
         <button class="btn-top" onclick="Architect.createPage(true)" title="Add Popup">➕ Popup</button>
@@ -28,14 +27,19 @@
         <button class="btn-top active" id="btn-desktop" onclick="Architect.setPreview('desktop')">🖥 Desktop</button>
         <button class="btn-top" id="btn-mobile" onclick="Architect.setPreview('mobile')">📱 Mobile</button>
     </div>
+
     <div class="topbar-section">
-        <button class="btn-top" onclick="Architect.openLibrary()" title="My saved sites">📂 My Sites</button>
         <button class="btn-top" onclick="Architect.openSettings()" title="Site Settings">⚙️ Settings</button>
+        <div class="topbar-divider"></div>
+        <button class="btn-top" onclick="Architect.createNewSite()" title="Start a fresh site">✚ New</button>
+        <button class="btn-top" onclick="Architect.openLibrary()" title="My saved sites">📂 My Sites</button>
+        <button class="btn-top" onclick="document.getElementById('import-upload').click()" title="Import a .wex or .zip project">📥 Import</button>
+        <input type="file" id="import-upload" accept=".wex,.zip" style="display:none" onchange="Architect.importProject(event)">
+        <div class="topbar-divider"></div>
         <button class="btn-top" onclick="Architect.previewSite()" title="Test current page">▶ Preview</button>
-        <button class="btn-top btn-export" onclick="Architect.generateExport()">⬇ Export ZIP</button>
+        <button class="btn-top btn-export" onclick="Architect.exportProject()" title="Download Unified .wex Archive">⬇ Export .wex</button>
     </div>
 </div>
-
 <div id="workspace">
     <div class="canvas" id="canvas"></div>
 </div>
@@ -152,6 +156,13 @@
                 <span class="ctx-label">Rotate</span>
                 <input type="range" id="inp-rotation" class="ctx-range" min="0" max="359" value="0">
                 <span class="ctx-value" id="val-rotation">0</span>°
+            </div>
+            <div class="ctx-row" id="row-flip" style="display:none; margin-top: 4px;">
+                <span class="ctx-label">Flip</span>
+                <div style="display:flex; gap:4px;">
+                    <button class="ctx-icon-btn" id="btn-flip-h" title="Flip Horizontal">↔</button>
+                    <button class="ctx-icon-btn" id="btn-flip-v" title="Flip Vertical">↕</button>
+                </div>
             </div>
             <div class="ctx-row" id="row-overflow" style="display:none; margin-top: 4px;">
                 <span class="ctx-label">Boundary</span>

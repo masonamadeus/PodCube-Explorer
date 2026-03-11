@@ -518,7 +518,7 @@ const Architect = (function () {
             return
         }; 
         
-        let maxBottom = 800; // minimum guarantee
+        let maxBottom = 400; // minimum guarantee
         page.layerOrder.forEach(id => {
             const b = page.blocks[id];
             if (!b.parentId) {
@@ -551,7 +551,8 @@ const Architect = (function () {
             overflow: 'hidden',
             letterSpacing: 0, lineHeight: 1.4,
             rotation: 0,
-            preserveLayout: type === 'shape'
+            preserveLayout: type === 'shape',
+            flipH: false, flipV: false
         };
     }
 
@@ -771,7 +772,13 @@ const Architect = (function () {
         node.style.border = s.borderW > 0 ? `${s.borderW}px ${s.borderStyle} ${s.borderHex}` : 'none';
         // Text blocks must stay 'visible' — do NOT overwrite the value set in the isText branch above
         if (!isText) node.style.overflow = s.overflow || 'hidden';
-        node.style.transform = s.rotation ? `rotate(${s.rotation}deg)` : '';
+
+        // Chain rotation and flip transforms
+        let transforms = [];
+        if (s.rotation) transforms.push(`rotate(${s.rotation}deg)`);
+        if (s.flipH) transforms.push(`scaleX(-1)`);
+        if (s.flipV) transforms.push(`scaleY(-1)`);
+        node.style.transform = transforms.join(' ');
         node.style.transformOrigin = '50% 50%';
 
         // Smarter Mobile Margins
@@ -1008,6 +1015,9 @@ const Architect = (function () {
         set('inp-opacity', s.opacity !== undefined ? s.opacity : 100); txt('val-opacity', s.opacity !== undefined ? s.opacity : 100);
         const rot = Math.round(s.rotation || 0);
         set('inp-rotation', rot); txt('val-rotation', rot);
+        get('row-flip').style.display = (block.type === 'media' || block.type === 'shape') ? 'flex' : 'none';
+        get('btn-flip-h')?.classList.toggle('active', !!s.flipH);
+        get('btn-flip-v')?.classList.toggle('active', !!s.flipV);
         get('row-overflow').style.display = block.type === 'shape' ? 'flex' : 'none';
         get('row-preserve').style.display = block.type === 'shape' ? 'flex' : 'none';
         set('inp-overflow', s.overflow || 'hidden');
@@ -1424,6 +1434,17 @@ const Architect = (function () {
         bindStyle('inp-rotation', 'rotation', Number);
         bindStyle('inp-overflow', 'overflow');
 
+        document.getElementById('btn-flip-h')?.addEventListener('click', () => {
+            if (!state.activeId) return;
+            const s = getActivePage().blocks[state.activeId].style;
+            updateBlock(state.activeId, { style: { flipH: !s.flipH } }); saveState();
+        });
+        document.getElementById('btn-flip-v')?.addEventListener('click', () => {
+            if (!state.activeId) return;
+            const s = getActivePage().blocks[state.activeId].style;
+            updateBlock(state.activeId, { style: { flipV: !s.flipV } }); saveState();
+        });
+
         const preserveToggle = document.getElementById('inp-preserveLayout');
         if (preserveToggle) preserveToggle.addEventListener('change', e => {
             if (!state.activeId) return;
@@ -1496,6 +1517,54 @@ const Architect = (function () {
         document.getElementById('workspace').addEventListener('mousedown', e => {
             if (e.target.closest('#text-toolbar') || e.target.closest('#context-panel') || e.target.closest('.topbar')) return;
             if (e.target.id === 'workspace' || e.target.id === 'viewport') setActive(null);
+        });
+
+        const workspace = document.getElementById('workspace');
+        workspace.addEventListener('dragover', e => {
+            e.preventDefault(); // Required to allow dropping
+            e.dataTransfer.dropEffect = 'copy';
+        });
+
+        workspace.addEventListener('drop', e => {
+            e.preventDefault();
+            const files = e.dataTransfer.files;
+            if (!files || !files.length) return;
+
+            const cr = canvas.getBoundingClientRect();
+            // Calculate exact canvas-relative drop position using Wexton's internal math
+            const dropX = e.clientX - cr.left + canvas.scrollLeft;
+            const dropY = e.clientY - cr.top + canvas.scrollTop;
+
+            let colX = pxToCols(dropX);
+            let snappedY = snapY(dropY);
+
+            Array.from(files).forEach(file => {
+                if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) return;
+                
+                const name = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+                
+                // Save to IndexedDB and memory
+                assetFiles.set(name, file); 
+                assetUrls.set(name, URL.createObjectURL(file)); 
+                _saveAsset(name, file);
+                
+                // Spawn the block instantly under the mouse!
+                addBlock('media', { 
+                    filename: name, 
+                    x: Math.max(0, Math.min(colX - 12, CONFIG.gridCols - 24)), // Offset by half width to center on cursor
+                    y: Math.max(0, snappedY), 
+                    w: 24, 
+                    h: file.type.startsWith('video/') ? 200 : 280 
+                });
+                
+                // Offset the next file slightly if they dropped a batch of images at once
+                colX += 2; snappedY += 20;
+            });
+            
+            // Update the Library UI if it happens to be open
+            if (document.getElementById('asset-library-modal') && document.getElementById('asset-library-modal').style.display === 'flex') {
+                _populateAssetLibrary();
+            }
         });
 
         canvas.addEventListener('mousedown', e => {
@@ -2072,9 +2141,13 @@ const Architect = (function () {
                 const rootDeskW = s.preserveLayout ? `--root-desk-w: ${deskW};` : '';
 
                 css += `\n/* ${id} */\n`;
-                const transformRule = s.rotation ? `transform: rotate(${s.rotation}deg); transform-origin: 50% 50%;` : '';
+                let transforms = [];
+                if (s.rotation) transforms.push(`rotate(${s.rotation}deg)`);
+                if (s.flipH) transforms.push(`scaleX(-1)`);
+                if (s.flipV) transforms.push(`scaleY(-1)`);
+                const transformRule = transforms.length > 0 ? `transform: ${transforms.join(' ')}; transform-origin: 50% 50%;` : '';
+                
                 css += `#${id} { position: absolute; z-index: ${index+1}; box-sizing: border-box; --y-index: ${Math.round(b.layout.y)}; --h: ${b.layout.h}px; --fs: ${s.fontSize}px; --fs-num: ${s.fontSize}; --pad: ${s.padding}px; --pad-num: ${s.padding}; --lsp-num: ${s.letterSpacing || 0}; --mob-mt: ${mt}; --mob-mb: ${mb}; --mob-ml: ${ml}; --mob-mr: ${mr}; --mob-w: ${mobW}; --top-pct: ${topPct}; --h-pct: ${hPct}; --w-pct: ${wPct}; --left-pct: ${leftPct}; --desk-w: ${deskW}; --desk-h: ${deskH}; ${rootDeskW} left: ${(b.layout.x/parentCols*100)}%; top: ${b.layout.y}px; width: ${(b.layout.w/parentCols*100)}%; ${hRule} background-color: ${s.bgHex==='transparent'?'transparent':s.bgHex}; color: ${s.textHex}; border-radius: ${s.radiusTL}px ${s.radiusTR}px ${s.radiusBR}px ${s.radiusBL}px; border: ${s.borderW>0?s.borderW+'px '+s.borderStyle+' '+s.borderHex:'none'}; box-shadow: ${boxSh}; opacity: ${(s.opacity||100)/100}; ${overflowRule} ${transformRule} }\n`;
-            
                 css += `#${id} > .content-area { flex-grow: 1; padding: ${s.padding}px; font-size: ${s.fontSize}px; font-family: '${s.fontFamily||'Nunito'}', sans-serif; text-align: ${s.textAlign||'left'}; justify-content: center; display: flex; flex-direction: column; letter-spacing: ${s.letterSpacing||0}px; line-height: ${s.lineHeight||1.4}; text-shadow: ${txtSh}; width: 100%; height: 100%; box-sizing: border-box; overflow-wrap: break-word; word-break: break-word; }\n`;
             });
         });
@@ -2150,36 +2223,39 @@ const Architect = (function () {
         document.getElementById('preview-overlay').style.display = 'block';
     }
 
-    // ── EXPORT ZIP ENGINE ────────────────────────────────────────────
-    function generateExport() {
+
+    // ── UNIFIED EXPORT ENGINE (.wex) ─────────────────────────────────
+    function exportProject() {
+        saveState();
         const siteId = state.settings.pageId || 'my-site';
         const siteTitle = state.settings.title || 'Untitled Site';
         const zip = new JSZip();
-        const assetsFolder = zip.folder('assets'); 
         
-        // 1. Smart Sweep: Collect all custom assets ACTUALLY USED in the site
+        // 1. Save the editor's internal state (Allows importing back into Wexton later)
+        zip.file("project.wex", JSON.stringify(state));
+        
+        // 2. Smart Sweep: Package ONLY custom assets (skip stock files)
+        const assetsFolder = zip.folder("assets"); 
         const requiredCustomAssets = new Set();
         const allStockNames = [...(_stockAssets.images || []), ...(_stockAssets.videos || []), ...(_stockAssets.sounds || [])];
 
         Object.values(state.pages).forEach(p => {
             Object.values(p.blocks).forEach(b => {
-                // Only queue assets that are NOT in the stock manifest
                 if (b.type === 'media' && b.filename && !allStockNames.includes(b.filename)) requiredCustomAssets.add(b.filename);
                 if (b.link && b.link.type === 'sound' && b.link.value && !allStockNames.includes(b.link.value)) requiredCustomAssets.add(b.link.value);
             });
         });
 
-        // 2. Add only the required custom uploads to the ZIP
         requiredCustomAssets.forEach(name => {
             if (assetFiles.has(name)) assetsFolder.file(name, assetFiles.get(name));
         });
 
-        // 3. CSS & JS
+        // 3. Compile CSS & JS for the Live Site
         const { css, fontStr } = compileSiteCSS();
         zip.folder('css').file('styles.css', fontStr + '\n\n' + css);
         zip.folder('scripts').file('app.js', getAppJS());
 
-        // 4. HTML (Popups & Pages)
+        // 4. Compile HTML (Popups & Pages)
         let popupsHTML = '';
         Object.values(state.pages).filter(p => p.type === 'popup').forEach(popupPage => {
             popupsHTML += `\n\n<div id="overlay-${popupPage.id}" class="wx-popup-overlay">\n    <div class="wx-popup-window">\n        <div class="wx-popup-close">✕</div>\n${compileNodeHTML(null, popupPage, false)}    </div>\n</div>\n`;
@@ -2195,7 +2271,7 @@ const Architect = (function () {
             zip.file(filename, htmlOut);
         });
 
-        // 5. Manifest
+        // 5. Build Intranet Manifest
         const s = state.settings;
         zip.file('manifest-snippet.json', JSON.stringify({
             id: siteId, headline: s.headline || `${siteTitle} Launches on Intranet`, summary: s.summary || `Access the new portal for ${siteTitle} via your local Brigistics terminal today.`,
@@ -2206,162 +2282,241 @@ const Architect = (function () {
             }
         }, null, 4));
 
-        // 6. Download
+        // 6. Download the Unified Archive
         zip.generateAsync({ type: 'blob' }).then(blob => { 
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = siteId + '.zip'; a.click(); 
+            const a = document.createElement('a'); 
+            a.href = URL.createObjectURL(blob); 
+            a.download = siteId + '.wex'; 
+            a.click(); 
         });
+    }
+
+    // ── PUBLIC API EXPORTS ───────────────────────────────────────────
+    
+    function init() {
+        canvas = document.getElementById('canvas');
+        preloadAllFonts(); 
+        initInteractions(); 
+        initContextListeners(); 
+        loadStockManifest(); 
+        const lastId = localStorage.getItem(LAST_ACTIVE_KEY);
+        if (lastId && getLibrary()[lastId]) { loadFromLibrary(lastId); } else { createNewSite(); }
+    }
+
+    function unparentActive() {
+        if (!state.activeId) return;
+        const page = getActivePage();
+        const b = page.blocks[state.activeId];
+        if (!b || !b.parentId) return;
+        
+        const node = document.getElementById(state.activeId);
+        const cr = canvas.getBoundingClientRect();
+        const rect = node.getBoundingClientRect();
+        
+        const centerX = rect.left + rect.width / 2 - cr.left + canvas.scrollLeft;
+        const centerY = rect.top + rect.height / 2 - cr.top + canvas.scrollTop;
+        
+        const currentAbsoluteRot = getAccumulatedRotation(state.activeId);
+        b.style.rotation = currentAbsoluteRot % 360;
+        if (b.style.rotation < 0) b.style.rotation += 360;
+        
+        b.parentId = null;
+        b.layout.x = pxToCols(centerX - node.offsetWidth / 2);
+        b.layout.y = snapY(centerY - node.offsetHeight / 2);
+        
+        saveState();
+        renderCanvas();
+    }
+
+    function pickSound() {
+        if (!state.activeId) return;
+        openAssetLibrary('sound', name => {
+            updateBlock(state.activeId, { link: { type: 'sound', value: name } }); saveState();
+            const btn = document.getElementById('inp-soundFile'); if (btn) btn.textContent = `🔊 ${name}`;
+        });
+    }
+
+    function openSettings() {
+        const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+        
+        setVal('set-title', state.settings.title);
+        setVal('set-id', state.settings.pageId);
+        setVal('set-bg', state.settings.bgHex || '#ffffff');
+        document.getElementById('set-bg-val').textContent = state.settings.bgHex || '#ffffff';
+        
+        setVal('set-headline', state.settings.headline);
+        setVal('set-summary', state.settings.summary);
+        setVal('set-avail-m1', state.settings.avail_m1);
+        setVal('set-avail-m2', state.settings.avail_m2);
+        setVal('set-avail-d1', state.settings.avail_d1);
+        setVal('set-avail-d2', state.settings.avail_d2);
+        setVal('set-avail-t1', state.settings.avail_t1);
+        setVal('set-avail-t2', state.settings.avail_t2);
+
+        const list = document.getElementById('set-pages-list');
+        if (list) {
+            list.innerHTML = Object.values(state.pages).map(p => `
+                <div class="set-page-row">
+                    <button class="ctx-icon-btn danger" onclick="Architect.deletePage('${p.id}')" title="Delete" style="width:24px;height:24px;font-size:12px;flex-shrink:0;margin:0px 4px;color:red;">X</button>
+                    
+                    <span class="set-page-type" style="margin-left:8px;">${p.type === 'popup' ? '⚡' : '📄'}</span>
+                    <span style="font-size:10px;color:var(--text-muted);font-family:monospace;flex-shrink:0;">${p.type}</span>
+                    <input class="ctx-input set-page-name" data-pid="${p.id}" value="${p.name.replace(/"/g,'&quot;')}" placeholder="Page name">
+                    
+                    <input type="radio" name="indexPage" value="${p.id}" ${state.settings.indexPageId === p.id ? 'checked' : ''} onchange="Architect.setIndexPage('${p.id}')" title="Set as Home Page (index.html)" style="margin:0; width:auto;">
+                </div>`).join('');
+            list.querySelectorAll('.set-page-name').forEach(inp => {
+                inp.addEventListener('change', e => { renamePage(e.target.dataset.pid, e.target.value); renderPageDropdowns(); });
+            });
+        }
+        document.getElementById('settings-modal').style.display = 'flex';
+    }
+
+    function setIndexPage(id) { 
+        state.settings.indexPageId = id; 
+        saveState(); 
+    }
+
+    function updateTextAlign(val) { 
+        if (state.activeId) { 
+            updateBlock(state.activeId, { style: { textAlign: val } }); 
+            saveState(); 
+        } 
+    }
+
+    function execFormat(cmd, val) { 
+        document.execCommand(cmd, false, val || null); 
+    }
+
+    function setPreview(m) {
+        const isMob = m === 'mobile';
+        isMob ? canvas.classList.add('mobile-mode') : canvas.classList.remove('mobile-mode');
+        document.getElementById('btn-desktop').classList.toggle('active', !isMob);
+        document.getElementById('btn-mobile').classList.toggle('active', isMob);
+        document.getElementById('mobile-hint').style.display = isMob ? 'flex' : 'none';
+        if (isMob) { setActive(null); document.getElementById('context-panel').style.display = 'none'; }
+        renderCanvas();
+    }
+
+    function generateTemplate() {
+        var lib = JSON.parse(localStorage.getItem('wexton_library') || '{}');
+        var activeId = localStorage.getItem('wexton_last_id');
+        var site = lib[activeId];
+        if (!site || !site.stateData) return console.error("No active site found.");
+
+        var page = site.stateData.pages[site.stateData.activePageId];
+        var out = "        // AUTO-GENERATED TEMPLATE\n";
+        var idMap = {};
+        var counter = 1;
+
+        page.layerOrder.forEach(oldId => { idMap[oldId] = `wx-blk-${counter++}`; });
+
+        page.layerOrder.forEach(oldId => {
+            var b = page.blocks[oldId];
+            var newId = idMap[oldId];
+            var pid = b.parentId ? `'${idMap[b.parentId]}'` : 'null';
+            var safeContent = b.content.replace(/`/g, '\\`');
+
+            out += `        p.blocks['${newId}'] = { id: '${newId}', type: '${b.type}', parentId: ${pid}, content: \`${safeContent}\`, filename: ${b.filename ? `'${b.filename}'` : 'null'}, link: ${JSON.stringify(b.link)}, layout: ${JSON.stringify(b.layout)}, style: ${JSON.stringify(b.style)} };\n`;
+            out += `        p.layerOrder.push('${newId}');\n\n`;
+        });
+
+        out += `        idCounter = ${counter};\n`;
+
+        var blob = new Blob([out], { type: 'text/plain' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'wexton_custom_template.txt';
+        a.click();
+    }
+
+   
+    function importProject(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const zip = new JSZip();
+        zip.loadAsync(file).then(async (contents) => {
+            if (!contents.files["project.wex"]) {
+                alert("Invalid or corrupted project file. Make sure it is a valid .wex file.");
+                return;
+            }
+            const stateStr = await contents.file("project.wex").async("string");
+            const importedState = JSON.parse(stateStr);
+            
+            if (contents.folder("assets")) {
+                const assetPromises = [];
+                contents.folder("assets").forEach((relativePath, zipEntry) => {
+                    if (!zipEntry.dir) {
+                        assetPromises.push(zipEntry.async("blob").then(blob => {
+                            let type = blob.type;
+                            if (!type) {
+                                if (relativePath.endsWith('.mp3')) type = 'audio/mpeg';
+                                else if (relativePath.endsWith('.png')) type = 'image/png';
+                                else if (relativePath.endsWith('.jpg') || relativePath.endsWith('.jpeg')) type = 'image/jpeg';
+                            }
+                            const f = new File([blob], relativePath, { type });
+                            assetFiles.set(relativePath, f);
+                            assetUrls.set(relativePath, URL.createObjectURL(f));
+                            _saveAsset(relativePath, f);
+                        }));
+                    }
+                });
+                await Promise.all(assetPromises);
+            }
+            
+            state = importedState;
+            history = []; historyIndex = -1;
+            
+            idCounter = 1;
+            Object.values(state.pages).forEach(p => p.layerOrder.forEach(bid => {
+                const num = parseInt(bid.replace('wx-blk-',''), 10);
+                if (num >= idCounter) idCounter = num + 1;
+            }));
+            
+            setActive(null);
+            renderPageDropdowns();
+            renderCanvas();
+            saveState();
+            
+        }).catch(err => alert("Failed to load project: " + err.message));
+        event.target.value = '';
     }
     
     // ── PUBLIC API ───────────────────────────────────────────────────
     return {
-        init: () => {
-            canvas = document.getElementById('canvas');
-            preloadAllFonts(); 
-            initInteractions(); 
-            initContextListeners(); 
-            loadStockManifest(); 
-            const lastId = localStorage.getItem(LAST_ACTIVE_KEY);
-            if (lastId && getLibrary()[lastId]) { loadFromLibrary(lastId); } else { createNewSite(); }
-        },
-
+        init,
         addBlock, 
         handleMediaUpload, 
         handleSoundUpload,
         changeZIndex, 
         deleteActive, 
         duplicateActive,
-        unparentActive: () => {
-            if (!state.activeId) return;
-            const page = getActivePage();
-            const b = page.blocks[state.activeId];
-            if (!b || !b.parentId) return;
-            
-            const node = document.getElementById(state.activeId);
-            const cr = canvas.getBoundingClientRect();
-            const rect = node.getBoundingClientRect();
-            
-            // Calculate absolute visual center to prevent jumps when detaching rotated objects
-            const centerX = rect.left + rect.width / 2 - cr.left + canvas.scrollLeft;
-            const centerY = rect.top + rect.height / 2 - cr.top + canvas.scrollTop;
-            
-            // Bake the absolute rotation into the element before detaching
-            const currentAbsoluteRot = getAccumulatedRotation(state.activeId);
-            b.style.rotation = currentAbsoluteRot % 360;
-            if (b.style.rotation < 0) b.style.rotation += 360;
-            
-            b.parentId = null;
-            b.layout.x = pxToCols(centerX - node.offsetWidth / 2);
-            b.layout.y = snapY(centerY - node.offsetHeight / 2);
-            
-            saveState();
-            renderCanvas();
-        },
+        unparentActive,
         selectLayer: (id) => setActive(id), 
-        renderLayers: () => renderLayers(), 
+        renderLayers, 
         loadFromLibrary, 
         deleteFromLibrary, 
         openLibrary: openLibraryModal, 
         createNewSite,
         openAssetLibrary, 
         renamePage,
-        pickSound: () => {
-            if (!state.activeId) return;
-            openAssetLibrary('sound', name => {
-                updateBlock(state.activeId, { link: { type: 'sound', value: name } }); saveState();
-                const btn = document.getElementById('inp-soundFile'); if (btn) btn.textContent = `🔊 ${name}`;
-            });
-        },
-
-        openSettings: () => {
-            const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
-            
-            setVal('set-title', state.settings.title);
-            setVal('set-id', state.settings.pageId);
-            setVal('set-bg', state.settings.bgHex || '#ffffff');
-            document.getElementById('set-bg-val').textContent = state.settings.bgHex || '#ffffff';
-            
-            setVal('set-headline', state.settings.headline);
-            setVal('set-summary', state.settings.summary);
-            setVal('set-avail-m1', state.settings.avail_m1);
-            setVal('set-avail-m2', state.settings.avail_m2);
-            setVal('set-avail-d1', state.settings.avail_d1);
-            setVal('set-avail-d2', state.settings.avail_d2);
-            setVal('set-avail-t1', state.settings.avail_t1);
-            setVal('set-avail-t2', state.settings.avail_t2);
-
-            const list = document.getElementById('set-pages-list');
-            if (list) {
-                list.innerHTML = Object.values(state.pages).map(p => `
-                    <div class="set-page-row">
-                        <button class="ctx-icon-btn danger" onclick="Architect.deletePage('${p.id}')" title="Delete" style="width:24px;height:24px;font-size:12px;flex-shrink:0;margin:0px 4px;color:red;">X</button>
-                        
-                        <span class="set-page-type" style="margin-left:8px;">${p.type === 'popup' ? '⚡' : '📄'}</span>
-                        <span style="font-size:10px;color:var(--text-muted);font-family:monospace;flex-shrink:0;">${p.type}</span>
-                        <input class="ctx-input set-page-name" data-pid="${p.id}" value="${p.name.replace(/"/g,'&quot;')}" placeholder="Page name">
-                        
-                        <input type="radio" name="indexPage" value="${p.id}" ${state.settings.indexPageId === p.id ? 'checked' : ''} onchange="Architect.setIndexPage('${p.id}')" title="Set as Home Page (index.html)" style="margin:0; width:auto;">
-                    </div>`).join('');
-                list.querySelectorAll('.set-page-name').forEach(inp => {
-                    inp.addEventListener('change', e => { renamePage(e.target.dataset.pid, e.target.value); renderPageDropdowns(); });
-                });
-            }
-            document.getElementById('settings-modal').style.display = 'flex';
-        },
-        setIndexPage: (id) => { state.settings.indexPageId = id; saveState(); },
-
+        pickSound,
+        openSettings,
+        setIndexPage,
         createPage, 
         switchPage, 
         toggleLinkInput, 
         deletePage,
-        updateTextAlign: val => { if (state.activeId) { updateBlock(state.activeId, { style: { textAlign: val } }); saveState(); } },
+        updateTextAlign,
         toggleFormat,
-        execFormat: (cmd, val) => document.execCommand(cmd, false, val || null),
+        execFormat,
         applyTextPreset,
         previewSite,
-        generateExport: () => { state.settings.pageId = state.settings.pageId || 'my-site'; state.settings.title = state.settings.title || state.settings.pageId; generateExport(); },
-        setPreview: m => {
-            const isMob = m === 'mobile';
-            isMob ? canvas.classList.add('mobile-mode') : canvas.classList.remove('mobile-mode');
-            document.getElementById('btn-desktop').classList.toggle('active', !isMob);
-            document.getElementById('btn-mobile').classList.toggle('active', isMob);
-            document.getElementById('mobile-hint').style.display = isMob ? 'flex' : 'none';
-            if (isMob) { setActive(null); document.getElementById('context-panel').style.display = 'none'; }
-            renderCanvas();
-        },
-        generateTemplate: () => {
-            var lib = JSON.parse(localStorage.getItem('wexton_library') || '{}');
-            var activeId = localStorage.getItem('wexton_last_id');
-            var site = lib[activeId];
-            if (!site || !site.stateData) return console.error("No active site found.");
-
-            var page = site.stateData.pages[site.stateData.activePageId];
-            var out = "        // AUTO-GENERATED TEMPLATE\n";
-            var idMap = {};
-            var counter = 1;
-
-            // Normalize IDs so they always start at wx-blk-1
-            page.layerOrder.forEach(oldId => { idMap[oldId] = `wx-blk-${counter++}`; });
-
-            page.layerOrder.forEach(oldId => {
-                var b = page.blocks[oldId];
-                var newId = idMap[oldId];
-                var pid = b.parentId ? `'${idMap[b.parentId]}'` : 'null';
-
-                // Escape backticks in the HTML content so the string literal doesn't break
-                var safeContent = b.content.replace(/`/g, '\\`');
-
-                out += `        p.blocks['${newId}'] = { id: '${newId}', type: '${b.type}', parentId: ${pid}, content: \`${safeContent}\`, filename: ${b.filename ? `'${b.filename}'` : 'null'}, link: ${JSON.stringify(b.link)}, layout: ${JSON.stringify(b.layout)}, style: ${JSON.stringify(b.style)} };\n`;
-                out += `        p.layerOrder.push('${newId}');\n\n`;
-            });
-
-            out += `        idCounter = ${counter};\n`;
-
-            var blob = new Blob([out], { type: 'text/plain' });
-            var a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'wexton_custom_template.txt';
-            a.click();
-        }
+        setPreview,
+        generateTemplate,
+        exportProject,
+        importProject
     };
 })();
 document.addEventListener('DOMContentLoaded', Architect.init);
