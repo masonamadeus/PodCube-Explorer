@@ -1052,8 +1052,13 @@ const Architect = (function () {
                 fpSel.style.fontFamily = `'${font}', sans-serif`;
             }
             
+            // Sync Font Size && Color
             set('tt-textHex', s.textHex || '#1d1d1f');
             set('tt-fontSize', s.fontSize || 16);
+
+            // Sync Letter Spacing
+            set('inp-letterSpacing', s.letterSpacing || 0);
+            txt('val-letterSpacing', s.letterSpacing || 0);
 
             // Sync Alignment Buttons
             get('tt-align-left')?.classList.toggle('active', s.textAlign === 'left');
@@ -1398,6 +1403,7 @@ const Architect = (function () {
             el.addEventListener('change', saveState);
         };
 
+        bindStyle('inp-letterSpacing', 'letterSpacing', Number);
         bindStyle('inp-bgHex', 'bgHex');
         const bgTransToggle = document.getElementById('inp-bgTransparent');
         if (bgTransToggle) bgTransToggle.addEventListener('change', e => {

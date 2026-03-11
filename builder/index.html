@@ -84,6 +84,15 @@
                 </div>
             </div>
             
+            <div class="ctx-row" style="flex-wrap: wrap; justify-content:flex-start; gap: 4px; margin-top:8px;">
+                <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('h1')">H1</button>
+                <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('h2')">H2</button>
+                <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('h3')">H3</button>
+                <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('body')">Body</button>
+                <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('sub')">Sub</button>
+            </div>
+
+
             <div class="ctx-row" style="margin-bottom: 8px;">
                 <div class="tt-size-group" style="flex:1; justify-content:space-between; border: 1px solid var(--border); border-radius: 6px; background:#fff; overflow:hidden;">
                     <button class="ctx-icon-btn" id="tt-fontSize-dec" onmousedown="event.preventDefault()" title="Decrease" style="border-radius:0;">−</button>
@@ -93,6 +102,8 @@
                 <input type="color" id="tt-textHex" class="ctx-color" title="Text color" style="width:34px;">
             </div>
 
+            
+
             <div class="ctx-row" style="justify-content: flex-start; gap:4px;">
                 <button class="ctx-icon-btn" id="tt-bold" onmousedown="event.preventDefault()" onclick="Architect.toggleFormat('bold')" title="Bold"><b>B</b></button>
                 <button class="ctx-icon-btn" id="tt-italic" onmousedown="event.preventDefault()" onclick="Architect.toggleFormat('italic')" title="Italic"><i>I</i></button>
@@ -100,18 +111,18 @@
                 
                 <div style="width:1px; height:18px; background:var(--border-subtle); margin:0 4px;"></div>
                 
-                <button class="ctx-icon-btn" id="tt-align-left" onmousedown="event.preventDefault()" onclick="Architect.updateTextAlign('left')" title="Align left">≢</button>
+                <button class="ctx-icon-btn" id="tt-align-left" onmousedown="event.preventDefault()" onclick="Architect.updateTextAlign('left')" title="Align left">|<</button>
                 <button class="ctx-icon-btn" id="tt-align-center" onmousedown="event.preventDefault()" onclick="Architect.updateTextAlign('center')" title="Align center">≡</button>
-                <button class="ctx-icon-btn" id="tt-align-right" onmousedown="event.preventDefault()" onclick="Architect.updateTextAlign('right')" title="Align right">≣</button>
+                <button class="ctx-icon-btn" id="tt-align-right" onmousedown="event.preventDefault()" onclick="Architect.updateTextAlign('right')" title="Align right">>|</button>
+            </div>
+
+            <div class="ctx-range-row" style="margin-top: 12px;">
+                <span class="ctx-label">Spacing</span>
+                <input type="range" id="inp-letterSpacing" class="ctx-range" min="-5" max="30" step="0.5" value="0">
+                <span class="ctx-value" id="val-letterSpacing" style="min-width: 24px;">0</span>px
             </div>
             
-            <div class="ctx-row" style="flex-wrap: wrap; justify-content:flex-start; gap: 4px; margin-top:8px;">
-                <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('h1')">H1</button>
-                <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('h2')">H2</button>
-                <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('h3')">H3</button>
-                <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('body')">Body</button>
-                <button class="tt-preset" onmousedown="event.preventDefault()" onclick="Architect.applyTextPreset('sub')">Sub</button>
-            </div>
+            
         </div>
     </div>
 
