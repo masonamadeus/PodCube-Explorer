@@ -51,9 +51,13 @@
     <button class="dock-btn" onclick="Architect.addBlock('shape')">
         <span class="icon">⬛</span>Shape
     </button>
-    <div class="dock-separator"></div>
     <button class="dock-btn" onclick="Architect.openAssetLibrary('media')">
-        <span class="icon">🖼️</span>Image
+        <span class="icon">🖼️</span>Media
+    </button>
+    
+    <div class="dock-separator"></div>
+    <button class="dock-btn" onclick="Architect.openPixabay()">
+        <span class="icon">🔍</span>Pixabay
     </button>
     <input type="file" id="media-upload" style="display:none" accept="image/*,video/*" multiple onchange="Architect.handleMediaUpload(event)">
     <input type="file" id="sound-upload" style="display:none" accept="audio/*" multiple onchange="Architect.handleSoundUpload(event)">
@@ -127,6 +131,43 @@
             </div>
             
             
+        </div>
+    </div>
+
+    <div class="ctx-section collapsed" id="section-media" style="display:none;">
+        <div class="ctx-section-header">Media <span class="ctx-chevron">▾</span></div>
+        <div class="ctx-section-body">
+            <div class="ctx-row">
+                <span class="ctx-label" style="flex:1;">Blend</span>
+                <select id="inp-mediaBlendMode" class="ctx-select" style="flex:2;">
+                    <option value="normal">Normal</option>
+                    <option value="multiply">Multiply (white BG)</option>
+                    <option value="screen">Screen (black BG)</option>
+                    <option value="overlay">Overlay</option>
+                    <option value="darken">Darken</option>
+                    <option value="lighten">Lighten</option>
+                    <option value="color-dodge">Dodge</option>
+                    <option value="color-burn">Burn</option>
+                    <option value="hard-light">Hard Light</option>
+                    <option value="soft-light">Soft Light</option>
+                    <option value="difference">Difference</option>
+                    <option value="exclusion">Exclusion</option>
+                </select>
+            </div>
+            <div class="ctx-row media-vid-only" style="margin-top:6px;">
+                <span class="ctx-label" style="flex:1;">Autoplay</span>
+                <label class="ctx-toggle" title="Start playing automatically">
+                    <input type="checkbox" id="inp-mediaAutoplay" checked>
+                    <span class="ctx-toggle-track"></span>
+                </label>
+            </div>
+            <div class="ctx-row media-vid-only" style="margin-top:6px;">
+                <span class="ctx-label" style="flex:1;">Loop</span>
+                <label class="ctx-toggle" title="Loop the video continuously">
+                    <input type="checkbox" id="inp-mediaLoop" checked>
+                    <span class="ctx-toggle-track"></span>
+                </label>
+            </div>
         </div>
     </div>
 

@@ -518,7 +518,7 @@ const Architect = (function () {
             return
         }; 
         
-        let maxBottom = 400; // minimum guarantee
+        let maxBottom = 0; // minimum guarantee, off for now
         page.layerOrder.forEach(id => {
             const b = page.blocks[id];
             if (!b.parentId) {
@@ -531,7 +531,7 @@ const Architect = (function () {
             }
         });
         // Give 400px of extra breathing room to drag new elements below the current content
-        canvas.style.minHeight = (maxBottom + 100) + 'px';
+        canvas.style.minHeight = (maxBottom) + 'px';
     }
 
 
@@ -552,7 +552,8 @@ const Architect = (function () {
             letterSpacing: 0, lineHeight: 1.4,
             rotation: 0,
             preserveLayout: type === 'shape',
-            flipH: false, flipV: false
+            flipH: false, flipV: false,
+            mediaAutoplay: true, mediaLoop: true, mediaBlendMode: 'normal'
         };
     }
 
@@ -773,6 +774,11 @@ const Architect = (function () {
         // Text blocks must stay 'visible' — do NOT overwrite the value set in the isText branch above
         if (!isText) node.style.overflow = s.overflow || 'hidden';
 
+        // Blend mode lives on the block itself so it composites against canvas siblings,
+        // not just against its own background (which is what happens on inner elements).
+        node.style.mixBlendMode = (block.type === 'media' && s.mediaBlendMode && s.mediaBlendMode !== 'normal')
+            ? s.mediaBlendMode : '';
+
         // Chain rotation and flip transforms
         let transforms = [];
         if (s.rotation) transforms.push(`rotate(${s.rotation}deg)`);
@@ -856,11 +862,32 @@ const Architect = (function () {
                     };
                 };
             } else if (block.type === 'media' && block.filename) {
-                const url = assetUrls.get(block.filename) || `./assets/${block.filename}`;
-                const isVid = /\.(mp4|webm|ogg)$/i.test(block.filename);
-                node.innerHTML = isVid
-                    ? `<video src="${url}" controls style="width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;"></video>`
-                    : `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;">`;
+                // Support absolute URLs for external/CDN assets
+                const isAbsolute = block.filename.startsWith('http://') || block.filename.startsWith('https://');
+                // Strip legacy #gif suffix (old imports used this hack; new imports don't need it)
+                const cleanFilename = block.filename.replace('#gif', '');
+                const url = isAbsolute ? cleanFilename : (assetUrls.get(block.filename) || `./assets/${block.filename}`);
+                
+                // .gif files render as <img> so transparency is preserved.
+                // MP4/WebM/Ogg + CDN video URLs render as <video>.
+                const isVid = /\.(mp4|webm|ogg)$/i.test(cleanFilename)
+                    || (isAbsolute && (cleanFilename.includes('vimeo') || cleanFilename.includes('/videos/')));
+                // Legacy: absolute CDN MP4 passed with #gif suffix meant "silent looping video"
+                const isSilentVideo = block.filename.includes('#gif') && isVid;
+                
+                if (isVid) {
+                    const autoplay = isSilentVideo || (block.style.mediaAutoplay !== false);
+                    const loop     = block.style.mediaLoop !== false;
+                    const vidAttrs = [
+                        autoplay ? 'autoplay' : '',
+                        loop     ? 'loop'     : '',
+                        'muted playsinline',
+                        !autoplay ? 'controls' : ''
+                    ].filter(Boolean).join(' ');
+                    node.innerHTML = `<video src="${url}" ${vidAttrs} style="width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;"></video>`;
+                } else {
+                    node.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;">`;
+                }
             }
         } else if (block.type === 'text') {
             const ca = node.querySelector('.content-area');
@@ -1022,6 +1049,23 @@ const Architect = (function () {
         get('row-preserve').style.display = block.type === 'shape' ? 'flex' : 'none';
         set('inp-overflow', s.overflow || 'hidden');
         if (get('inp-preserveLayout')) get('inp-preserveLayout').checked = !!s.preserveLayout;
+
+        // Media section — show for all media blocks
+        const isMediaBlock = block.type === 'media';
+        const mediaSection = get('section-media');
+        if (mediaSection) {
+            mediaSection.style.display = isMediaBlock ? 'block' : 'none';
+            const cleanFn = (block.filename || '').replace('#gif', '');
+            const isVidFile = /\.(mp4|webm|ogg)$/i.test(cleanFn) ||
+                (block.filename && block.filename.startsWith('http') &&
+                 (cleanFn.includes('vimeo') || cleanFn.includes('/videos/')));
+            // Autoplay/loop only relevant for video files
+            const vidRows = get('section-media')?.querySelectorAll('.media-vid-only');
+            vidRows?.forEach(r => r.style.display = isVidFile ? 'flex' : 'none');
+            if (get('inp-mediaAutoplay')) get('inp-mediaAutoplay').checked = s.mediaAutoplay !== false;
+            if (get('inp-mediaLoop'))     get('inp-mediaLoop').checked     = s.mediaLoop     !== false;
+            if (get('inp-mediaBlendMode')) get('inp-mediaBlendMode').value = s.mediaBlendMode || 'normal';
+        }
 
         // Shadow
         const shadowOn = !!s.shadowOn;
@@ -1449,6 +1493,26 @@ const Architect = (function () {
         if (preserveToggle) preserveToggle.addEventListener('change', e => {
             if (!state.activeId) return;
             updateBlock(state.activeId, { style: { preserveLayout: e.target.checked } });
+            saveState();
+        });
+
+        const autoplayToggle = document.getElementById('inp-mediaAutoplay');
+        if (autoplayToggle) autoplayToggle.addEventListener('change', e => {
+            if (!state.activeId) return;
+            updateBlock(state.activeId, { style: { mediaAutoplay: e.target.checked } });
+            saveState();
+        });
+        const loopToggle = document.getElementById('inp-mediaLoop');
+        if (loopToggle) loopToggle.addEventListener('change', e => {
+            if (!state.activeId) return;
+            updateBlock(state.activeId, { style: { mediaLoop: e.target.checked } });
+            saveState();
+        });
+
+        const blendSel = document.getElementById('inp-mediaBlendMode');
+        if (blendSel) blendSel.addEventListener('change', e => {
+            if (!state.activeId) return;
+            updateBlock(state.activeId, { style: { mediaBlendMode: e.target.value } });
             saveState();
         });
 
@@ -2147,7 +2211,9 @@ const Architect = (function () {
                 if (s.flipV) transforms.push(`scaleY(-1)`);
                 const transformRule = transforms.length > 0 ? `transform: ${transforms.join(' ')}; transform-origin: 50% 50%;` : '';
                 
-                css += `#${id} { position: absolute; z-index: ${index+1}; box-sizing: border-box; --y-index: ${Math.round(b.layout.y)}; --h: ${b.layout.h}px; --fs: ${s.fontSize}px; --fs-num: ${s.fontSize}; --pad: ${s.padding}px; --pad-num: ${s.padding}; --lsp-num: ${s.letterSpacing || 0}; --mob-mt: ${mt}; --mob-mb: ${mb}; --mob-ml: ${ml}; --mob-mr: ${mr}; --mob-w: ${mobW}; --top-pct: ${topPct}; --h-pct: ${hPct}; --w-pct: ${wPct}; --left-pct: ${leftPct}; --desk-w: ${deskW}; --desk-h: ${deskH}; ${rootDeskW} left: ${(b.layout.x/parentCols*100)}%; top: ${b.layout.y}px; width: ${(b.layout.w/parentCols*100)}%; ${hRule} background-color: ${s.bgHex==='transparent'?'transparent':s.bgHex}; color: ${s.textHex}; border-radius: ${s.radiusTL}px ${s.radiusTR}px ${s.radiusBR}px ${s.radiusBL}px; border: ${s.borderW>0?s.borderW+'px '+s.borderStyle+' '+s.borderHex:'none'}; box-shadow: ${boxSh}; opacity: ${(s.opacity||100)/100}; ${overflowRule} ${transformRule} }\n`;
+                const blendRule = (b.type === 'media' && s.mediaBlendMode && s.mediaBlendMode !== 'normal')
+                    ? `mix-blend-mode: ${s.mediaBlendMode};` : '';
+                css += `#${id} { position: absolute; z-index: ${index+1}; box-sizing: border-box; --y-index: ${Math.round(b.layout.y)}; --h: ${b.layout.h}px; --fs: ${s.fontSize}px; --fs-num: ${s.fontSize}; --pad: ${s.padding}px; --pad-num: ${s.padding}; --lsp-num: ${s.letterSpacing || 0}; --mob-mt: ${mt}; --mob-mb: ${mb}; --mob-ml: ${ml}; --mob-mr: ${mr}; --mob-w: ${mobW}; --top-pct: ${topPct}; --h-pct: ${hPct}; --w-pct: ${wPct}; --left-pct: ${leftPct}; --desk-w: ${deskW}; --desk-h: ${deskH}; ${rootDeskW} left: ${(b.layout.x/parentCols*100)}%; top: ${b.layout.y}px; width: ${(b.layout.w/parentCols*100)}%; ${hRule} background-color: ${s.bgHex==='transparent'?'transparent':s.bgHex}; color: ${s.textHex}; border-radius: ${s.radiusTL}px ${s.radiusTR}px ${s.radiusBR}px ${s.radiusBL}px; border: ${s.borderW>0?s.borderW+'px '+s.borderStyle+' '+s.borderHex:'none'}; box-shadow: ${boxSh}; opacity: ${(s.opacity||100)/100}; ${overflowRule} ${transformRule} ${blendRule} }\n`;
                 css += `#${id} > .content-area { flex-grow: 1; padding: ${s.padding}px; font-size: ${s.fontSize}px; font-family: '${s.fontFamily||'Nunito'}', sans-serif; text-align: ${s.textAlign||'left'}; justify-content: center; display: flex; flex-direction: column; letter-spacing: ${s.letterSpacing||0}px; line-height: ${s.lineHeight||1.4}; text-shadow: ${txtSh}; width: 100%; height: 100%; box-sizing: border-box; overflow-wrap: break-word; word-break: break-word; }\n`;
             });
         });
@@ -2163,11 +2229,15 @@ const Architect = (function () {
 
         const resolveAsset = (filename) => {
             if (!filename) return '';
+            // Strip legacy #gif suffix used by old imports before any path logic
+            const clean = filename.replace('#gif', '');
+            const isAbsolute = clean.startsWith('http://') || clean.startsWith('https://');
+            if (isAbsolute) return clean;
+            
             if (isPreview) {
-                return assetUrls.has(filename) ? assetUrls.get(filename) : (baseUrl + filename);
+                return assetUrls.has(filename) ? assetUrls.get(filename) : (baseUrl + clean);
             }
-            // In Export ZIP: Route stock assets to the Intranet's root folder, keep custom assets local to the ZIP
-            return allStockNames.includes(filename) ? `/builder/assets/${filename}` : `./assets/${filename}`;
+            return allStockNames.includes(clean) ? `/builder/assets/${clean}` : `./assets/${clean}`;
         };
 
         targetPage.layerOrder.filter(id => targetPage.blocks[id].parentId === parentId).forEach(id => {
@@ -2176,9 +2246,24 @@ const Architect = (function () {
             if (b.type === 'text') inner = `<div class="content-area">${b.content}</div>`;
             else if (b.type === 'shape') inner = `<div class="content-area">\n${compileNodeHTML(id, targetPage, isPreview)}        </div>`;
             else if (b.type === 'media' && b.filename) {
-                const isVid = /\\.(mp4|webm|ogg)$/i.test(b.filename);
-                inner = isVid ? `<video src="${resolveAsset(b.filename)}" controls style="width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;"></video>` 
-                              : `<img src="${resolveAsset(b.filename)}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;">`;
+                const cleanFilename = b.filename.replace('#gif', '');
+                const isVid = /\.(mp4|webm|ogg)$/i.test(cleanFilename)
+                    || (cleanFilename.startsWith('http') && (cleanFilename.includes('vimeo') || cleanFilename.includes('/videos/')));
+                const isSilentVideo = b.filename.includes('#gif') && isVid;
+                
+                if (isVid) {
+                    const autoplay = isSilentVideo || (b.style.mediaAutoplay !== false);
+                    const loop     = b.style.mediaLoop !== false;
+                    const vidAttrs = [
+                        autoplay ? 'autoplay' : '',
+                        loop     ? 'loop'     : '',
+                        'muted playsinline',
+                        !autoplay ? 'controls' : ''
+                    ].filter(Boolean).join(' ');
+                    inner = `<video src="${resolveAsset(b.filename)}" ${vidAttrs} style="width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;"></video>`;
+                } else {
+                    inner = `<img src="${resolveAsset(b.filename)}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;">`;
+                }
             }
             
             let wOpen = '', wClose = ''; let blockAttrs = `id="${id}" class="wx-block type-${b.type}${b.style.preserveLayout ? ' preserve-layout' : ''}"`;
@@ -2241,13 +2326,19 @@ const Architect = (function () {
 
         Object.values(state.pages).forEach(p => {
             Object.values(p.blocks).forEach(b => {
-                if (b.type === 'media' && b.filename && !allStockNames.includes(b.filename)) requiredCustomAssets.add(b.filename);
+                if (b.type === 'media' && b.filename) {
+                    const clean = b.filename.replace('#gif', '');
+                    const isAbsolute = clean.startsWith('http://') || clean.startsWith('https://');
+                    if (!isAbsolute && !allStockNames.includes(clean)) requiredCustomAssets.add(clean);
+                }
                 if (b.link && b.link.type === 'sound' && b.link.value && !allStockNames.includes(b.link.value)) requiredCustomAssets.add(b.link.value);
             });
         });
 
         requiredCustomAssets.forEach(name => {
-            if (assetFiles.has(name)) assetsFolder.file(name, assetFiles.get(name));
+            // Try exact name first, then the #gif-suffixed legacy key
+            const file = assetFiles.get(name) || assetFiles.get(name + '#gif');
+            if (file) assetsFolder.file(name, file);
         });
 
         // 3. Compile CSS & JS for the Live Site
@@ -2482,6 +2573,342 @@ const Architect = (function () {
         }).catch(err => alert("Failed to load project: " + err.message));
         event.target.value = '';
     }
+
+    // ── PIXABAY INTEGRATION ──────────────────────────────────────────
+
+    function openPixabay() {
+        // 1. Check local storage for the key
+        let apiKey = localStorage.getItem('wexton_pixabay_key');
+        
+        // 2. If no key, prompt the user for it!
+        if (!apiKey) {
+            apiKey = prompt("Please enter your free Pixabay API key to enable stock media search.\n\nYou can get one for free at: pixabay.com/api/docs/");
+            if (!apiKey || !apiKey.trim()) return; 
+            localStorage.setItem('wexton_pixabay_key', apiKey.trim()); 
+        }
+
+        let modal = document.getElementById('pixabay-modal');
+        if (!modal) {
+            modal = document.createElement('div'); modal.id = 'pixabay-modal';
+            modal.style.cssText = 'position:fixed; inset:0; z-index:9000; display:flex; align-items:center; justify-content:center;';
+            modal.innerHTML = `
+                <div class="lib-backdrop" onclick="document.getElementById('pixabay-modal').style.display='none'"></div>
+                <div class="alib-dialog" style="width: 800px; height: 80vh;">
+                    <div class="lib-header" style="gap: 10px;">
+                        <span class="lib-title" style="flex-shrink:0;">Pixabay</span>
+                        <input type="text" id="px-search" class="ctx-input" style="flex:1; font-size:14px; padding:8px;" placeholder="Search stock media...">
+                        <select id="px-type" class="ctx-select" style="width:110px;" onchange="Architect._onPxTypeChange()">
+                            <option value="all">All Images</option>
+                            <option value="photo">Photos</option>
+                            <option value="illustration">Illustrations</option>
+                            <option value="vector">Vectors</option>
+                            <option value="gif">GIFs</option>
+                            <option value="video">Videos</option>
+                        </select>
+                        <label id="px-trans-wrap" style="display:flex; align-items:center; gap:5px; font-size:12px; font-weight:600; color:var(--text-muted); cursor:pointer; flex-shrink:0; white-space:nowrap;">
+                            <input type="checkbox" id="px-transparent" checked onchange="if(document.getElementById('px-search').value.trim()) Architect.searchPixabay()">
+                            Transparent
+                        </label>
+                        <button class="lib-btn primary" onclick="Architect.searchPixabay()">Search</button>
+                        <button class="lib-close" onclick="document.getElementById('pixabay-modal').style.display='none'">✕</button>
+                    </div>
+                    <div class="alib-body" id="px-results" style="align-content: flex-start;">
+                        <div style="text-align:center; color:var(--text-muted); padding:40px;">Search for free stock media to add to your canvas.</div>
+                    </div>
+                </div>`;
+            document.body.appendChild(modal);
+            document.getElementById('px-search').addEventListener('keydown', e => { if (e.key === 'Enter') Architect.searchPixabay(); });
+        }
+        modal.style.display = 'flex';
+        document.getElementById('px-search').focus();
+        // Sync transparent checkbox visibility to current type selection
+        Architect._onPxTypeChange(true);
+    }
+
+    // Show/hide the transparent checkbox based on type; re-search if type changed with a live query
+    function _onPxTypeChange(silent) {
+        const type = document.getElementById('px-type')?.value;
+        const wrap = document.getElementById('px-trans-wrap');
+        // Videos can't be transparent — hide the checkbox when video is selected
+        if (wrap) wrap.style.display = type === 'video' ? 'none' : 'flex';
+        // GIFs always need transparent — force the checkbox on and disable it
+        const cb = document.getElementById('px-transparent');
+        if (cb) {
+            if (type === 'gif') { cb.checked = true; cb.disabled = true; }
+            else { cb.disabled = false; }
+        }
+        if (!silent && document.getElementById('px-search')?.value.trim()) Architect.searchPixabay();
+    }
+
+    // ── PIXABAY SEARCH STATE ─────────────────────────────────────────
+    let _pxQuery = '', _pxType = 'all', _pxTransparent = true, _pxPage = 1, _pxExhausted = false, _pxLoading = false;
+
+    function searchPixabay(appendMode) {
+        const resDiv = document.getElementById('px-results');
+        const apiKey = localStorage.getItem('wexton_pixabay_key');
+
+        if (!appendMode) {
+            _pxQuery       = document.getElementById('px-search').value;
+            _pxType        = document.getElementById('px-type').value;
+            _pxTransparent = document.getElementById('px-transparent')?.checked ?? true;
+            _pxPage        = 1;
+            _pxExhausted   = false;
+            resDiv.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted);">Searching Pixabay...</div>';
+            if (resDiv._pxObserver) { resDiv._pxObserver.disconnect(); resDiv._pxObserver = null; }
+        }
+
+        if (!apiKey) {
+            resDiv.innerHTML = '<div style="text-align:center; color:#dc2626; padding:40px;"><b>API Key Missing!</b><br>Please close this window and click the Pixabay button again to enter your key.</div>';
+            return;
+        }
+        if (_pxExhausted || _pxLoading) return;
+        _pxLoading = true;
+
+        let spinner = document.getElementById('px-spinner');
+        if (!spinner) {
+            spinner = document.createElement('div');
+            spinner.id = 'px-spinner';
+            spinner.style.cssText = 'text-align:center; padding:20px; color:var(--text-muted); font-size:13px; width:100%;';
+            resDiv.appendChild(spinner);
+        }
+        spinner.textContent = 'Loading…';
+
+        const q = encodeURIComponent(_pxQuery);
+        const isVideo = _pxType === 'video';
+        const isGif   = _pxType === 'gif';
+        // GIFs always use transparent; videos never can; everything else respects the checkbox
+        const useTransparent = isGif || (!isVideo && _pxTransparent);
+        const PER_PAGE = 40;
+
+        let apiUrl;
+        if (isVideo) {
+            apiUrl = `https://pixabay.com/api/videos/?key=${apiKey}&q=${q}&per_page=${PER_PAGE}&page=${_pxPage}&safesearch=true`;
+        } else if (isGif) {
+            // Videos API with video_type=animation returns Pixabay's animated sticker/GIF library.
+            // We confirmed these ARE transparent animations — the problem was only that we were
+            // downloading them as MP4 (no alpha). At import time we'll attempt a .gif URL swap instead.
+            apiUrl = `https://pixabay.com/api/videos/?key=${apiKey}&q=${q}&video_type=animation&per_page=${PER_PAGE}&page=${_pxPage}&safesearch=true`;
+        } else {
+            const colorParam = useTransparent ? '&colors=transparent' : '';
+            apiUrl = `https://pixabay.com/api/?key=${apiKey}&q=${q}&image_type=${_pxType}${colorParam}&per_page=${PER_PAGE}&page=${_pxPage}&safesearch=true`;
+        }
+
+        fetch(apiUrl)
+            .then(r => r.json())
+            .then(data => {
+                _pxLoading = false;
+                spinner.remove();
+
+                if (_pxPage === 1 && (!data.hits || !data.hits.length)) {
+                    resDiv.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:40px;">No results found. Try a different search!</div>';
+                    return;
+                }
+
+                const hits = data.hits || [];
+                if (_pxPage === 1) resDiv.innerHTML = '';
+
+                // Get or create the grid container
+                let grid = resDiv.querySelector('.alib-grid');
+                if (!grid) {
+                    grid = document.createElement('div');
+                    grid.className = 'alib-grid';
+                    resDiv.appendChild(grid);
+                }
+
+                let cardsHtml = '';
+                if (isVideo || isGif) {
+                    const checkerBg = isGif ? '' : '';
+                    cardsHtml = hits.map(item => {
+                        const vids = item.videos || {};
+                        const vidUrl   = vids.tiny?.url || vids.small?.url || vids.medium?.url || vids.large?.url || '';
+                        const thumbUrl = vids.tiny?.thumbnail || vids.small?.thumbnail || '';
+                        if (!vidUrl) return ''; // skip broken entries
+                        const label = isGif ? `🌀 ${item.duration}s` : `🎥 ${item.duration}s`;
+                        return `<div class="alib-card px-vid-card" style="${checkerBg}"
+                                     data-vid="${encodeURIComponent(vidUrl)}"
+                                     data-thumb="${encodeURIComponent(thumbUrl)}"
+                                     onclick="Architect.importPixabay(decodeURIComponent(this.dataset.vid), ${isVideo}, ${isGif})"
+                                     onmouseenter="Architect._pixabayVideoHover(this, true)"
+                                     onmouseleave="Architect._pixabayVideoHover(this, false)">
+                            <img class="alib-card-img" src="${thumbUrl}" loading="lazy" style="pointer-events:none;${isGif ? 'mix-blend-mode:multiply;' : ''}">
+                            <div class="alib-card-label">${label}</div>
+                        </div>`;
+                    }).join('');
+                } else {
+                    cardsHtml = hits.map(item => {
+                        const importUrl = item.largeImageURL || item.webformatURL;
+                        return `<div class="alib-card"
+                                     onclick="Architect.importPixabay(decodeURIComponent('${encodeURIComponent(importUrl)}'), false, false)">
+                            <img class="alib-card-img" src="${item.webformatURL}" loading="lazy">
+                            <div class="alib-card-label">${item.tags.split(',')[0]}</div>
+                        </div>`;
+                    }).join('');
+                }
+                grid.insertAdjacentHTML('beforeend', cardsHtml);
+
+                // Exhaustion: use raw API page count; GIF hits may be smaller due to client filter but we still page by API
+                const totalLoaded = _pxPage * PER_PAGE;
+                if (!data.hits || data.hits.length < PER_PAGE || totalLoaded >= (data.totalHits || 0)) {
+                    _pxExhausted = true;
+                    const totalShown = resDiv.querySelectorAll('.alib-card').length;
+                    if (totalShown > 0) {
+                        const endNote = document.createElement('div');
+                        endNote.style.cssText = 'text-align:center; padding:16px; color:var(--text-muted); font-size:12px; width:100%;';
+                        endNote.textContent = `All ${data.totalHits} results loaded`;
+                        resDiv.appendChild(endNote);
+                    }
+                } else {
+                    _pxPage++;
+                    _attachPixabayScrollSentinel();
+                }
+            })
+            .catch(() => {
+                _pxLoading = false;
+                if (spinner) spinner.remove();
+                if (_pxPage === 1) {
+                    resDiv.innerHTML = '<div style="text-align:center; color:#dc2626; padding:40px;">Search failed. Check your API key and try again.</div>';
+                }
+            });
+    }
+
+    function _attachPixabayScrollSentinel() {
+        const resDiv = document.getElementById('px-results');
+        if (!resDiv) return;
+        // Remove any existing sentinel
+        const old = document.getElementById('px-sentinel');
+        if (old) old.remove();
+
+        const sentinel = document.createElement('div');
+        sentinel.id = 'px-sentinel';
+        sentinel.style.cssText = 'height: 1px; width: 100%;';
+        resDiv.appendChild(sentinel);
+
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && !_pxLoading && !_pxExhausted) {
+                searchPixabay(true); // append mode
+            }
+        }, { root: resDiv, rootMargin: '120px' });
+        observer.observe(sentinel);
+        // Store observer ref so we can disconnect on new search
+        resDiv._pxObserver = observer;
+    }
+
+    // Swap between static thumbnail and a live <video> preview on hover.
+    // Only one video element is ever active at a time — no mass preloading.
+    function _pixabayVideoHover(card, enter) {
+        if (enter) {
+            const img = card.querySelector('img');
+            if (!img) return;
+            const vidUrl = decodeURIComponent(card.dataset.vid);
+            const video = document.createElement('video');
+            video.src = vidUrl;
+            video.muted = true;
+            video.loop = true;
+            video.playsInline = true;
+            video.className = 'alib-card-img';
+            video.style.cssText = 'pointer-events:none; object-fit:cover;';
+            card.dataset.thumbSrc = img.src;
+            img.replaceWith(video);
+            video.play().catch(() => {});
+        } else {
+            const video = card.querySelector('video');
+            if (!video) return;
+            video.pause();
+            const img = document.createElement('img');
+            img.src = card.dataset.thumbSrc || decodeURIComponent(card.dataset.thumb);
+            img.className = 'alib-card-img';
+            img.style.pointerEvents = 'none';
+            img.loading = 'lazy';
+            video.replaceWith(img);
+        }
+    }
+
+    function importPixabay(url, isVideo, isGif) {
+        document.getElementById('pixabay-modal').style.display = 'none';
+
+        const canvasEl = document.getElementById('canvas');
+        const wsEl = document.getElementById('workspace');
+        let defaultY = 80;
+        if (canvasEl && wsEl) {
+            const cRect = canvasEl.getBoundingClientRect();
+            const wRect = wsEl.getBoundingClientRect();
+            defaultY = snapY(Math.max(20, wRect.height / 2 - cRect.top - 40));
+        }
+
+        // Toast while downloading
+        const toast = document.createElement('div');
+        toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1d1d1f;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,0.3);pointer-events:none;';
+        toast.textContent = '⬇ Downloading from Pixabay...';
+        document.body.appendChild(toast);
+
+        const showWarn = (msg) => {
+            const w = document.createElement('div');
+            w.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#b45309;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,0.3);';
+            w.textContent = msg;
+            document.body.appendChild(w);
+            setTimeout(() => w.remove(), 4500);
+        };
+
+        const saveAndPlace = (blob, ext, mime, videoStyle) => {
+            const filename = `pixabay_${Date.now()}.${ext}`;
+            const file = new File([blob], filename, { type: mime });
+            assetFiles.set(filename, file);
+            assetUrls.set(filename, URL.createObjectURL(file));
+            _saveAsset(filename, file);
+            addBlock('media', {
+                filename,
+                x: 18, y: defaultY, w: 24, h: isVideo ? 160 : 200,
+                style: videoStyle || {}
+            });
+        };
+
+        if (isGif) {
+            // These are MP4 animations from Pixabay's sticker/animation library.
+            // They play on a white background, so mix-blend-mode:multiply makes the white
+            // pixels transparent — producing a clean "transparent GIF" effect without any
+            // special file format required. We auto-apply this at import time.
+            fetch(url)
+                .then(r => { if (!r.ok) throw new Error(); return r.blob(); })
+                .then(blob => {
+                    toast.remove();
+                    const filename = `pixabay_${Date.now()}.mp4`;
+                    const file = new File([blob], filename, { type: 'video/mp4' });
+                    assetFiles.set(filename, file);
+                    assetUrls.set(filename, URL.createObjectURL(file));
+                    _saveAsset(filename, file);
+                    addBlock('media', {
+                        filename,
+                        x: 18, y: defaultY, w: 24, h: 200,
+                        style: { bgHex: 'transparent', mediaAutoplay: true, mediaLoop: true, mediaBlendMode: 'multiply' }
+                    });
+                })
+                .catch(() => { toast.remove(); alert('Failed to download from Pixabay. Please try again.'); });
+            return;
+        }
+
+        // Regular image or video
+        const cleanPath = url.split('?')[0];
+        const rawExt = cleanPath.split('.').pop().toLowerCase();
+        const safeExt = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'webm'].includes(rawExt)
+            ? rawExt : (isVideo ? 'mp4' : 'jpg');
+
+        fetch(url)
+            .then(r => { if (!r.ok) throw new Error(r.statusText); return r.blob(); })
+            .then(blob => {
+                toast.remove();
+                const mime = blob.type || (isVideo ? 'video/mp4' : 'image/jpeg');
+                saveAndPlace(blob, safeExt, mime, isVideo ? { mediaAutoplay: true, mediaLoop: true } : null);
+            })
+            .catch(() => {
+                toast.remove();
+                if (isVideo) {
+                    addBlock('media', { filename: url, x: 18, y: defaultY, w: 24, h: 160 });
+                    showWarn('⚠ Video added as external link — may not bundle on export');
+                } else {
+                    alert('Failed to download from Pixabay. Please try again.');
+                }
+            });
+    }
     
     // ── PUBLIC API ───────────────────────────────────────────────────
     return {
@@ -2516,7 +2943,12 @@ const Architect = (function () {
         setPreview,
         generateTemplate,
         exportProject,
-        importProject
+        importProject,
+        openPixabay,
+        searchPixabay,
+        importPixabay,
+        _pixabayVideoHover,
+        _onPxTypeChange
     };
 })();
 document.addEventListener('DOMContentLoaded', Architect.init);
