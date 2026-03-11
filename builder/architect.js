@@ -2576,17 +2576,7 @@ const Architect = (function () {
 
     // ── PIXABAY INTEGRATION ──────────────────────────────────────────
 
-    function openPixabay() {
-        // 1. Check local storage for the key
-        let apiKey = localStorage.getItem('wexton_pixabay_key');
-        
-        // 2. If no key, prompt the user for it!
-        if (!apiKey) {
-            apiKey = prompt("Please enter your free Pixabay API key to enable stock media search.\n\nYou can get one for free at: pixabay.com/api/docs/");
-            if (!apiKey || !apiKey.trim()) return; 
-            localStorage.setItem('wexton_pixabay_key', apiKey.trim()); 
-        }
-
+    function _openPixabaySearch() {
         let modal = document.getElementById('pixabay-modal');
         if (!modal) {
             modal = document.createElement('div'); modal.id = 'pixabay-modal';
@@ -2623,6 +2613,92 @@ const Architect = (function () {
         document.getElementById('px-search').focus();
         // Sync transparent checkbox visibility to current type selection
         Architect._onPxTypeChange(true);
+    }
+
+    function openPixabay() {
+        // 1. Check local storage for the key
+        let apiKey = localStorage.getItem('wexton_pixabay_key');
+        
+        // 2. If no key, show the beautiful new instructional modal
+        if (!apiKey) {
+            let authModal = document.getElementById('pixabay-auth-modal');
+            if (!authModal) {
+                authModal = document.createElement('div'); authModal.id = 'pixabay-auth-modal';
+                authModal.style.cssText = 'position:fixed; inset:0; z-index:9001; display:flex; align-items:center; justify-content:center;';
+                authModal.innerHTML = `
+                    <div class="lib-backdrop" onclick="document.getElementById('pixabay-auth-modal').style.display='none'"></div>
+                    <div class="alib-dialog" style="width: 480px; max-width: 90vw;">
+                        <div class="lib-header">
+                            <span class="lib-title">Enable Pixabay Stock Search</span>
+                            <button class="lib-close" onclick="document.getElementById('pixabay-auth-modal').style.display='none'">✕</button>
+                        </div>
+                        <div class="alib-body" style="padding: 24px;">
+                            <ol style="margin: 0 0 20px 0; padding-left: 20px; font-size: 14px; line-height: 1.6; color: var(--text-main);">
+                                <li>Sign up or log in to <a href="https://pixabay.com" target="_blank" style="color:var(--primary); font-weight:600;">Pixabay.com</a></li>
+                                <li>Visit <a href="https://pixabay.com/api/docs/" target="_blank" style="color:var(--primary); font-weight:600;">this API Documentation page</a>, and scroll down until you see <b>"YOUR KEY"</b> in green.</li>
+                                <img src="./assets/pixabayapi.jpg" alt="API Key Location" style="width: 100%; border-radius: 6px; border: 1px solid var(--border-subtle); margin: 12px 0; display: block; background: #fafafa; min-height: 100px;">
+                                <li>Copy that key and paste it in here</li>
+                                <li>(non)PROFIT!</li>
+                            </ol>
+                            <label class="settings-label" style="display:block; margin-bottom:6px; font-weight:bold; font-size:12px;">Pixabay API Key</label>
+                            <input type="text" id="px-api-input" class="ctx-input" style="width:100%; font-size:14px; padding:10px; margin-bottom: 16px;" placeholder="Paste your green key here...">
+                            <button id="btn-save-px-key" class="lib-btn primary" style="width:100%; padding: 12px; font-size: 14px; background:var(--primary); color:#fff; border:none; border-radius:8px; cursor:pointer; transition: opacity 0.2s;">Save & Continue</button>
+                        </div>
+                    </div>`;
+                document.body.appendChild(authModal);
+                
+                // Wire the internal button to VALIDATE, save, and proceed
+                document.getElementById('btn-save-px-key').addEventListener('click', () => {
+                    const key = document.getElementById('px-api-input').value.trim();
+                    if (!key) { alert("Please paste your API key first."); return; }
+                    
+                    const btn = document.getElementById('btn-save-px-key');
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Validating...';
+                    btn.style.opacity = '0.7';
+                    btn.style.pointerEvents = 'none';
+
+                    // Fire a tiny test request to Pixabay to check if the key works
+                    fetch(`https://pixabay.com/api/?key=${key}&q=test&per_page=3`)
+                        .then(r => {
+                            if (!r.ok) throw new Error("Invalid API Key");
+                            return r.json();
+                        })
+                        .then(() => {
+                            // Validation passed! Save it and open the search
+                            localStorage.setItem('wexton_pixabay_key', key);
+                            authModal.style.display = 'none';
+                            
+                            // Reset button state in case they reopen it somehow
+                            btn.textContent = originalText;
+                            btn.style.opacity = '1';
+                            btn.style.pointerEvents = 'auto';
+                            document.getElementById('px-api-input').value = '';
+                            
+                            _openPixabaySearch();
+                        })
+                        .catch(err => {
+                            // Validation failed!
+                            alert("Invalid API Key! Please check that you copied it correctly from Pixabay.");
+                            btn.textContent = originalText;
+                            btn.style.opacity = '1';
+                            btn.style.pointerEvents = 'auto';
+                            document.getElementById('px-api-input').focus();
+                        });
+                });
+                
+                // Let the user hit Enter in the input box to submit
+                document.getElementById('px-api-input').addEventListener('keydown', e => {
+                    if (e.key === 'Enter') document.getElementById('btn-save-px-key').click();
+                });
+            }
+            authModal.style.display = 'flex';
+            document.getElementById('px-api-input').focus();
+            return;
+        }
+
+        // 3. If they already have a key saved, instantly open the search panel!
+        _openPixabaySearch();
     }
 
     // Show/hide the transparent checkbox based on type; re-search if type changed with a live query
