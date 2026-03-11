@@ -800,8 +800,12 @@ const Architect = (function () {
         if (s.rotation) transforms.push(`rotate(${s.rotation}deg)`);
         if (s.flipH) transforms.push(`scaleX(-1)`);
         if (s.flipV) transforms.push(`scaleY(-1)`);
+        transforms.push('translateZ(0)');
         node.style.transform = transforms.join(' ');
         node.style.transformOrigin = '50% 50%';
+
+        // WebKit hack to force border-radius clipping on hardware-accelerated videos
+        node.style.WebkitMaskImage = '-webkit-radial-gradient(white, black)';
 
         // Smarter Mobile Margins
         const isRoot = !block.parentId;
@@ -2225,11 +2229,13 @@ const Architect = (function () {
                 if (s.rotation) transforms.push(`rotate(${s.rotation}deg)`);
                 if (s.flipH) transforms.push(`scaleX(-1)`);
                 if (s.flipV) transforms.push(`scaleY(-1)`);
+                transforms.push('translateZ(0)');
                 const transformRule = transforms.length > 0 ? `transform: ${transforms.join(' ')}; transform-origin: 50% 50%;` : '';
                 
                 const blendRule = (b.type === 'media' && s.mediaBlendMode && s.mediaBlendMode !== 'normal')
                     ? `mix-blend-mode: ${s.mediaBlendMode};` : '';
-                css += `#${id} { position: absolute; z-index: ${index+1}; box-sizing: border-box; --y-index: ${Math.round(b.layout.y)}; --h: ${b.layout.h}px; --fs: ${s.fontSize}px; --fs-num: ${s.fontSize}; --pad: ${s.padding}px; --pad-num: ${s.padding}; --lsp-num: ${s.letterSpacing || 0}; --mob-mt: ${mt}; --mob-mb: ${mb}; --mob-ml: ${ml}; --mob-mr: ${mr}; --mob-w: ${mobW}; --top-pct: ${topPct}; --h-pct: ${hPct}; --w-pct: ${wPct}; --left-pct: ${leftPct}; --desk-w: ${deskW}; --desk-h: ${deskH}; ${rootDeskW} left: ${(b.layout.x/parentCols*100)}%; top: ${b.layout.y}px; width: ${(b.layout.w/parentCols*100)}%; ${hRule} background-color: ${s.bgHex==='transparent'?'transparent':s.bgHex}; color: ${s.textHex}; border-radius: ${s.radiusTL}px ${s.radiusTR}px ${s.radiusBR}px ${s.radiusBL}px; border: ${s.borderW>0?s.borderW+'px '+s.borderStyle+' '+s.borderHex:'none'}; box-shadow: ${boxSh}; opacity: ${(s.opacity||100)/100}; ${overflowRule} ${transformRule} ${blendRule} }\n`;
+                    
+                css += `#${id} { position: absolute; z-index: ${index+1}; box-sizing: border-box; --y-index: ${Math.round(b.layout.y)}; --h: ${b.layout.h}px; --fs: ${s.fontSize}px; --fs-num: ${s.fontSize}; --pad: ${s.padding}px; --pad-num: ${s.padding}; --lsp-num: ${s.letterSpacing || 0}; --mob-mt: ${mt}; --mob-mb: ${mb}; --mob-ml: ${ml}; --mob-mr: ${mr}; --mob-w: ${mobW}; --top-pct: ${topPct}; --h-pct: ${hPct}; --w-pct: ${wPct}; --left-pct: ${leftPct}; --desk-w: ${deskW}; --desk-h: ${deskH}; ${rootDeskW} left: ${(b.layout.x/parentCols*100)}%; top: ${b.layout.y}px; width: ${(b.layout.w/parentCols*100)}%; ${hRule} background-color: ${s.bgHex==='transparent'?'transparent':s.bgHex}; color: ${s.textHex}; border-radius: ${s.radiusTL}px ${s.radiusTR}px ${s.radiusBR}px ${s.radiusBL}px; border: ${s.borderW>0?s.borderW+'px '+s.borderStyle+' '+s.borderHex:'none'}; box-shadow: ${boxSh}; opacity: ${(s.opacity||100)/100}; ${overflowRule} -webkit-mask-image: -webkit-radial-gradient(white, black); ${transformRule} ${blendRule} }\n`;
                 css += `#${id} > .content-area { flex-grow: 1; padding: ${s.padding}px; font-size: ${s.fontSize}px; font-family: '${s.fontFamily||'Nunito'}', sans-serif; text-align: ${s.textAlign||'left'}; justify-content: center; display: flex; flex-direction: column; letter-spacing: ${s.letterSpacing||0}px; line-height: ${s.lineHeight||1.4}; text-shadow: ${txtSh}; width: 100%; height: 100%; box-sizing: border-box; overflow-wrap: break-word; word-break: break-word; }\n`;
             });
         });
