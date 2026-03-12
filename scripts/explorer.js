@@ -363,11 +363,12 @@ function failSplash(error) {
 // --- BOOT SEQUENCE ---
 window.addEventListener('PodCube:Loaded', async ()=>{
     await PodCube.init();
-    await PodUser.init();
 })
 
 window.addEventListener('PodCube:Ready', async () => {
     try {
+        
+        await PodUser.init();
         initUserCallbacks();           // Wire onUpdate callback and paint initial user UI.
         registerPlaybackListeners();   // All event listeners MUST be registered before session restore.
         await restoreSession();        // Restore volume + session; listeners will catch fired events.
