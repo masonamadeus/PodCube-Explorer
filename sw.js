@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'podcube-explorer-v9.fixprintqueue031126racecondition';
+const CACHE_NAME = 'podcube-explorer-v9.fixprintqueue031126racecondition2';
 
 // Detect if we are running locally
 const isLocalhost = Boolean(
