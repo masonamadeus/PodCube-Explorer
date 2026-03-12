@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'podcube-explorer-v9.builderPROwithPIXABAYfix';
+const CACHE_NAME = 'podcube-explorer-v9.fixprintqueue031126';
 
 // Detect if we are running locally
 const isLocalhost = Boolean(

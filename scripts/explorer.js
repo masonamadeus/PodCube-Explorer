@@ -238,6 +238,7 @@ async function restoreSession() {
 // the restored session state (queue, transport, track metadata, etc.).
 function renderInitialUI() {
     updateQueueList();
+    updatePunchcardPreview();
     renderSystemInfo();
     renderTimeDisplays(PodCube.status);
     renderTransportState(PodCube.status);
