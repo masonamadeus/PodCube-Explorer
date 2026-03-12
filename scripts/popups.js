@@ -217,7 +217,7 @@ const PodAds = (function() {
         const adImage = overlay.querySelector('.pric-ad-image');
         adImage.addEventListener('click', () => {
             closeAd(); // Dismiss the popup
-            openAd(targetAd.payload); // Fire the payload action!
+            // openAd(targetAd.payload); // Fire the payload action!
         });
 
         overlay.querySelector('.pric-ad-close-btn').addEventListener('click', closeAd);
