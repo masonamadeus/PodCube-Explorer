@@ -326,7 +326,6 @@ const PlaylistSharing = {
                     if (typeof logCommand !== 'undefined') logCommand(`// EXPORT SUCCESS: PUNCHCARD ADDED TO CLIPBOARD.`);
                     if (btn) btn.textContent = 'COPIED!';
                     overlay.innerHTML = `
-                        <div style="font-size: 48px; margin-bottom: 10px;">📋</div>
                         <div style="color:#fff; text-shadow: 0 2px 4px rgba(0,0,0,0.5); font-family: 'Fustat', sans-serif; font-size: 16px; font-weight: bold; text-align: center; text-transform: uppercase; letter-spacing: 0.05em;">
                             COPIED TO CLIPBOARD.<br><br>PASTE ANYWHERE TO SHARE.
                         </div>
@@ -348,10 +347,9 @@ const PlaylistSharing = {
                         
                         ${canUseClipboard ? `
                             <button id="pc-sync-copy-btn" class="hero-btn" style="width: auto; padding: 12px 30px; box-shadow: 0 5px 20px rgba(0,0,0,0.5); border-radius: 4px; border-color: var(--primary);">
-                                <span class="hero-btn-icon" style="font-size: 1.4em;">📋</span>
+
                                 <span class="hero-btn-text" style="text-align: left;">
                                     <strong style="font-size: 14px; font-family: 'Libertinus Math';">COPY PUNCHCARD</strong>
-                                    <span style="font-size: 10px; font-family: 'Fustat';">Save Image & Nano-GUID</span>
                                 </span>
                             </button>
                         ` : ''}
