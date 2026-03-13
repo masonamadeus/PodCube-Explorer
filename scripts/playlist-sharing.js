@@ -173,8 +173,9 @@ const PlaylistSharing = {
     },
 
     exportToClipboard: async function(playlistName) {
-        if (!window.html2canvas || !navigator.clipboard || !navigator.clipboard.write) {
-             alert("Clipboard features unavailable. Downloading image instead.");
+        // 1. We ONLY abort if the rendering engine is missing entirely.
+        if (!window.html2canvas) {
+             alert("Visualization library missing. Falling back to direct download.");
              this.downloadImage(playlistName);
              return;
         }
@@ -182,94 +183,219 @@ const PlaylistSharing = {
         const exportData = PodCube.exportPlaylist(playlistName);
         if (!exportData) return;
 
-        // UI Feedback (Scanning Line)
         const cards = document.querySelectorAll('.pc-share-card-container');
         let targetCard = null;
         cards.forEach(c => {
             if (c.querySelector('.pc-share-title')?.textContent.trim() === playlistName) targetCard = c;
         });
 
-        const btn = event?.currentTarget;
+        const btn = typeof event !== 'undefined' ? event?.currentTarget : null;
         const originalBtnText = btn ? btn.textContent : 'EXPORT';
-        let overlay = null;
-
-        if (targetCard) {
-            overlay = document.createElement('div');
-            overlay.className = 'pc-exporting-overlay';
-            overlay.innerHTML = `
-                <div class="pc-export-scanner-line"></div>
-                <div class="pc-export-status-text">GENERATING PHYSICAL RECORD...</div>
-            `;
-            targetCard.appendChild(overlay);
-        }
         
         if (btn) {
             btn.classList.add('is-exporting');
             btn.textContent = '...';
         }
 
-        // Delay to allow UI render
-        setTimeout(async () => {
-            const cardElement = this.createCardElement(exportData);
-            document.body.appendChild(cardElement);
+        // Determine device type and capabilities
+        const isDesktop = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+        const canUseClipboard = window.navigator && window.navigator.clipboard && typeof window.navigator.clipboard.write === 'function';
+
+        const cardElement = this.createCardElement(exportData);
+        document.body.appendChild(cardElement);
+
+        // Helper: Heavy lifting generation
+        const makeImagePromise = async () => {
+            const rawCanvas = await html2canvas(cardElement, { 
+                scale: 2, backgroundColor: null, useCORS: true, logging: false, scrollX: 0, scrollY: 0
+            });
+            const finalCanvas = this.reshapeCanvas(rawCanvas);
+            return new Promise(res => finalCanvas.toBlob(res, 'image/png'));
+        };
+
+        if (isDesktop && canUseClipboard) {
+            // ==========================================
+            // DESKTOP FLOW: In-Card Scanner Overlay
+            // ==========================================
+            let overlay = document.createElement('div');
+            overlay.className = 'pc-exporting-overlay';
+            overlay.innerHTML = `
+                <div class="pc-export-scanner-line"></div>
+                <div class="pc-export-status-text">GENERATING PHYSICAL RECORD...</div>
+            `;
+            if (targetCard) targetCard.appendChild(overlay);
+
+            // Execute rendering in background but resolve it later
+            const imagePromise = makeImagePromise().then(blob => {
+                if (cardElement.parentNode) cardElement.parentNode.removeChild(cardElement);
+                return blob;
+            });
+
+            const successFeedback = () => {
+                if (window.PodUser) window.PodUser.logPunchcardExport();
+                if (typeof logCommand !== 'undefined') logCommand(`// EXPORT SUCCESS: PUNCHCARD ADDED TO CLIPBOARD.`);
+                if (btn) btn.textContent = 'COPIED!';
+                
+                overlay.querySelector('.pc-export-scanner-line').style.display = 'none';
+                overlay.querySelector('.pc-export-status-text').innerHTML = `
+                    COPIED TO CLIPBOARD.<br>
+                    PASTE ANYWHERE TO SHARE.<br>
+                    PASTE INTO PUNCH CARD READER TO UPLOAD.
+                `;
+                overlay.style.background = 'rgba(23, 104, 218, 0.9)';
+                
+                setTimeout(() => {
+                    if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+                    if (btn) { btn.classList.remove('is-exporting'); btn.textContent = originalBtnText; }
+                }, 3500);
+            };
 
             try {
-                // 1. Capture Raw Square
-                const rawCanvas = await html2canvas(cardElement, { 
-                    scale: 2, 
-                    backgroundColor: null, 
-                    useCORS: true,
-                    logging: false,
-                    scrollX: 0, // Force top-left capture
-                    scrollY: 0
+                // Primary Method: Synchronous Promise assignment (Required for Desktop Safari)
+                const clipboardItem = new ClipboardItem({
+                    "image/png": imagePromise,
+                    "text/plain": Promise.resolve(new Blob([exportData.url], {type: 'text/plain'}))
                 });
+                await navigator.clipboard.write([clipboardItem]);
+                successFeedback();
 
-                // 2. Apply The Geometry (Reshape)
-                const finalCanvas = this.reshapeCanvas(rawCanvas);
-                
-                const imageBlob = await new Promise(res => finalCanvas.toBlob(res, 'image/png'));
+            } catch (err) {
+                // Fallback: Older versions of Chrome/Firefox reject Promises in ClipboardItems.
+                if (err.name === 'TypeError') {
+                    try {
+                        const blob = await imagePromise; // Await the generation here
+                        const textBlob = new Blob([exportData.url], {type: 'text/plain'});
+                        const fallbackItem = new ClipboardItem({ "image/png": blob, "text/plain": textBlob });
+                        await navigator.clipboard.write([fallbackItem]);
+                        successFeedback();
+                    } catch (fallbackErr) {
+                        console.error("Desktop copy failed", fallbackErr);
+                        if (btn) btn.textContent = 'FAILED';
+                        this.downloadImage(playlistName);
+                        if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+                    }
+                } else {
+                    console.error("Desktop copy failed", err);
+                    if (btn) btn.textContent = 'FAILED';
+                    this.downloadImage(playlistName);
+                    if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+                }
+            }
+
+        } else {
+            // ==========================================
+            // MOBILE FLOW: Full-Screen Modal
+            // ==========================================
+            const overlay = document.createElement('div');
+            Object.assign(overlay.style, {
+                position: 'fixed', inset: '0', zIndex: '9999999',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                background: 'rgba(15, 20, 30, 0.85)', backdropFilter: 'blur(6px)',
+                pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none',
+                opacity: '0', transition: 'opacity 0.3s ease'
+            });
+
+            overlay.innerHTML = `
+                <div style="width: 250px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; position: relative;">
+                    <div style="position: absolute; top: 0; left: 0; height: 100%; width: 40%; background: var(--primary); animation: splashLoad 1s infinite linear;"></div>
+                </div>
+                <div style="color: #fff; font-family: 'Fustat', sans-serif; font-size: 14px; font-weight: bold; letter-spacing: 0.05em; text-transform: uppercase; margin-top: 20px;">
+                    GENERATING PUNCHCARD...
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            void overlay.offsetWidth;
+            overlay.style.opacity = '1';
+
+            try {
+                const imageBlob = await makeImagePromise();
                 const textBlob = new Blob([exportData.url], {type: 'text/plain'});
+                if (cardElement.parentNode) cardElement.parentNode.removeChild(cardElement);
 
-                const item = new ClipboardItem({ 
-                    "image/png": imageBlob,
-                    "text/plain": textBlob 
+                const cleanup = () => {
+                    overlay.style.opacity = '0';
+                    setTimeout(() => {
+                        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+                        if (btn) { btn.classList.remove('is-exporting'); btn.textContent = originalBtnText; }
+                    }, 300); 
+                };
+
+                const successFeedback = () => {
+                    if (window.PodUser) window.PodUser.logPunchcardExport();
+                    if (typeof logCommand !== 'undefined') logCommand(`// EXPORT SUCCESS: PUNCHCARD ADDED TO CLIPBOARD.`);
+                    if (btn) btn.textContent = 'COPIED!';
+                    overlay.innerHTML = `
+                        <div style="font-size: 48px; margin-bottom: 10px;">📋</div>
+                        <div style="color:#fff; text-shadow: 0 2px 4px rgba(0,0,0,0.5); font-family: 'Fustat', sans-serif; font-size: 16px; font-weight: bold; text-align: center; text-transform: uppercase; letter-spacing: 0.05em;">
+                            COPIED TO CLIPBOARD.<br><br>PASTE ANYWHERE TO SHARE.
+                        </div>
+                    `;
+                    setTimeout(cleanup, 2500);
+                };
+
+                const imgUrl = URL.createObjectURL(imageBlob);
+                overlay.style.pointerEvents = 'auto'; 
+                
+                overlay.innerHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 20px; box-sizing: border-box;">
+                        <img src="${imgUrl}" style="
+                            max-width: 90%; max-height: 55vh; object-fit: contain;
+                            border: 1px solid rgba(255,255,255,0.15); border-radius: 6px;
+                            box-shadow: 0 20px 50px rgba(0,0,0,0.6); margin-bottom: 30px; display: block;
+                            pointer-events: auto; -webkit-touch-callout: default; 
+                        " alt="Punchcard Preview" />
+                        
+                        ${canUseClipboard ? `
+                            <button id="pc-sync-copy-btn" class="hero-btn" style="width: auto; padding: 12px 30px; box-shadow: 0 5px 20px rgba(0,0,0,0.5); border-radius: 4px; border-color: var(--primary);">
+                                <span class="hero-btn-icon" style="font-size: 1.4em;">📋</span>
+                                <span class="hero-btn-text" style="text-align: left;">
+                                    <strong style="font-size: 14px; font-family: 'Libertinus Math';">COPY PUNCHCARD</strong>
+                                    <span style="font-size: 10px; font-family: 'Fustat';">Save Image & Nano-GUID</span>
+                                </span>
+                            </button>
+                        ` : ''}
+
+                        <div style="margin-top: 25px; font-family: 'Fustat'; font-size: 11px; font-weight: bold; color: #aaa; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; line-height: 1.8;">
+                            LONG-PRESS IMAGE TO SAVE/SHARE<br>
+                            <button id="pc-close-overlay-btn" style="background: transparent; color: var(--danger); border: 1px solid var(--danger); padding: 8px 20px; font-family: 'Fustat', sans-serif; font-weight: bold; font-size: 11px; cursor: pointer; border-radius: 4px; margin-top: 15px; text-transform: uppercase; transition: background 0.2s;">CLOSE</button>
+                        </div>
+                    </div>
+                `;
+
+                overlay.querySelector('#pc-close-overlay-btn').addEventListener('click', () => {
+                    URL.revokeObjectURL(imgUrl);
+                    cleanup();
                 });
 
-                await navigator.clipboard.write([item]);
-
-                // Track punchcard export for achievements
-                if (window.PodUser) window.PodUser.logPunchcardExport();
-                
-                if (typeof logCommand !== 'undefined') logCommand(`// EXPORT SUCCESS: PUNCHCARD ADDED TO CLIPBOARD.`);
-                
-                if (btn) btn.textContent = 'COPIED!';
-                if (overlay) {
-                    overlay.querySelector('.pc-export-scanner-line').style.display = 'none';
-                    overlay.querySelector('.pc-export-status-text').innerHTML = `
-                        COPIED TO CLIPBOARD.<br>
-                        PASTE ANYWHERE TO SHARE.<br>
-                        PASTE INTO PUNCH CARD READER TO UPLOAD.
-                    `;
-                    overlay.style.background = 'rgba(23, 104, 218, 0.9)';
+                if (canUseClipboard) {
+                    const copyBtn = overlay.querySelector('#pc-sync-copy-btn');
+                    copyBtn.addEventListener('click', async () => {
+                        try {
+                            const item = new ClipboardItem({ "image/png": imageBlob, "text/plain": textBlob });
+                            await navigator.clipboard.write([item]);
+                            URL.revokeObjectURL(imgUrl);
+                            successFeedback();
+                        } catch (copyErr) {
+                            console.error("Sync copy failed", copyErr);
+                            copyBtn.querySelector('strong').textContent = "ERROR: DOWNLOADING...";
+                            setTimeout(() => {
+                                PlaylistSharing.downloadImage(playlistName);
+                                URL.revokeObjectURL(imgUrl);
+                                cleanup();
+                            }, 1500);
+                        }
+                    });
                 }
 
-                setTimeout(() => {
-                    if (cardElement.parentNode) cardElement.parentNode.removeChild(cardElement);
-                    if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
-                    if (btn) {
-                        btn.classList.remove('is-exporting');
-                        btn.textContent = originalBtnText;
-                    }
-                }, 3500);
-
             } catch (e) {
-                console.error("Rich export failed", e);
+                console.error("Mobile generation failed", e);
                 if (btn) btn.textContent = 'FAILED';
                 this.downloadImage(playlistName);
-                if (cardElement.parentNode) cardElement.parentNode.removeChild(cardElement);
+                if (cardElement && cardElement.parentNode) cardElement.parentNode.removeChild(cardElement);
                 if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
             }
-        }, 50);
+        }
     },
 
     downloadImage: async function(playlistName) {

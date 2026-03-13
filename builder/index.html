@@ -11,34 +11,64 @@
 </head>
 <body>
 <div class="topbar">
+
+    <!-- ── LEFT: Logo + layers + history ── -->
     <div class="topbar-section">
         <span class="app-logo">Wexton <span>Builder</span></span>
         <div class="topbar-divider"></div>
         <button class="btn-top" onclick="document.getElementById('layers-panel').style.display='flex'; Architect.renderLayers();" title="Show Layers">📚 Layers</button>
+        <div class="topbar-divider"></div>
         <button id="btn-undo" class="btn-top" title="Undo (Ctrl+Z)" disabled>↩ Undo</button>
         <button id="btn-redo" class="btn-top" title="Redo (Ctrl+Shift+Z)" disabled>↪ Redo</button>
     </div>
 
-    <div class="topbar-section" style="flex: 1; justify-content: center;">
-        <select id="page-selector" onchange="Architect.switchPage(this.value)" class="topbar-select" style="width:150px;"></select>
-        <button class="btn-top" onclick="Architect.createPage(false)" title="Add Page">➕ Page</button>
-        <button class="btn-top" onclick="Architect.createPage(true)" title="Add Popup">➕ Popup</button>
+    <!-- ── CENTER: Page nav + file ops + viewport toggle ── -->
+    <div class="topbar-section topbar-center">
+
+        <div class="tb-dropdown">
+            <button class="btn-top tb-file-btn" onclick="event.stopPropagation(); toggleTbDropdown('file-ops-menu')" title="File operations">📁 Sites<span class="tb-caret">▾</span></button>
+            <div class="tb-dropdown-menu" id="file-ops-menu">
+                <button class="tb-menu-item" onclick="Architect.createNewSite()"><span class="tb-menu-icon">✚</span>New Site</button>
+                <button class="tb-menu-item" onclick="Architect.openLibrary()"><span class="tb-menu-icon">📂</span>My Sites</button>
+                <div class="tb-menu-sep"></div>
+                <button class="tb-menu-item" onclick="document.getElementById('import-upload').click()"><span class="tb-menu-icon">📥</span>Import .wex</button>
+            </div>
+        </div>
+        <input type="file" id="import-upload" accept=".wex,.zip" style="display:none" onchange="Architect.importProject(event)">
+
+
+        <!-- Pages: native select + add dropdown welded together -->
+        <div class="tb-pages-group">
+            <select id="page-selector" onchange="Architect.switchPage(this.value)" class="topbar-select tb-pages-select"></select>
+            <div class="tb-dropdown">
+                <button class="btn-top tb-pages-add-btn" onclick="event.stopPropagation(); toggleTbDropdown('pages-add-menu')" title="Add page or popup">＋ <span class="tb-caret"></span></button>
+                <div class="tb-dropdown-menu" id="pages-add-menu">
+                    <button class="tb-menu-item" onclick="Architect.createPage(false)"><span class="tb-menu-icon">📄</span>Add Page</button>
+                    <button class="tb-menu-item" onclick="Architect.createPage(true)"><span class="tb-menu-icon">🔲</span>Add Popup</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- File ops: sits right next to the page selector where it makes contextual sense -->
+        
         <div class="topbar-divider"></div>
-        <button class="btn-top active" id="btn-desktop" onclick="Architect.setPreview('desktop')">🖥 Desktop</button>
-        <button class="btn-top" id="btn-mobile" onclick="Architect.setPreview('mobile')">📱 Mobile</button>
+
+        <!-- Desktop / Mobile segmented toggle -->
+        <div class="tb-seg-ctrl">
+            <button class="tb-seg-btn active" id="btn-desktop" onclick="Architect.setPreview('desktop')" title="Desktop view">🖥 Desktop</button>
+            <button class="tb-seg-btn" id="btn-mobile"  onclick="Architect.setPreview('mobile')"  title="Mobile view">📱 Mobile</button>
+        </div>
+
     </div>
 
+    <!-- ── RIGHT: Settings + preview + export ── -->
     <div class="topbar-section">
-        <button class="btn-top" onclick="Architect.openSettings()" title="Site Settings">⚙️ Settings</button>
-        <div class="topbar-divider"></div>
-        <button class="btn-top" onclick="Architect.createNewSite()" title="Start a fresh site">✚ New</button>
-        <button class="btn-top" onclick="Architect.openLibrary()" title="My saved sites">📂 My Sites</button>
-        <button class="btn-top" onclick="document.getElementById('import-upload').click()" title="Import a .wex or .zip project">📥 Import</button>
-        <input type="file" id="import-upload" accept=".wex,.zip" style="display:none" onchange="Architect.importProject(event)">
+        <button class="btn-top btn-settings" onclick="Architect.openSettings()" title="Site Settings">⚙️ Settings</button>
         <div class="topbar-divider"></div>
         <button class="btn-top" onclick="Architect.previewSite()" title="Test current page">▶ Preview</button>
-        <button class="btn-top btn-export" onclick="Architect.exportProject()" title="Download Unified .wex Archive">⬇ Export .wex</button>
+        <button class="btn-top btn-export" onclick="Architect.exportProject()" title="Download Unified .wex Archive">⬇ Export</button>
     </div>
+
 </div>
 <div id="workspace">
     <div class="canvas" id="canvas"></div>
@@ -103,7 +133,7 @@
 
             <div class="ctx-row" style="margin-bottom: 8px;">
                 <div class="tt-size-group" style="flex:1; justify-content:space-between; border: 1px solid var(--border); border-radius: 6px; background:#fff; overflow:hidden;">
-                    <button class="ctx-icon-btn" id="tt-fontSize-dec" onmousedown="event.preventDefault()" title="Decrease" style="border-radius:0;">−</button>
+                    <button class="ctx-icon-btn" id="tt-fontSize-dec" onmousedown="event.preventDefault()" title="Decrease" style="border-radius:0;">-</button>
                     <input type="number" id="tt-fontSize" class="tt-input" min="8" max="300" title="Font size (px)" style="border:none; width:40px; text-align:center; padding:0; font-weight:bold;">
                     <button class="ctx-icon-btn" id="tt-fontSize-inc" onmousedown="event.preventDefault()" title="Increase" style="border-radius:0;">+</button>
                 </div>
@@ -134,7 +164,7 @@
         </div>
     </div>
 
-    <div class="ctx-section collapsed" id="section-media" style="display:none;">
+    <div class="ctx-section" id="section-media" style="display:none;">
         <div class="ctx-section-header">Media <span class="ctx-chevron">▾</span></div>
         <div class="ctx-section-body">
             <div class="ctx-row">
@@ -421,6 +451,23 @@
 </div>
 
 <script>
+/* ── Topbar dropdown helpers ── */
+function toggleTbDropdown(id) {
+    const menu = document.getElementById(id);
+    const wasOpen = menu.classList.contains('open');
+    closeTbDropdowns();
+    if (!wasOpen) menu.classList.add('open');
+}
+function closeTbDropdowns() {
+    document.querySelectorAll('.tb-dropdown-menu').forEach(m => m.classList.remove('open'));
+}
+/* Close when clicking anywhere outside a dropdown — bubble phase so
+   stopPropagation() on toggle buttons can prevent this from firing */
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.tb-dropdown')) closeTbDropdowns();
+});
+
+/* ── Undo / Redo wiring ── */
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('btn-undo').addEventListener('click', function() {
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }));

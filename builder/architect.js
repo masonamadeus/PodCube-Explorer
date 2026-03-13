@@ -546,8 +546,8 @@ const Architect = (function () {
                 if (bottom > maxBottom) maxBottom = bottom;
             }
         });
-        // Give 400px of extra breathing room to drag new elements below the current content
-        canvas.style.minHeight = (maxBottom) + 'px';
+        // Give 400px of extra breathing room; floor at 600px so blank pages aren't invisible
+        canvas.style.minHeight = Math.max(maxBottom, 600) + 'px';
     }
 
 

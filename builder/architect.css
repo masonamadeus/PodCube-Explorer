@@ -50,6 +50,98 @@ body.editing-popup { background: #1a1a1c; } /* Dim background when building popu
 .topbar-select:hover { border-color: #b0b0b8; }
 .topbar-select:focus { border-color: var(--primary); }
 
+/* ── TOPBAR CENTER ── */
+.topbar-center { flex: 1; justify-content: center; gap: 8px; }
+
+/* Pages group: select + add-btn welded together */
+.tb-pages-group {
+    display: flex; align-items: stretch;
+    background: #fff; border: 1px solid var(--border); border-radius: 8px;
+    /* NO overflow:hidden — that clips the dropdown menu */
+    height: 28px; position: relative;
+}
+.tb-pages-select {
+    border: none !important; border-right: 1px solid var(--border) !important;
+    border-radius: 8px 0 0 8px !important; height: 100% !important;
+    max-width: 170px; min-width: 110px;
+}
+.tb-pages-add-btn {
+    border-radius: 0 8px 8px 0 !important; height: 100% !important;
+    padding: 0 9px !important; font-size: 11px !important;
+    color: var(--text-muted) !important; white-space: nowrap;
+    display: flex; align-items: center; gap: 3px;
+}
+.tb-pages-add-btn:hover { background: #f0f0f5 !important; color: var(--text-main) !important; }
+.tb-pages-group .tb-dropdown { display: flex; align-items: stretch; }
+
+/* Segmented desktop/mobile toggle */
+.tb-seg-ctrl {
+    display: flex; align-items: center;
+    background: #f0f0f5; border-radius: 8px; padding: 2px; gap: 1px;
+}
+.tb-seg-btn {
+    background: transparent; border: none;
+    padding: 4px 11px; font-family: inherit; font-size: 12px; font-weight: 600;
+    cursor: pointer; border-radius: 6px;
+    color: var(--text-muted); white-space: nowrap;
+    display: flex; align-items: center; gap: 4px;
+    transition: background 0.12s, color 0.12s, box-shadow 0.12s;
+}
+.tb-seg-btn.active {
+    background: #fff; color: var(--text-main);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+.tb-seg-btn:hover:not(.active) { color: var(--text-main); }
+
+/* Settings button — visually distinct */
+.btn-settings {
+    background: var(--primary-dim) !important;
+    color: var(--primary) !important;
+    border: 1px solid rgba(0,102,255,0.18) !important;
+    font-weight: 700 !important;
+}
+.btn-settings:hover { background: rgba(0,102,255,0.15) !important; }
+
+/* File button */
+.tb-file-btn { gap: 3px; }
+.tb-caret { font-size: 8px; opacity: 0.55; }
+
+/* ── TOPBAR DROPDOWN MENUS ── */
+.tb-dropdown { position: relative; }
+
+.tb-dropdown-menu {
+    position: absolute; top: calc(100% + 7px); left: 0;
+    background: #fff; border: 1px solid var(--border); border-radius: 11px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.04), 0 16px 48px rgba(0,0,0,0.14);
+    min-width: 165px; z-index: 3000;
+    display: none; flex-direction: column; padding: 5px;
+    animation: tb-menu-in 0.14s ease;
+}
+.tb-dropdown-menu.open { display: flex; }
+.tb-dropdown-right { left: auto; right: 0; }
+
+@keyframes tb-menu-in {
+    from { opacity: 0; transform: translateY(-5px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)  scale(1); }
+}
+
+.tb-menu-header {
+    font-size: 10px; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.6px;
+    padding: 6px 10px 3px;
+}
+.tb-menu-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px; border-radius: 7px;
+    background: transparent; border: none; cursor: pointer;
+    font-size: 12px; font-weight: 600; font-family: inherit;
+    color: var(--text-main); width: 100%; text-align: left;
+    transition: background 0.1s, color 0.1s;
+}
+.tb-menu-item:hover { background: var(--primary-dim); color: var(--primary); }
+.tb-menu-icon { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
+.tb-menu-sep { height: 1px; background: var(--border-subtle); margin: 4px 0; }
+
 /* ── WORKSPACE ── */
 #workspace { margin-top: var(--topbar-h); height: calc(100vh - var(--topbar-h)); overflow: auto; position: relative; display: flex; justify-content: center; align-items: flex-start; padding: 80px 24px 120px; transition: padding 0.2s; }
 body:not(.editing-popup) #workspace::before { content: ''; position: fixed; inset: var(--topbar-h) 0 0 0; z-index: -1; background-image: radial-gradient(circle, #b4b4b8 1px, transparent 1px); background-size: 22px 22px; }

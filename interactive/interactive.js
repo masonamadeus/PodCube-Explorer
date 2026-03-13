@@ -440,7 +440,7 @@ window.Interactive = (() => {
     let _activeId = null;   // The string ID of the current game (e.g., 'snake')
     let _registry = {};     // Dictionary of registered game classes
     let _canvas, _ctx, _domLayer; 
-    let _loopId;            // requestAnimationFrame ID
+    let _loopId = null;     // requestAnimationFrame ID
     let _lastTime = 0;      // Timestamp of the last frame
     let _inputLocked = false; // Prevents accidental clicks during menu transitions
     let _scriptsLoaded = false; // Prevent re-attaching scripts on re-initialization
@@ -748,9 +748,16 @@ window.Interactive = (() => {
             API._hideOverlay(); 
             UI.clear();
             document.getElementById('pc-machine-view').classList.add('pc-game-active')
+            
             // Cleanup previous game (prevents zombie state)
             if (_activeGame && _activeGame.onCleanup) _activeGame.onCleanup();
             
+            // KILL PREVIOUS LOOP: Prevents multiple frames firing at once if start() is spammed
+            if (_loopId !== null) {
+                cancelAnimationFrame(_loopId);
+                _loopId = null;
+            }
+
             // Instantiate fresh game
             _activeGame = new _registry[_activeId](API.gameOps);
 
@@ -775,18 +782,11 @@ window.Interactive = (() => {
             
             _inputLocked = true;
             setTimeout(() => _inputLocked = false, 200);
-            
-            // Reset Input State
-            input.pressed = {}; 
-            input.held = {}; 
-            input.mouse.down = false; 
-            _inputLocked = true;
-            setTimeout(() => _inputLocked = false, 200);
 
             // Initialize Game
             try { 
                 if (_activeGame.onInit) {
-                    if (PodUser) { PodUser.logGamePlayed(_activeId)}
+                    if (window.PodUser) { window.PodUser.logGamePlayed(_activeId)}
                     _activeGame.onInit();
                 } 
             } catch(e) { 
@@ -815,6 +815,9 @@ window.Interactive = (() => {
             if (_activeId) {
                 // Read the latest score from storage
                 const best = parseInt(localStorage.getItem(`pc_hi_${_activeId}`) || '0');
+
+                // DEFER SAVE: Only trigger heavy database writes when the game is over
+                if (window.PodUser) window.PodUser.logGameScore(_activeId, best);
 
                 // Find the card in the menu using the data attribute we added
                 const card = document.querySelector(`.game-card[data-id="${_activeId}"]`);
@@ -853,10 +856,9 @@ window.Interactive = (() => {
                     const k = `pc_hi_${_activeId}`;
                     const best = parseInt(localStorage.getItem(k) || '0');
                     if (s > best) {
+                        // FAST WRITE: Only write to ephemeral localStorage during gameplay
+                        // to prevent PodUser IndexedDB calls from freezing the render thread!
                         localStorage.setItem(k, s);
-                        if (window.PodUser) {
-                            window.PodUser.logGameScore(_activeId, s);
-                        }
                     }
                 }
             },
@@ -901,6 +903,13 @@ window.Interactive = (() => {
             gameOver(title, msg) {
                 cancelAnimationFrame(_loopId);
                 _loopId = null;
+
+                // DEFER SAVE: Write High Score to Database now that the game loop is stopped
+                if (_activeId && window.PodUser) {
+                    const best = parseInt(localStorage.getItem(`pc_hi_${_activeId}`) || '0');
+                    window.PodUser.logGameScore(_activeId, best);
+                }
+
                 API._overlay(title, msg, 'RESET', () => API.start());
             },
 
@@ -923,9 +932,16 @@ window.Interactive = (() => {
                 });
             },
 
-            win(msg) {
+            win(title, msg) {
                 cancelAnimationFrame(_loopId);
                 _loopId = null;
+
+                // DEFER SAVE: Write High Score to Database now that the game loop is stopped
+                if (_activeId && window.PodUser) {
+                    const best = parseInt(localStorage.getItem(`pc_hi_${_activeId}`) || '0');
+                    window.PodUser.logGameScore(_activeId, best);
+                }
+
                 API._overlay(title, msg, 'RESET', () => API.start());
             }
         },
@@ -1117,15 +1133,21 @@ window.Interactive = (() => {
             b.addEventListener('pointerup',   _handlers.ptrUp);
         }
 
-        // VIRTUAL CONTROLLER BUTTONS
+        // VIRTUAL CONTROLLER BUTTONS (POINTER EVENTS REWRITE)
         _handlers.ctrlBtns = [];
         document.querySelectorAll('[data-action]').forEach(btn => {
             const action = btn.dataset.action;
 
             const onDown = e => {
                 if (_inputLocked || !_activeGame) return;
-                // preventDefault here instantly kills OS gesture delays and double-tap zooms
+                
+                // If they are touching the screen, kill the default browser behavior immediately
+                // This prevents the OS from emulating a 'mousedown' event 300ms later
                 if (e.cancelable) e.preventDefault(); 
+                
+                // Capture the pointer so if their thumb rolls off the edge of the button,
+                // we still get the 'pointerup' event and don't get stuck moving forever!
+                try { btn.setPointerCapture(e.pointerId); } catch(err) {}
                 
                 _inputPending.pressed[action] = true;
                 if (!_inputPending.sequence.includes(action)) _inputPending.sequence.push(action);
@@ -1135,19 +1157,17 @@ window.Interactive = (() => {
             
             const onRelease = e => {
                 if (e && e.cancelable) e.preventDefault();
+                try { btn.releasePointerCapture(e.pointerId); } catch(err) {}
                 input.held[action] = false;
                 btn.classList.remove('pc-active');
             };
 
-            // Native Touch (Instant response on mobile)
-            btn.addEventListener('touchstart',  onDown, { passive: false });
-            btn.addEventListener('touchend',    onRelease, { passive: false });
-            btn.addEventListener('touchcancel', onRelease, { passive: false });
-
-            // Mouse Fallback (For desktop clicking)
-            btn.addEventListener('mousedown',  onDown);
-            btn.addEventListener('mouseup',    onRelease);
-            btn.addEventListener('mouseleave', onRelease);
+            // Using pure pointer events replaces both touch and mouse listeners entirely.
+            // It guarantees the engine only receives exactly one press per physical tap.
+            btn.addEventListener('pointerdown',   onDown);
+            btn.addEventListener('pointerup',     onRelease);
+            btn.addEventListener('pointercancel', onRelease);
+            btn.addEventListener('pointerout',    onRelease); // Backup catch
 
             _handlers.ctrlBtns.push({ btn, onDown, onRelease });
         });
@@ -1166,13 +1186,10 @@ window.Interactive = (() => {
 
         if (_handlers.ctrlBtns) {
             _handlers.ctrlBtns.forEach(({ btn, onDown, onRelease }) => {
-                // Cleanup all the specific listeners we attached
-                btn.removeEventListener('touchstart',  onDown);
-                btn.removeEventListener('touchend',    onRelease);
-                btn.removeEventListener('touchcancel', onRelease);
-                btn.removeEventListener('mousedown',   onDown);
-                btn.removeEventListener('mouseup',     onRelease);
-                btn.removeEventListener('mouseleave',  onRelease);
+                btn.removeEventListener('pointerdown',   onDown);
+                btn.removeEventListener('pointerup',     onRelease);
+                btn.removeEventListener('pointercancel', onRelease);
+                btn.removeEventListener('pointerout',    onRelease);
                 btn.classList.remove('pc-active');
             });
         }
