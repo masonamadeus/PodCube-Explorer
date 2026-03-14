@@ -2373,17 +2373,38 @@ function renderPunchcardDOM(pl, indexSuffix) {
     })
     
     // Note: We removed the inline onclick/onblur handlers here
+    const tracklistHTML = pl.episodes.map((ep, i) =>
+        `<li class="pc-tracklist-item">` +
+        `<span class="pc-track-num">${i + 1}</span>` +
+        `<span class="pc-track-title">${escapeHtml(ep.title || 'Unknown Transmission')}</span>` +
+        `</li>`
+    ).join('');
+
     card.innerHTML = `
-        <div class="pc-share-header">PodCube™</div>
-        <div class="pc-share-body">
-            <div class="pc-share-title" 
-                 contenteditable="true" 
-                 title="Click to Rename">
-                ${escapeHtml(pl.name)}
+        <div class="pc-card-flip-wrapper">
+            <div class="pc-card-face pc-card-front">
+                <div class="pc-share-header">PodCube™</div>
+                <div class="pc-share-body">
+                    <div class="pc-share-title" 
+                         contenteditable="true" 
+                         title="Click to Rename">
+                        ${escapeHtml(pl.name)}
+                    </div>
+                    <div class="pc-share-meta">${pl.episodes.length} Transmissions</div>
+                    <div class="pc-share-meta">Duration: ${totalDur}</div>
+                    <div class="pc-share-qr-frame"></div>
+                </div>
             </div>
-            <div class="pc-share-meta">${pl.episodes.length} Transmissions</div>
-            <div class="pc-share-meta">Duration: ${totalDur}</div>
-            <div class="pc-share-qr-frame"></div>
+            <div class="pc-card-face pc-card-back">
+                <div class="pc-share-header pc-back-header">
+                    <span>PodCube™</span>
+                    <span class="pc-flip-back-hint">← back</span>
+                </div>
+                <div class="pc-share-body pc-card-back-body">
+                    <div class="pc-back-title">${escapeHtml(pl.name)}</div>
+                    <ol class="pc-tracklist">${tracklistHTML}</ol>
+                </div>
+            </div>
         </div>
         <div class="pc-share-actions">
             <button class="icon-btn btn-load" title="Load into Queue">PLAY</button>
@@ -2427,6 +2448,69 @@ function renderPunchcardDOM(pl, indexSuffix) {
     }
 
 
+    // --- CARD FLIP: Click anywhere on the front (except the editable title) to see
+    //     tracklist; click anywhere on the back face to return.
+    const flipWrapper = card.querySelector('.pc-card-flip-wrapper');
+
+    function flipCard(toBack) {
+        // Fold in (scaleX → 0), swap face, fold out — works with overflow:hidden & clip-path
+        card.style.transition = 'transform 0.12s ease-in';
+        card.style.transform = 'scaleX(0.02)';
+        setTimeout(() => {
+            if (toBack) flipWrapper.classList.add('is-back');
+            else flipWrapper.classList.remove('is-back');
+            card.style.transition = 'transform 0.12s ease-out';
+            card.style.transform = 'scaleX(1)';
+            setTimeout(() => {
+                card.style.transition = '';
+                card.style.transform = '';
+            }, 120);
+        }, 120);
+    }
+
+    card.querySelector('.pc-card-front').addEventListener('click', (e) => {
+        // Don't flip if the user is clicking to rename
+        if (e.target.closest('[contenteditable]')) return;
+        e.stopPropagation();
+        flipCard(true);
+    });
+
+    card.querySelector('.pc-card-back').addEventListener('click', (e) => {
+        e.stopPropagation();
+        flipCard(false);
+    });
+
+    const actionsBar = card.querySelector('.pc-share-actions');
+
+    function showShredConfirm() {
+        actionsBar.innerHTML = `
+        
+            <button class="icon-btn btn-shred-cancel" style="color:var(--primary); border-color:var(--primary);">CANCEL</button>
+            <span class="pc-shred-label">SHRED THIS CARD?</span>
+            <button class="icon-btn btn-shred-confirm" style="color:var(--danger); border-color:var(--danger);">CONFIRM</button>
+        `;
+        actionsBar.querySelector('.btn-shred-confirm').addEventListener('click', () => {
+            deletePlaylist(pl.name, card);
+        });
+        actionsBar.querySelector('.btn-shred-cancel').addEventListener('click', resetActions);
+    }
+
+    function resetActions() {
+        actionsBar.innerHTML = `
+            <button class="icon-btn btn-load" title="Load into Queue">PLAY</button>
+            <button class="icon-btn btn-export" title="Copy to Clipboard">EXPORT</button>
+            <button class="icon-btn btn-delete" style="color:var(--danger); border-color:var(--danger);" title="Delete Forever">SHRED</button>
+        `;
+        actionsBar.querySelector('.btn-load').addEventListener('click', () => {
+            PodCube.playPlaylist(pl.name);
+            logCommand(`PodCube.playPlaylist("${pl.name.replace(/"/g, '\\"')}")`);
+        });
+        actionsBar.querySelector('.btn-export').addEventListener('click', () => {
+            PlaylistSharing.exportToClipboard(pl.name);
+        });
+        actionsBar.querySelector('.btn-delete').addEventListener('click', showShredConfirm);
+    }
+
     card.querySelector('.btn-load').addEventListener('click', () => {
         PodCube.playPlaylist(pl.name);
         // We log a "sanitized" version for visual effect, but execute the real one above
@@ -2437,9 +2521,7 @@ function renderPunchcardDOM(pl, indexSuffix) {
         PlaylistSharing.exportToClipboard(pl.name);
     });
 
-    card.querySelector('.btn-delete').addEventListener('click', () => {
-        deletePlaylist(pl.name, card);
-    });
+    card.querySelector('.btn-delete').addEventListener('click', showShredConfirm);
 
     // --- RENAME LOGIC ---
     const titleEl = card.querySelector('.pc-share-title');
@@ -2540,10 +2622,28 @@ function importPlaylistFromInput() {
     const val = input.value.trim();
     
     if (!val) {
-        alert("READER EMPTY. Please paste an image or enter a code.");
+        // Input is empty: Open a native file picker to grab an image
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        fileInput.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                // Find the READ button to show a loading state
+                const btn = document.querySelector('#punchcardReader .punchcard-row:last-child .punchcard-btn');
+                const originalText = btn.textContent;
+                btn.textContent = 'READING...';
+                
+                await scanPastedImage(file);
+                
+                btn.textContent = originalText;
+            }
+        };
+        fileInput.click();
         return;
     }
 
+    // Input has text: Process as a Nano-GUID code
     if (handleIncomingPlaylistCode(val)) {
         input.value = ''; // Only clear if successful
     } else {
