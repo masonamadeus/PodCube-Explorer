@@ -303,6 +303,18 @@ function handleDeepLinks() {
         handleIncomingPlaylistCode(playlistCode);
     }
 
+    const sharedEpId = url.searchParams.get('id');
+    if (sharedEpId) {
+        url.searchParams.delete('id');
+        urlCleaned = true;
+        
+        // We can just trick the app into thinking this was the last thing the user looked at!
+        localStorage.setItem('podcube_last_inspected', sharedEpId);
+        
+        // Force the app to open the Inspector tab immediately
+        setTimeout(() => switchTab('inspector', true), 50);
+    }
+
     // 3. Clean the Address Bar (Execute exactly once to prevent history corruption)
     if (urlCleaned) {
         // Pass 'history.state' to preserve the navigation state established by initNavigation()
@@ -1162,7 +1174,7 @@ function loadEpisodeInspector(ep) {
     setTxt('.insp-tag-count', ep.tags ? ep.tags.length : 0);
     setTxt('.insp-date', ep.date?.toString() || 'Unknown Date');
 
-    // Play/Queue Action Buttons
+    // Play/Queue/Share Action Buttons
     clone.querySelector('.insp-btn-play').onclick = () => run(`PodCube.play(PodCube.all[${idx}])`);
     clone.querySelector('.insp-btn-playnext').onclick = () => run(`PodCube.addNextInQueue(PodCube.all[${idx}])`);
     clone.querySelector('.insp-btn-queue').onclick = () => {
@@ -1170,6 +1182,18 @@ function loadEpisodeInspector(ep) {
         if (qIdx > -1) run(`PodCube.removeFromQueue(${qIdx})`);
         else run(`PodCube.addToQueue(PodCube.all[${idx}])`);
     };
+    const btnShare = clone.querySelector('.insp-btn-share');
+    if (btnShare) {
+        btnShare.onclick = (e) => {
+            e.stopPropagation();
+            shareSingleTransmission(ep.nanoId); // Using the short Nano-GUID looks cleaner in the URL!
+            
+            // Visual feedback
+            const originalText = btnShare.textContent;
+            btnShare.textContent = 'COPIED!';
+            setTimeout(() => btnShare.textContent = originalText, 2000);
+        };
+    }
 
     // Cataloging Buttons
     const btnOk = clone.querySelector('.insp-btn-ok');
@@ -1337,6 +1361,7 @@ function loadEpisodeInspector(ep) {
 
     setTxt('.insp-prose-id', ep.id || 'N/A');
     setTxt('.insp-prose-idx', `${idx}`);
+    setTxt('.insp-prose-nanoId', ep.nanoId || 'N/A');
     setTxt('.insp-prose-shortcode', ep.shortcode || 'N/A');
     setTxt('.insp-prose-type', ep.episodeType || 'N/A');
     setTxt('.insp-prose-integrity', ep.integrity || 'N/A');
@@ -3570,6 +3595,67 @@ function handlePastedCode(data) {
     // Otherwise, assume it's a Punchcard
     else {
         handleIncomingPlaylistCode(data);
+    }
+}
+
+function shareSingleTransmission(episodeId) {
+    // Generate the clean URL
+    const url = new URL(window.location.origin + window.location.pathname);
+    url.searchParams.set('id', episodeId);
+    const shareUrl = url.toString();
+
+    // 1. Try modern Clipboard API (Requires HTTPS)
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(shareUrl).then(() => {
+            logCommand(`// LINK GENERATED: Copied deep-link for [${episodeId}] to clipboard.`);
+        }).catch(err => {
+            console.warn("Clipboard API failed, trying fallback...", err);
+            fallbackCopy(shareUrl);
+        });
+    } 
+    // 2. Execute Legacy Fallback
+    else {
+        fallbackCopy(shareUrl);
+    }
+
+    // fallback write
+    function fallbackCopy(textToCopy) {
+        try {
+            // Create a temporary, invisible text area
+            const textArea = document.createElement("textarea");
+            textArea.value = textToCopy;
+            
+            // Prevent the screen from jumping/scrolling to the bottom on mobile
+            textArea.style.position = "fixed";
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.opacity = "0";
+            
+            document.body.appendChild(textArea);
+            
+            // Focus and highlight the text
+            textArea.focus();
+            textArea.select();
+            
+            // For iOS specifically, we have to set the selection range manually
+            if (navigator.userAgent.match(/ipad|ipod|iphone/i)) {
+                textArea.setSelectionRange(0, 999999);
+            }
+
+            // Force the copy command
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+
+            if (successful) {
+                logCommand(`// LINK GENERATED: Copied deep-link for [${episodeId}] to clipboard.`);
+            } else {
+                // Absolute worst-case scenario
+                window.prompt("Your browser blocked the copy action. Please copy manually:", textToCopy);
+            }
+        } catch (err) {
+            console.error('Fallback copy failed', err);
+            window.prompt("Your browser blocked the copy action. Please copy manually:", textToCopy);
+        }
     }
 }
 

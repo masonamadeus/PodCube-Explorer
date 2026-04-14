@@ -906,6 +906,28 @@ html.dark-theme .ep-card.is-verified {
         grid-column: 1 / -1;
         /* Span 2 items take full width on mobile */
     }
+
+    /* Force strict wrapping for the Inspector Action Buttons */
+    .playback-row {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 8px;
+    }
+    
+    /* Top row: 2 buttons (each spans 3 columns = 50% width) */
+    .playback-row .insp-btn-play,
+    .playback-row .insp-btn-playnext {
+        grid-column: span 3;
+    }
+    
+    /* Bottom row: 3 buttons (each spans 2 columns = 33% width) */
+    .playback-row .insp-btn-queue,
+    .playback-row .insp-btn-print,
+    .playback-row .insp-btn-share {
+        grid-column: span 2;
+        padding-left: 0; /* Shrink padding if they get too squeezed */
+        padding-right: 0;
+    }
 }
 
 .inspector-meta-line {
