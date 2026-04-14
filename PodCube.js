@@ -1919,11 +1919,18 @@ class PodCubeEngine {
     setVolume(level) { // accept 0-100
         // clamp it just in case
         const inputVol = Math.max(0, Math.min(100, parseFloat(level)));
-        const normalizedVol = inputVol/100
-        this._volume = normalizedVol;
-        if (this._audio){
-            this._audio.volume = normalizedVol;
+        const normalizedVol = inputVol / 100; // This is the linear 0.0 - 1.0 value
+        
+        // Store the LINEAR value in the engine state. 
+        // This ensures UI sliders and the "100%" text stay perfectly in sync.
+        this._volume = normalizedVol; 
+        
+        if (this._audio) {
+            // Apply a quadratic curve (x^2) for the actual hardware volume. 
+            // This that smooth, natural drop-off control at the quiet edge!
+            this._audio.volume = Math.pow(normalizedVol, 2);
         }
+        
         return normalizedVol;
     }
 

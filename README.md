@@ -34,6 +34,7 @@ _The Future, is Yesterday™_
 - issues with pause/play from lock screen on iOS only (may be iOS update issue?)
 - degradation issue with background color on inspector page - likely degradation CSS variable override
 - I don't like the way the queue page works at all, but I don't know how to make it better
+- Punchcard titles can be arbitrarily long and push the QR offscreen
 
 ## PLANNED NEXT FEATURES
 - Tucker's slideshow about how the BHS works
