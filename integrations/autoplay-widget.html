@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PodCube OBS Widget (Clean Sync)</title>
+    <style>
+        /* Base Widget Styling */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #ffffff;
+        }
+
+        .widget-container {
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 15, 18, 0.85); 
+            padding: 4vmin;
+            display: flex;
+            flex-direction: column;
+            justify-content: center; 
+            gap: 4vmin;
+            box-sizing: border-box;
+            border: 0.5vmin solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            backdrop-filter: blur(4px);
+            border-radius: 4vmin; 
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 4vmin;
+            flex-grow: 1; 
+            min-height: 0; 
+        }
+
+        .art-container {
+            height: 100%;
+            aspect-ratio: 1 / 1;
+            border-radius: 2vmin;
+            overflow: hidden;
+            background: #2a2a2a;
+            flex-shrink: 0;
+            box-shadow: 0 1vmin 2vmin rgba(0,0,0,0.5);
+        }
+
+        .art-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            color: transparent; 
+            transition: opacity 0.3s ease;
+        }
+
+        .info {
+            flex-grow: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .title {
+            font-size: 22vmin; 
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin: 0;
+            padding: 0;
+            text-shadow: 0 0.5vmin 1vmin rgba(0,0,0,0.8);
+        }
+
+        .location {
+            font-size: 14vmin;
+            color: #a0a0a0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 1vmin;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 4vmin;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 2vmin;
+            overflow: hidden;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: #FF8C00; 
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .controls-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10vmin;
+            border-radius: inherit; 
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+            pointer-events: none; 
+        }
+
+        .widget-container:hover .controls-overlay {
+            opacity: 1;
+            pointer-events: auto; 
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 0.5vmin solid rgba(255,255,255,0.2);
+            color: white;
+            cursor: pointer;
+            width: 25vmin;
+            height: 25vmin;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.1s;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.05);
+        }
+
+        button svg {
+            width: 12vmin;
+            height: 12vmin;
+            fill: white;
+        }
+    </style>
+</head>
+<body>
+
+<div class="widget-container" id="widget">
+    <div class="header">
+        <div class="art-container">
+            <img id="pc-art" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Art" />
+        </div>
+        <div class="info">
+            <div class="title" id="pc-title">Waking Engine...</div>
+            <div class="location" id="pc-location">Connecting to feeds</div>
+        </div>
+    </div>
+    
+    <div class="progress-bar-container">
+        <div class="progress-bar-fill" id="pc-progress"></div>
+    </div>
+
+    <div class="controls-overlay">
+        <button id="btn-playpause" aria-label="Play/Pause">
+            <svg id="icon-pause" viewBox="0 0 24 24" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            <svg id="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button id="btn-skip" aria-label="Skip">
+            <svg viewBox="0 0 24 24"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>
+        </button>
+    </div>
+</div>
+
+<script src="https://poweredbypodcube.com/PodCube.js" type="module"></script>
+<script>
+    window.addEventListener('load', async () => {
+        
+        const titleEl = document.getElementById('pc-title');
+        const locationEl = document.getElementById('pc-location');
+        const artEl = document.getElementById('pc-art');
+        const progressEl = document.getElementById('pc-progress');
+        const playPauseBtn = document.getElementById('btn-playpause');
+        const skipBtn = document.getElementById('btn-skip');
+        const iconPlay = document.getElementById('icon-play');
+        const iconPause = document.getElementById('icon-pause');
+
+        let isPlaying = false;
+
+        let attempts = 0;
+        while (!window.PodCube && attempts < 20) {
+            await new Promise(r => setTimeout(r, 100));
+            attempts++;
+        }
+
+        if (!window.PodCube) {
+            titleEl.textContent = "Connection Failed";
+            locationEl.textContent = "Could not fetch podcube.js";
+            return;
+        }
+
+        const pc = window.PodCube;
+
+        // Clean UI sync function
+        const syncUI = (ep) => {
+            if (!ep) return;
+            titleEl.textContent = ep.title || "Unknown Transmission";
+            locationEl.textContent = ep.location || "Location Unknown";
+            artEl.src = ep.image || pc.logo || '';
+        };
+
+        try {
+            await pc.init();
+            if (pc.logo) artEl.src = pc.logo;
+
+            pc.clearQueue();
+            pc.setRadioMode(true);
+            
+            const startRadio = () => {
+                if (pc.nowPlaying) {
+                    pc.play();
+                } else {
+                    const firstTrack = pc.random;
+                    if (firstTrack) {
+                        syncUI(firstTrack); // Pre-fill before play
+                        pc.addToQueue(firstTrack);
+                        pc.next();
+                    } else {
+                        titleEl.textContent = "No episodes found.";
+                        locationEl.textContent = "Check feed.";
+                    }
+                }
+            };
+
+            // Naturally updates when engine pulls next track in background
+            pc.on(pc.EVENTS.TRACK_LOADED, syncUI);
+
+            pc.on(pc.EVENTS.TIME_UPDATE, (data) => {
+                if (data && data.percent !== undefined) {
+                    progressEl.style.width = `${data.percent}%`;
+                }
+            });
+
+            pc.on(pc.EVENTS.PLAY, () => {
+                isPlaying = true;
+                iconPlay.style.display = 'none';
+                iconPause.style.display = 'block';
+                // Bulletproof: Whenever playback actually starts, guarantee the UI matches
+                if (pc.nowPlaying) syncUI(pc.nowPlaying);
+            });
+
+            pc.on(pc.EVENTS.PAUSE, () => {
+                isPlaying = false;
+                iconPlay.style.display = 'block';
+                iconPause.style.display = 'none';
+            });
+
+            // --- OBS Integration ---
+            if (window.obsstudio) {
+                titleEl.textContent = "Standby...";
+                locationEl.textContent = "Waiting for Stream to Start";
+
+                window.obsstudio.getStatus((status) => {
+                    if (status.streaming) startRadio();
+                });
+
+                window.addEventListener('obsStreamingStarted', () => {
+                    startRadio();
+                });
+
+                window.addEventListener('obsStreamingStopped', () => {
+                    pc.pause();
+                    titleEl.textContent = "Stream Offline";
+                    locationEl.textContent = "Standby";
+                });
+            } else {
+                titleEl.textContent = "Ready";
+                locationEl.textContent = "Click play to start manually";
+            }
+
+        } catch (err) {
+            console.error("PodCube Error:", err);
+            titleEl.textContent = "Boot sequence failed.";
+        }
+
+        playPauseBtn.addEventListener('click', () => {
+            if (isPlaying) {
+                pc.pause();
+            } else {
+                startRadio(); // Reuse the same logic!
+            }
+        });
+
+        skipBtn.addEventListener('click', () => {
+            if (!pc.nowPlaying) {
+                const firstTrack = pc.random;
+                if (firstTrack) pc.addToQueue(firstTrack);
+            }
+            pc.next();
+        });
+    });
+</script>
+</body>
+</html>
